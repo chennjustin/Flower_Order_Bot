@@ -1,11 +1,8 @@
 from linebot import LineBotApi
 from linebot.exceptions import LineBotApiError
-from dotenv import load_dotenv
-import os
+from app.core.deps import get_line_bot_api
 
-load_dotenv()
-CHANNEL_ACCESS_TOKEN = os.getenv("LINE_CHANNEL_ACCESS_TOKEN")
-line_bot_api = LineBotApi(CHANNEL_ACCESS_TOKEN)
+line_bot_api = get_line_bot_api()
 
 
 async def fetch_user_profile(user_id: str):

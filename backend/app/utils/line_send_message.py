@@ -1,5 +1,3 @@
-# backend/app/services/chat.py
-
 import os
 
 from linebot import LineBotApi
@@ -11,12 +9,12 @@ from app.schemas.chat import (
     ChatMessageBase,
 )
 from linebot.models import QuickReply, QuickReplyButton, MessageAction
+from app.core.deps import get_line_bot_api
 
 # ──────────────────────────────
 #  LINE PUSH 基本設定
 # ──────────────────────────────
-LINE_CHANNEL_ACCESS_TOKEN = os.getenv("LINE_CHANNEL_ACCESS_TOKEN")
-line_bot_api = LineBotApi(LINE_CHANNEL_ACCESS_TOKEN)
+line_bot_api = get_line_bot_api()
 
 
 def LINE_push_message(line_uid: str, data: ChatMessageBase) -> bool: 

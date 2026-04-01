@@ -9,15 +9,10 @@ from app.services.user_service import get_line_uid_by_chatroom_id
 from fastapi import HTTPException, status
 from app.managers.prompt_manager import PromptManager
 from app.schemas.chat import ChatMessageBase
-from openai import OpenAI
-import os
-from dotenv import load_dotenv
 from app.enums.chat import ChatMessageStatus, ChatRoomStage, ChatMessageDirection
+from app.core.deps import get_openai_client
 
 
-load_dotenv()
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-openai_client = OpenAI(api_key=OPENAI_API_KEY)
 prompt_manager = PromptManager()
 
 def _clean_parsed_reply(parsed_reply):
@@ -59,7 +54,7 @@ async def organize_data(db, chat_room_id: int) -> OrderDraftOut:
     print("🔍 GPT 處理中...")
     print(f"📜 GPT Prompt:\n{gpt_prompt}")
 
-    response = openai_client.chat.completions.create(
+    response = get_openai_client().chat.completions.create(
         model="gpt-4.1",
         messages=[{"role": "system", "content": gpt_prompt}],
         temperature=0

@@ -1,13 +1,12 @@
 from fastapi import APIRouter, Request, HTTPException, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi.responses import PlainTextResponse
-from linebot import LineBotApi, WebhookHandler
 from linebot.exceptions import InvalidSignatureError, LineBotApiError
 from linebot.models import MessageEvent, TextMessage, TextSendMessage, FollowEvent
 from linebot.models import QuickReply, QuickReplyButton, MessageAction
-from openai import OpenAI
 from sqlalchemy import select, update
 
+from app.core.deps import get_line_bot_api, get_line_webhook_handler
 from app.core.database import get_db
 from app.models.chat import ChatRoom, ChatMessage
 from app.models.user import User
@@ -22,23 +21,15 @@ from app.services.message_service import get_chat_room_by_user_id, create_chat_r
 from app.services.order_service import create_order_draft_by_room_id, get_order_draft_by_room
 from app.utils.line_send_message import send_quick_reply_message, send_confirm
 from app.utils.line_get_profile import fetch_user_profile
-import os
 import json
 from datetime import datetime, timedelta, timezone
-from dotenv import load_dotenv
-
-load_dotenv()
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-LINE_CHANNEL_ACCESS_TOKEN = os.getenv("LINE_CHANNEL_ACCESS_TOKEN")
-LINE_CHANNEL_SECRET = os.getenv("LINE_CHANNEL_SECRET")
-
-line_bot_api = LineBotApi(LINE_CHANNEL_ACCESS_TOKEN)
-handler = WebhookHandler(LINE_CHANNEL_SECRET)
-openai_client = OpenAI(api_key=OPENAI_API_KEY)
 
 prompt_manager = PromptManager()
 
 api_router = APIRouter()
+
+# Keep module-level handler for @handler.add decorators (behavior unchanged).
+handler = get_line_webhook_handler()
 
 @api_router.post("/callback")
 async def callback(request: Request, db: AsyncSession = Depends(get_db)):
@@ -50,7 +41,7 @@ async def callback(request: Request, db: AsyncSession = Depends(get_db)):
     body_str = body.decode('utf-8')
 
     try:
-        events = handler.parser.parse(body_str, signature)
+        events = get_line_webhook_handler().parser.parse(body_str, signature)
     except InvalidSignatureError:
         raise HTTPException(status_code=400, detail="Invalid signature")
 
@@ -247,7 +238,7 @@ async def run_welcome_flow(
     else:
         chat_room.stage = ChatRoomStage.WAITING_OWNER
         chat_room.bot_step = -1
-        line_bot_api.reply_message(
+        get_line_bot_api().reply_message(
             event.reply_token,
             TextSendMessage("好的！已轉交給客服人員，請稍候。")
         )
@@ -391,7 +382,7 @@ async def last(user_text, event, db, chat_room):
     
     budget = user_text.strip()
     # TODO validate, save
-    line_bot_api.reply_message(
+    get_line_bot_api().reply_message(
         event.reply_token,
         TextSendMessage("👌了解！已記錄到後臺～接下來會交由老闆與您聯繫確認細節。")
     )
