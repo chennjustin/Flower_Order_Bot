@@ -142,25 +142,6 @@ ngrok http 8000
 
 ---
 
-### 🌐 Render 雲端部署
-
-#### 後端
-
-1. 將專案上傳至 GitHub
-2. 前往 [Render](https://render.com) 建立 Web Service
-3. 設定：
-
-   * 環境變數 `.env` 內容
-   * Start Command:
-
-     ```bash
-     gunicorn app.main:app
-     ```
-
-#### 前端待捕
-
----
-
 ## 🔗 Webhook 配置
 
 請至 [LINE Developers Console](https://developers.line.biz/console/) 設定 Webhook URL：
