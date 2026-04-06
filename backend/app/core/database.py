@@ -1,17 +1,12 @@
-# core/database.py
-import os
-from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
-from sqlalchemy.orm import declarative_base
-from dotenv import load_dotenv
-from sqlalchemy.ext.asyncio import AsyncSession
 from typing import AsyncGenerator
 
-load_dotenv()
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.orm import declarative_base
+
+from app.core.deps import get_settings
 
 # ─────────────── 讀取連線字串 ───────────────
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite+aiosqlite:///messages.db")
-if DATABASE_URL.startswith("postgres://"):
-    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql+asyncpg://", 1)
+DATABASE_URL = get_settings().database_url
 
 # ─────────────── 建立 Engine / Session ───────────────
 engine = create_async_engine(DATABASE_URL, future=True, echo=False)

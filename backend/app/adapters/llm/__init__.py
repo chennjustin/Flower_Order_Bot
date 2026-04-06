@@ -1,0 +1,2 @@
+"""LLM adapters (OpenAI, etc.)."""
+

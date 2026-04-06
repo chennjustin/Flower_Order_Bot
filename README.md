@@ -1,6 +1,6 @@
 # ChiMei Floral
 
-本專案為一個花店商家後台，透過 LINE Bot 將顧客訊息利用 OpenAI API 整理成格式化的訂單資訊（例如顧客姓名、聯絡電話、花材種類、數量、取貨時間及特殊需求）回傳給使用者。商家確認無誤後，資料將會被寫入訂單資料庫中，並可透過 `/orders` 頁面查詢所有訂單，也可經由 `/orders.csv` 匯出成表單，協助商家省下人工抄寫與反覆確認的時間成本。
+本專案為一個花店商家後台，透過 LINE Bot 將顧客訊息利用 OpenAI API 整理成格式化的訂單資訊（例如顧客姓名、聯絡電話、花材種類、數量、取貨時間及特殊需求）回傳給使用者。商家確認無誤後，資料將會被寫入訂單資料庫中，並可透過 `/orders` 頁面查詢所有訂單；目前 **CSV 匯出由前端在瀏覽器端直接產生下載**、DOCX 工單則由後端提供下載，協助商家省下人工抄寫與反覆確認的時間成本。
 
 ---
 
@@ -10,7 +10,7 @@
 * ✅ 使用 GPT 模型將對話轉換為結構化訂單（透過關鍵字觸發）
 * ✅ 寫入 SQLite（開發）或 Render PostgreSQL（部署）
 * ✅ 管理訂單、顧客資料與歷史訊息
-* ✅ 提供 `/orders` 頁面查詢訂單，並支援 `/orders.csv` 匯出
+* ✅ 提供 `/orders` 頁面查詢訂單，並支援 CSV 匯出（前端產生下載）與 DOCX 工單匯出（後端下載）
 * ✅ 前端以 Vue 框架實作，可即時查看與操作訂單系統
 * ✅ 使用 Alembic 作資料庫版本控制
 
@@ -95,6 +95,37 @@ npm run dev
 
 啟動後預設運行於 `http://localhost:5173`
 
+---
+
+### 🐳 Docker Compose（推薦一鍵啟動）
+
+> 需要先安裝 Docker Desktop（Windows/Mac）。
+
+1) 在 `backend/.env` 準備好必要的金鑰（可參考 `backend/.env.example`）。
+
+2) 在專案根目錄啟動：
+
+```bash
+docker compose up --build
+```
+
+3) 服務位址：
+- 前端：`http://localhost:5173`
+- 後端：`http://localhost:8000`（Swagger UI 在根路徑 `/`）
+- Postgres：`localhost:5432`（compose 內帳密為 `flower/flower`，資料會存在 volume）
+
+4) 關閉：
+
+```bash
+docker compose down
+```
+
+5) 若要連資料也清空（刪除 Postgres volume）：
+
+```bash
+docker compose down -v
+```
+
 #### 資料庫
 
 ```bash
@@ -108,25 +139,6 @@ PYTHONPATH=. python app/seeds/seed_all.py # 產生 10 筆測試資料進入 mess
 ```bash
 ngrok http 8000
 ```
-
----
-
-### 🌐 Render 雲端部署
-
-#### 後端
-
-1. 將專案上傳至 GitHub
-2. 前往 [Render](https://render.com) 建立 Web Service
-3. 設定：
-
-   * 環境變數 `.env` 內容
-   * Start Command:
-
-     ```bash
-     gunicorn app.main:app
-     ```
-
-#### 前端待捕
 
 ---
 

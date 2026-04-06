@@ -40,6 +40,9 @@ dist
 dist-ssr
 *.local
 
+# Python test caches
+.pytest_cache/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
