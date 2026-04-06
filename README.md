@@ -95,6 +95,37 @@ npm run dev
 
 啟動後預設運行於 `http://localhost:5173`
 
+---
+
+### 🐳 Docker Compose（推薦一鍵啟動）
+
+> 需要先安裝 Docker Desktop（Windows/Mac）。
+
+1) 在 `backend/.env` 準備好必要的金鑰（可參考 `backend/.env.example`）。
+
+2) 在專案根目錄啟動：
+
+```bash
+docker compose up --build
+```
+
+3) 服務位址：
+- 前端：`http://localhost:5173`
+- 後端：`http://localhost:8000`（Swagger UI 在根路徑 `/`）
+- Postgres：`localhost:5432`（compose 內帳密為 `flower/flower`，資料會存在 volume）
+
+4) 關閉：
+
+```bash
+docker compose down
+```
+
+5) 若要連資料也清空（刪除 Postgres volume）：
+
+```bash
+docker compose down -v
+```
+
 #### 資料庫
 
 ```bash
