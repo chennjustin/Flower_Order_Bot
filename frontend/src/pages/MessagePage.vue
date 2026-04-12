@@ -51,8 +51,18 @@
     try {
       const response = await getLatestMessages()
       chatRooms.value = response
-      if (chatRooms.value.length > 0 && !selectedRoom.value) {
-        selectedRoom.value = chatRooms.value[0]
+      const sid = selectedRoom.value?.id
+      if (sid != null && sid !== '') {
+        const updated = response.find((r) => String(r.id) === String(sid))
+        if (updated) {
+          selectedRoom.value = updated
+        } else if (response.length > 0) {
+          selectedRoom.value = response[0]
+        } else {
+          selectedRoom.value = null
+        }
+      } else if (response.length > 0) {
+        selectedRoom.value = response[0]
       }
     } catch (error) {
       console.error('Error loading chat rooms:', error)
