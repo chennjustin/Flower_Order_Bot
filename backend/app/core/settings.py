@@ -13,6 +13,8 @@ class Settings:
     line_channel_access_token: str | None
     line_channel_secret: str | None
     database_url: str
+    # 與此字串完全相符的 LINE 文字訊息會觸發開發用清除（見 linebot_flow）
+    line_test_reset_phrase: str | None
 
 
 def _postgres_connection_params() -> tuple[str, str, str, str, str]:
@@ -89,10 +91,12 @@ def load_settings() -> Settings:
     """
     database_url = resolve_database_url()
 
+    phrase = os.getenv("LINE_TEST_RESET_PHRASE", "").strip()
     return Settings(
         openai_api_key=os.getenv("OPENAI_API_KEY"),
         line_channel_access_token=os.getenv("LINE_CHANNEL_ACCESS_TOKEN"),
         line_channel_secret=os.getenv("LINE_CHANNEL_SECRET"),
         database_url=database_url,
+        line_test_reset_phrase=phrase or None,
     )
 

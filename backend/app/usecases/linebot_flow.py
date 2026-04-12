@@ -6,7 +6,7 @@ from linebot.exceptions import LineBotApiError
 from linebot.models import MessageEvent, TextMessage, TextSendMessage
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.deps import get_line_bot_api
+from app.core.deps import get_line_bot_api, get_settings
 from app.enums.chat import ChatMessageDirection, ChatMessageStatus, ChatRoomStage
 from app.models.chat import ChatMessage, ChatRoom
 from app.schemas.user import UserCreate
@@ -19,6 +19,7 @@ from app.services.order_service import (
     create_order_draft_by_room_id,
     get_order_draft_by_room,
 )
+from app.services.dev_room_reset import wipe_line_customer_for_dev
 from app.services.user_service import create_user, get_user_by_line_uid
 from app.utils.line_get_profile import fetch_user_profile
 from app.utils.line_send_message import send_confirm, send_quick_reply_message
@@ -69,6 +70,21 @@ async def handle_incoming_text_message(event: MessageEvent, db: AsyncSession) ->
 
     if await get_order_draft_by_room(db, chat_room.id) is None:
         await create_order_draft_by_room_id(db, chat_room.id)
+
+    settings = get_settings()
+    if settings.line_test_reset_phrase and user_message.strip() == settings.line_test_reset_phrase:
+        await wipe_line_customer_for_dev(db, chat_room.id, user.id)
+        print(f"[dev] LINE_TEST_RESET_PHRASE matched; wiped room={chat_room.id} user={user.id}")
+        try:
+            get_line_bot_api().reply_message(
+                event.reply_token,
+                TextSendMessage(
+                    text="【開發用】已清除此聊天室與顧客資料，可重新傳訊開始。"
+                ),
+            )
+        except LineBotApiError as e:
+            print(f"[dev] LINE_TEST_RESET_PHRASE 回覆提示失敗：{e.status_code} {e.error.message}")
+        return
 
     message = ChatMessage(
         room_id=chat_room.id,
