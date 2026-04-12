@@ -1,5 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.requests import Request
 
 from app.routes.health import router as health_router
 from app.routes.orders import api_router as orders_router
@@ -16,7 +18,27 @@ app = FastAPI(
     docs_url="/",  # Swagger UI 路徑
 )
 
-# CORS（
+
+class EnsureCorsHeadersMiddleware(BaseHTTPMiddleware):
+    """
+    未捕捉例外時內層回應常沒有 CORS 頭，瀏覽器會只報 CORS 而看不到真正錯誤。
+    在回應缺少 ACAO 時補上（僅當請求帶 Origin，例如前端 dev server）。
+    """
+
+    async def dispatch(self, request: Request, call_next):
+        response = await call_next(request)
+        origin = request.headers.get("origin")
+        if not origin:
+            return response
+        if any(k.lower() == "access-control-allow-origin" for k in response.headers.keys()):
+            return response
+        response.headers["Access-Control-Allow-Origin"] = origin
+        response.headers["Access-Control-Allow-Methods"] = "*"
+        response.headers["Access-Control-Allow-Headers"] = "*"
+        return response
+
+
+# 後註冊者包在外層：最後註冊的 Ensure 會最先收到請求、最後送出回應，可補齊錯誤回應的 CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -24,6 +46,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.add_middleware(EnsureCorsHeadersMiddleware)
 
 # === 將 APIRouter 掛進來 =================================================
 app.include_router(health_router, tags=["Health"])
