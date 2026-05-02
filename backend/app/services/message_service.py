@@ -1,29 +1,27 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, update
-from sqlalchemy.orm import joinedload
-from datetime import datetime, timezone, timedelta
+from datetime import datetime
 from typing import List, Optional
 
 from app.models.chat import ChatRoom, ChatMessage
 from app.schemas.chat import ChatRoomOut, ChatMessageOut, ChatMessageBase
-from app.enums.chat import ChatMessageStatus, ChatRoomStage, ChatMessageDirection
+from app.enums.chat import ChatMessageDirection
 from app.utils.line_send_message import LINE_push_message
 from app.services.user_service import get_user_by_line_uid, get_user_by_id
-
 from fastapi import HTTPException, status
-from app.services.user_service import get_user_by_line_uid, get_user_by_id
-
-from fastapi import HTTPException, status
+from app.repositories.chat_repository import (
+    create_chat_message_entry as repo_create_chat_message_entry,
+    create_chat_room as repo_create_chat_room,
+    get_chat_room_by_id as repo_get_chat_room_by_id,
+    get_chat_room_by_user_id as repo_get_chat_room_by_user_id,
+    get_latest_chat_message,
+    list_chat_messages,
+    list_chat_rooms,
+    switch_chat_room_mode as repo_switch_chat_room_mode,
+    touch_chat_room_updated_at,
+)
 
 async def get_latest_message(db: AsyncSession, room_id: int) -> Optional[ChatMessageOut]:
-    stmt = (
-        select(ChatMessage)
-        .where(ChatMessage.room_id == room_id)
-        .order_by(ChatMessage.created_at.desc())
-        .limit(1)
-    )
-    result = await db.execute(stmt)
-    message = result.scalar_one_or_none()
+    message = await get_latest_chat_message(db, room_id)
     
     if not message:
         return None
@@ -41,13 +39,7 @@ async def get_latest_message(db: AsyncSession, room_id: int) -> Optional[ChatMes
     return message
 
 async def get_chat_room_list(db: AsyncSession) -> Optional[List[ChatRoomOut]]:
-    stmt = (
-        select(ChatRoom)
-        .options(joinedload(ChatRoom.user))
-        .order_by(ChatRoom.updated_at.desc())
-    )
-    result = await db.execute(stmt)
-    rooms = result.scalars().all()
+    rooms = await list_chat_rooms(db)
 
     response = []
     for room in rooms:
@@ -71,37 +63,13 @@ async def get_chat_room_list(db: AsyncSession) -> Optional[List[ChatRoomOut]]:
     return response
 
 async def get_chat_room_by_room_id(db: AsyncSession, room_id: int) -> Optional[ChatRoom]:
-    stmt = (
-        select(ChatRoom)
-        .options(joinedload(ChatRoom.user))
-        .where(ChatRoom.id == room_id)
-    )
-    result = await db.execute(stmt)
-    room = result.scalar_one_or_none()
-    return room
+    return await repo_get_chat_room_by_id(db, room_id)
 
 async def get_chat_room_by_user_id(db: AsyncSession, user_id: int) -> Optional[ChatRoom]:
-    stmt = (
-        select(ChatRoom)
-        .options(joinedload(ChatRoom.user))
-        .where(ChatRoom.user_id == user_id)
-    )
-    result = await db.execute(stmt)
-    room = result.scalar_one_or_none()
-    return room
+    return await repo_get_chat_room_by_user_id(db, user_id)
 
 async def create_chat_room(db: AsyncSession, user_id: int) -> ChatRoom:
-    room = ChatRoom(
-        user_id=user_id, 
-        stage=ChatRoomStage.WELCOME,
-        bot_step=-1,
-        unread_count=0,
-        created_at=datetime.now(timezone(timedelta(hours=8))).replace(tzinfo=None)
-        )
-    db.add(room)
-    await db.commit()
-    await db.refresh(room)
-    return room
+    return await repo_create_chat_room(db, user_id)
 
 async def get_chat_messages(db: AsyncSession, room_id: int, after: Optional[datetime] = None) -> List[ChatMessageOut]:
     chatroom = await get_chat_room_by_room_id(db, room_id)
@@ -118,13 +86,7 @@ async def get_chat_messages(db: AsyncSession, room_id: int, after: Optional[date
             detail="Chat room not found"
         )
     
-    stmt = select(ChatMessage).where(ChatMessage.room_id == room_id)
-    if after:
-        stmt = stmt.where(ChatMessage.created_at > after)
-    stmt = stmt.order_by(ChatMessage.created_at.asc())
-
-    result = await db.execute(stmt)
-    messages = result.scalars().all()
+    messages = await list_chat_messages(db, room_id, after=after)
 
     user = await get_user_by_id(db, chatroom.user_id)
     if user:
@@ -147,13 +109,7 @@ async def get_chat_messages(db: AsyncSession, room_id: int, after: Optional[date
     ]
 
 async def switch_chat_room_mode(db: AsyncSession, room_id: int, mode: str) -> None:
-    stmt = (
-        update(ChatRoom)
-        .where(ChatRoom.id == room_id)
-        .values(stage=mode, updated_at=datetime.now(timezone(timedelta(hours=8))).replace(tzinfo=None))
-    )
-    await db.execute(stmt)
-    await db.commit()
+    await repo_switch_chat_room_mode(db, room_id, mode)
 
 async def create_chat_message_entry(
     db: AsyncSession,
@@ -161,20 +117,7 @@ async def create_chat_message_entry(
     data: ChatMessageBase,
     direction: ChatMessageDirection
 ) -> ChatMessage:
-    message = ChatMessage(
-        room_id=room_id,
-        direction=direction,
-        text=data.text,
-        image_url=data.image_url,
-        status=ChatMessageStatus.SENT,
-        processed=False,
-        created_at=datetime.now(timezone(timedelta(hours=8))).replace(tzinfo=None),
-        updated_at=datetime.now(timezone(timedelta(hours=8))).replace(tzinfo=None)
-    )
-    db.add(message)
-    await db.commit()
-    await db.refresh(message)
-    return message
+    return await repo_create_chat_message_entry(db, room_id, data, direction)
 
 async def create_staff_message(db: AsyncSession, room_id: int, data: ChatMessageBase) -> ChatMessageOut:
     # 查找聊天室
@@ -201,10 +144,7 @@ async def create_staff_message(db: AsyncSession, room_id: int, data: ChatMessage
     )
     
     # 更新聊天室狀態
-    room.updated_at = datetime.now(timezone(timedelta(hours=8))).replace(tzinfo=None)
-    db.add(room)
-    await db.commit()
-    await db.refresh(room)
+    await touch_chat_room_updated_at(db, room)
 
     message_out = ChatMessageOut(
         id=message.id,
