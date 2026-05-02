@@ -10,6 +10,7 @@ from app.core.deps import get_line_webhook_handler
 from app.core.database import get_db
 from app.services.user_service import get_user_by_line_uid, create_user
 from app.services.message_service import get_chat_room_by_user_id, create_chat_room
+from app.schemas.user import UserCreate
 
 api_router = APIRouter()
 
@@ -59,7 +60,7 @@ async def handle_follow(event: FollowEvent, db: AsyncSession):
     user_line_id = event.source.user_id
     user = await get_user_by_line_uid(db, user_line_id)
     if not user:
-        user = await create_user(db, user_line_id, "Profile Name")
+        user = await create_user(db, UserCreate(line_uid=user_line_id, name="Profile Name"))
         print(f"新使用者 {user_line_id} 已創建")
     else:
         print(f"使用者 {user_line_id} 已存在")

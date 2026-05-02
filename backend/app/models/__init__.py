@@ -8,6 +8,7 @@ from .order import Order, OrderDraft
 from .payment import Payment, PaymentMethod
 from .operation import Notification
 from .operation import AuditLog
+from .store_display_config import StoreDisplayConfig
 
 __all__ = (
     "User",
@@ -21,4 +22,5 @@ __all__ = (
     "Shipment",
     "Notification",
     "AuditLog",
+    "StoreDisplayConfig",
 )
