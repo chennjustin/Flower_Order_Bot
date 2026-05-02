@@ -1,7 +1,6 @@
 # app/services/order_service.py
 
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, update
 from typing import List, Optional
 from datetime import datetime, timezone, timedelta
 from fastapi import HTTPException, status
@@ -19,19 +18,24 @@ from app.enums.shipment import ShipmentStatus
 from app.enums.chat import ChatMessageStatus, ChatRoomStage, ChatMessageDirection
 from app.utils.line_send_message import LINE_push_message
 from app.schemas.chat import ChatMessageBase
+from app.repositories.order_repository import (
+    get_latest_confirmed_order_by_room,
+    get_latest_order_draft_by_room,
+    get_order_by_id,
+    list_active_orders,
+    now_taipei_naive,
+    save_order,
+    save_order_draft,
+)
 
 async def get_order(db: AsyncSession, order_id: int) -> Order:
-    stmt = select(Order).where(Order.id == order_id)
-    result = await db.execute(stmt)
-    return result.scalar_one_or_none()
+    return await get_order_by_id(db, order_id)
 
 async def get_all_orders(db: AsyncSession) -> Optional[List[OrderOut]]:
     results = []
 
     # 撈出所有訂單
-    order_stmt = select(Order).where(Order.status != OrderStatus.CANCELLED)
-    order_result = await db.execute(order_stmt)
-    orders = order_result.scalars().all()
+    orders = await list_active_orders(db)
 
     for order in orders:
         user = await get_user_by_id(db, order.user_id)
@@ -147,13 +151,10 @@ async def create_order_by_room(db: AsyncSession, room_id: int) -> list[str]:
         receipt_address=order_draft.receipt_address,
         delivery_address=order_draft.delivery_address,
         delivery_datetime=order_draft.delivery_datetime,
-        created_at=datetime.now(timezone(timedelta(hours=8))).replace(tzinfo=None),
-        updated_at=datetime.now(timezone(timedelta(hours=8))).replace(tzinfo=None)
+        created_at=now_taipei_naive(),
+        updated_at=now_taipei_naive()
     )
-    
-    db.add(order)
-    await db.commit()
-    await db.refresh(order)
+    await save_order(db, order)
 
     # 更新聊天室的 stage
     room.stage = ChatRoomStage.ORDER_CONFIRM
@@ -177,8 +178,8 @@ async def create_order_by_room(db: AsyncSession, room_id: int) -> list[str]:
         image_url="",
         status=ChatMessageStatus.PENDING,
         processed=True, 
-        created_at=datetime.now(timezone(timedelta(hours=8))).replace(tzinfo=None),
-        updated_at=datetime.now(timezone(timedelta(hours=8))).replace(tzinfo=None)
+        created_at=now_taipei_naive(),
+        updated_at=now_taipei_naive()
         )
     db.add(message)
     await db.commit()
@@ -217,14 +218,7 @@ async def update_order_by_room_id(
         )
 
     # 3. 取得最新的訂單
-    stmt = (
-        select(Order)
-        .where(Order.room_id == room.id, Order.status == OrderStatus.CONFIRMED)
-        .order_by(Order.created_at.desc())
-        .limit(1)
-    )
-    result = await db.execute(stmt)
-    order = result.scalar_one_or_none()
+    order = await get_latest_confirmed_order_by_room(db, room.id)
 
     if not order:
         raise HTTPException(
@@ -245,7 +239,7 @@ async def update_order_by_room_id(
     order.receipt_address = order_draft.receipt_address
     order.delivery_address = order_draft.delivery_address
     order.delivery_datetime = order_draft.delivery_datetime
-    order.updated_at = datetime.now(timezone(timedelta(hours=8))).replace(tzinfo=None)
+    order.updated_at = now_taipei_naive()
 
 
     # 4. 提交並 refresh
@@ -256,9 +250,7 @@ async def update_order_by_room_id(
     return True
 
 async def delete_order_by_id(db: AsyncSession, order_id: int) -> bool:
-    stmt = select(Order).where(Order.id == order_id)
-    result = await db.execute(stmt)
-    order = result.scalar_one_or_none()
+    order = await get_order_by_id(db, order_id)
     
     if not order:
         raise HTTPException(
@@ -272,26 +264,10 @@ async def delete_order_by_id(db: AsyncSession, order_id: int) -> bool:
     return True
     
 async def get_order_draft_by_room(db: AsyncSession, room_id: int) -> Optional[OrderDraft]:
-    stmt = (
-        select(OrderDraft)
-        .where(OrderDraft.room_id == room_id)
-        .order_by(OrderDraft.created_at.desc())
-        .limit(1)
-    )
-    result = await db.execute(stmt)
-    order_draft = result.scalar_one_or_none()
-    
-    return order_draft
+    return await get_latest_order_draft_by_room(db, room_id)
 
 async def get_order_draft_out_by_room(db: AsyncSession, room_id: int) -> Optional[OrderDraftOut]:
-    stmt = (
-        select(OrderDraft)
-        .where(OrderDraft.room_id == room_id)
-        .order_by(OrderDraft.created_at.desc())
-        .limit(1)
-    )
-    result = await db.execute(stmt)
-    order_draft = result.scalar_one_or_none()
+    order_draft = await get_latest_order_draft_by_room(db, room_id)
     
     user = await get_user_by_id(db, order_draft.user_id) if order_draft else None
     receiver_user = await get_user_by_id(db, order_draft.receiver_user_id) if order_draft else None
@@ -357,11 +333,9 @@ async def create_order_draft_by_room_id(
         user_id=room.user_id,
         receiver_user_id=room.user_id,
         created_at=datetime.now(timezone(timedelta(hours=8))).replace(tzinfo=None),
-        updated_at=datetime.now(timezone(timedelta(hours=8))).replace(tzinfo=None)
+        updated_at=now_taipei_naive()
     )
-    db.add(order_draft)
-    await db.commit()
-    await db.refresh(order_draft)
+    await save_order_draft(db, order_draft)
 
     return order_draft
 
@@ -402,8 +376,8 @@ async def update_order_draft_by_room_id(
         receiver_user = User(
             name=draft_in.receiver_name,
             phone=draft_in.receiver_phone,
-            created_at=datetime.now(timezone(timedelta(hours=8))).replace(tzinfo=None),
-            updated_at=datetime.now(timezone(timedelta(hours=8))).replace(tzinfo=None),
+            created_at=now_taipei_naive(),
+            updated_at=now_taipei_naive(),
         )
         db.add(receiver_user)
         await db.commit()
@@ -431,7 +405,7 @@ async def update_order_draft_by_room_id(
         order_draft.receipt_address = draft_in.receipt_address
     if draft_in.delivery_address is not None:
         order_draft.delivery_address = draft_in.delivery_address
-    order_draft.updated_at = datetime.now(timezone(timedelta(hours=8))).replace(tzinfo=None)
+    order_draft.updated_at = now_taipei_naive()
 
     # 6. 若有付款方式（pay_way）等欄位可在此擴充 
     if draft_in.pay_way_id:
