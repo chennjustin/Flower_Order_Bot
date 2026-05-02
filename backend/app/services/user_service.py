@@ -1,12 +1,15 @@
-from datetime import datetime, timezone, timedelta
-from sqlalchemy.orm import selectinload
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.models.user import User
-from app.models.chat import ChatRoom
 from typing import Optional
+from app.models.user import User
 
 from app.schemas.user import UserCreate
+from app.repositories.user_repository import (
+    create_user as repo_create_user,
+    get_user_by_chat_room_id as repo_get_user_by_chat_room_id,
+    get_user_by_id as repo_get_user_by_id,
+    get_user_by_line_uid as repo_get_user_by_line_uid,
+    update_user_info as repo_update_user_info,
+)
 
 
 async def get_line_uid_by_chatroom_id(
@@ -31,14 +34,10 @@ async def get_line_uid_by_chatroom_id(
 
 
 async def get_user_by_line_uid(db: AsyncSession, line_uid: str) -> User:
-    stmt = select(User).where(User.line_uid == line_uid)
-    result = await db.execute(stmt)
-    return result.scalar_one_or_none()
+    return await repo_get_user_by_line_uid(db, line_uid)
 
 async def get_user_by_id(db: AsyncSession, user_id: int) -> User:
-    stmt = select(User).where(User.id == user_id)
-    result = await db.execute(stmt)
-    return result.scalar_one_or_none()
+    return await repo_get_user_by_id(db, user_id)
 
 async def get_user_by_chat_room_id(
         db: AsyncSession, 
@@ -54,27 +53,13 @@ async def get_user_by_chat_room_id(
     Returns:
         Optional[User]: User object if found, else None.
     """
-    chat_room = await db.execute(
-        select(ChatRoom).
-        options(selectinload(ChatRoom.user)).
-        where(ChatRoom.id == chat_room_id)
-    )
-    chat_room = chat_room.scalar_one_or_none()
-
-    if not chat_room:
-        raise Exception("Chat room not found")
-
-    return chat_room.user
+    return await repo_get_user_by_chat_room_id(db, chat_room_id)
 
 async def create_user(
         db: AsyncSession, 
         user_data: UserCreate
         ) -> User:
-    user = User(**user_data.dict())
-    db.add(user)
-    await db.commit()
-    await db.refresh(user)
-    return user
+    return await repo_create_user(db, user_data)
 
 
 async def update_user_info(
@@ -83,16 +68,4 @@ async def update_user_info(
                 name: Optional[str] = None,
                 phone: Optional[str] = None,
             ) -> User:
-    stmt = select(User).where(User.id == user_id)
-    result = await db.execute(stmt)
-    user = result.scalar_one_or_none()
-    if not user:
-        raise Exception("User not found")
-    if name:
-        user.name = name
-    if phone:
-        user.phone = phone
-    user.updated_at = datetime.now(timezone(timedelta(hours=8))).replace(tzinfo=None)
-    await db.commit()
-    await db.refresh(user)
-    return user
+    return await repo_update_user_info(db, user_id, name=name, phone=phone)
