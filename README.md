@@ -158,7 +158,7 @@ npm install
 
 
 
-* **本機只跑 uvicorn**：通常 `POSTGRES_HOST=localhost`，`POSTGRES_PORT` 對應到 Docker 對外映射的埠（預設為 `5432`，見下方 [資料庫與連線](#資料庫與連線)）。
+* **本機只跑 uvicorn**：通常 `POSTGRES_HOST=localhost`，`POSTGRES_PORT` 對應到 Docker 對外映射的埠（預設為 `5433`，見下方 [資料庫與連線](#資料庫與連線)）。
 
 * **`docker compose` 跑 backend 容器**：Compose 會覆寫 `POSTGRES_HOST=db`，容器內固定連 compose 服務名，埠為容器內 `5432`。
 
@@ -171,7 +171,7 @@ npm install
 ## 資料庫與連線
 
 
-本機若另外安裝了 **Windows 版 PostgreSQL**，常見服務名為 `postgresql-x64-17`，預設也會聽 **5432**。此時與 Docker 對外映射的 **5432** 會衝突或導致連線打到錯的實例（帳密不一致就會認證失敗）。
+本機若另外安裝了 **Windows 版 PostgreSQL**，常見服務名為 `postgresql-x64-17`，預設會聽 **5432**。本專案預設將 Docker db 對外映射改為 **5433**，用來避免衝突並降低連錯實例的風險。
 
 
 建議擇一：
@@ -233,7 +233,7 @@ docker compose up -d db
 
 
 
-1. 在專案根目錄啟動資料庫（並確認 [資料庫與連線](#資料庫與連線) 一節，避免 5432 被本機 Postgres 佔用）：
+1. 在專案根目錄啟動資料庫（對外預設使用 5433，避免與本機 Postgres 的 5432 衝突）：
 
 
 
@@ -293,7 +293,7 @@ docker compose up -d db
 
    * 後端：`http://localhost:8000`（Swagger UI 在根路徑 `/`）
 
-   * Postgres（由主機連進容器）：`localhost:5432`（預設帳號／密碼／資料庫名見 `backend/.env` 與 `docker-compose.yml` 的 `db` 服務）
+   * Postgres（由主機連進容器）：`localhost:5433`（預設帳號／密碼／資料庫名見 `backend/.env` 與 `docker-compose.yml` 的 `db` 服務）
 
 
 
@@ -337,13 +337,24 @@ PYTHONPATH=. python app/seeds/seed_all.py
 
    ```bash
 
+   # 第一次或有套件/映像異動時使用
    docker compose up --build
+
+   # 日常開發（不需每次重建）
+   docker compose up
 
    ```
 
 
 
-3. 服務位址：
+3. 開發模式說明（Compose Dev）：
+
+   * `backend` 與 `frontend` 都有掛載 volume，修改程式碼會即時反映
+   * backend 使用 `uvicorn --reload`
+   * frontend 使用 `npm run dev`（Vite HMR）
+   * 不需要每次改 code 都 `--build`
+
+4. 服務位址：
 
 
 
@@ -351,11 +362,11 @@ PYTHONPATH=. python app/seeds/seed_all.py
 
    * 後端：`http://localhost:8000`（Swagger UI 在 `/`）
 
-   * Postgres：`localhost:5432`（對外埠；容器內 backend 使用服務名 `db`）
+   * Postgres：`localhost:5433`（對外埠；容器內 backend 使用服務名 `db` 與埠 `5432`）
 
 
 
-4. 關閉：
+5. 關閉：
 
 
 
@@ -367,7 +378,7 @@ PYTHONPATH=. python app/seeds/seed_all.py
 
 
 
-5. 連資料一併刪除（volume）：
+6. 連資料一併刪除（volume）：
 
 
 

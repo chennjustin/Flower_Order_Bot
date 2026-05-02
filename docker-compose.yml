@@ -4,9 +4,15 @@ services:
     env_file:
       - ./backend/.env
     ports:
-      - "5432:5432"
+      # 對外改 5433，避免與本機 PostgreSQL(5432) 衝突
+      - "5433:5432"
     volumes:
       - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
 
   backend:
     build:
@@ -17,10 +23,16 @@ services:
       # 與本機差異僅主機名：容器內用 compose 服務名 db（帳密見 backend/.env）
       POSTGRES_HOST: db
       POSTGRES_PORT: 5432
+      PYTHONDONTWRITEBYTECODE: "1"
+      PYTHONUNBUFFERED: "1"
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     ports:
       - "8000:8000"
+    volumes:
+      - ./backend:/app
+    command: sh -c "alembic upgrade head && python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
 
   frontend:
     build:
@@ -30,10 +42,16 @@ services:
     environment:
       # For `npm run dev` inside container; build arg already bakes it for prod build.
       VITE_API_BASE_URL: http://localhost:8000
+      CHOKIDAR_USEPOLLING: "true"
+      WATCHPACK_POLLING: "true"
     depends_on:
       - backend
     ports:
       - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    command: npm run dev -- --host 0.0.0.0 --port 5173
 
 volumes:
   db_data:
