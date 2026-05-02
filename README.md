@@ -423,6 +423,26 @@ https://your-domain.example.com/callback
 
 
 
+## ✅ API 契約守門（重構必跑）
+
+重構期間請以 `docs/CONTRACT.md` 作為 API 行為基線，並在每次改動後執行：
+
+```bash
+cd backend
+make contract-check
+```
+
+若環境可連到測試資料庫，建議再補跑：
+
+```bash
+cd backend
+pytest tests/test_contract_smoke.py
+```
+
+---
+
+
+
 ## 🧠 程式架構說明
 
 
@@ -433,11 +453,15 @@ https://your-domain.example.com/callback
 
 * `main.py`：主應用與路由掛載
 
+* `api/v1/`：新版 API 路由入口（目前逐步轉接既有 `routes/`）
+
 * `models/`：資料表定義（User、Order、Message、Shipment 等）
 
 * `routes/`：API 路由模組（linebot、orders、health 等）
 
 * `services`：實作各種資料庫 CRUD 功能
+
+* `repositories/`：資料存取層（重構中，將逐步由 service 下沉查詢邏輯）
 
 * `schemas/`：定義資料 Input 與 Output 格式
 
