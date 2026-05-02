@@ -1,20 +1,16 @@
-"""Top-level API router for v1.
-
-This is a compatibility layer: routes still live in `app.routes` for now, and are
-mounted here so `app.main` can depend on a single API entrypoint.
-"""
+"""Top-level API router for v1."""
 
 from fastapi import APIRouter
 
-from app.routes.export_docx import api_router as export_docx_router
-from app.routes.generate_fake_data import api_router as generate_fake_data_router
-from app.routes.health import router as health_router
-from app.routes.linebot import api_router as linebot_router
-from app.routes.messages import api_router as messages_router
-from app.routes.orders import api_router as orders_router
-from app.routes.organize_data import api_router as organize_data_router
-from app.routes.payment import api_router as payment_router
-from app.routes.statistics import api_router as stats_router
+from app.api.v1.endpoints.export_docx import router as export_docx_router
+from app.api.v1.endpoints.generate_fake_data import router as generate_fake_data_router
+from app.api.v1.endpoints.health import router as health_router
+from app.api.v1.endpoints.linebot import router as linebot_router
+from app.api.v1.endpoints.messages import router as messages_router
+from app.api.v1.endpoints.orders import router as orders_router
+from app.api.v1.endpoints.organize_data import router as organize_data_router
+from app.api.v1.endpoints.payment import router as payment_router
+from app.api.v1.endpoints.statistics import router as stats_router
 
 api_router = APIRouter()
 
