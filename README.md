@@ -454,8 +454,6 @@ pytest tests/test_contract_smoke.py
 * `main.py`：主應用與路由掛載
 
 * `api/v1/`：新版 API 路由入口（目前逐步轉接既有 `routes/`）
-* `api/v1/endpoints/`：v1 API 端點模組（依 domain 拆分）
-
 * `models/`：資料表定義（User、Order、Message、Shipment 等）
 
 * `routes/`：API 路由模組（linebot、orders、health 等）
