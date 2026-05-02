@@ -1,32 +1,25 @@
-from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import datetime, timedelta, timezone
-from app.models.order import Order
-from app.models.user import User
+from app.repositories.stats_repository import (
+    count_pending_orders,
+    count_today_orders,
+    count_total_customers,
+    sum_monthly_income,
+)
 
 async def get_stats(session: AsyncSession):
     now = datetime.now(timezone(timedelta(hours=8))).replace(tzinfo=None)
     today_start = datetime(now.year, now.month, now.day)
     month_start = datetime(now.year, now.month, 1)
 
-    # 今日訂單數量
-    today_stmt = select(func.count()).where(Order.created_at >= today_start)
-    today_orders = (await session.execute(today_stmt)).scalar()
-
-    # 總顧客數
-    customer_stmt = select(func.count()).select_from(User)
-    total_customers = (await session.execute(customer_stmt)).scalar()
-
-    # 當月營收
-    income_stmt = select(func.coalesce(func.sum(Order.total_amount), 0)).where(Order.created_at >= month_start)
-    monthly_income = (await session.execute(income_stmt)).scalar()
-
-    pending_stmt = select(func.count()).select_from(Order)
-    pending_orders = (await session.execute(pending_stmt)).scalar()
+    today_orders = await count_today_orders(session, today_start)
+    total_customers = await count_total_customers(session)
+    monthly_income = await sum_monthly_income(session, month_start)
+    pending_orders = await count_pending_orders(session)
 
     return {
         "today_orders": today_orders,
         "pending_orders": pending_orders,
-        "monthly_income": float(monthly_income or 0),
+        "monthly_income": monthly_income,
         "total_customers": total_customers
     }
