@@ -14,6 +14,9 @@
   flex-shrink: 0;
   min-height: 0;
   align-self: stretch;
+  /* Stay above the conversation column if flex layout ever overflows and layers overlap. */
+  position: relative;
+  z-index: 2;
 }
 
 .msgs-room-pane {
@@ -25,8 +28,11 @@
   align-self: stretch;
   background: #f5f5f5;
   border-right: 1.5px solid #e9e9e9;
+  position: relative;
+  z-index: 1;
 }
 
+/* Let flex:1 size the pane; a fixed 100vw-based width can overflow and steal hits from the list on some viewports */
 .msgs-room-pane.expanded {
-  width: calc(100vw - 360px);
+  min-width: 0;
 }

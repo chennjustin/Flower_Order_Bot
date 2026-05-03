@@ -89,10 +89,11 @@ export default function ChatListWrapper({
         </div>
 
         {filteredRooms.map((room) => (
-          <div
+          <button
             key={room.id}
+            type="button"
             className={`customer-card-wrapper${String(selectedRoomId) === String(room.id) ? ' active' : ''}`}
-            role="presentation"
+            aria-current={String(selectedRoomId) === String(room.id) ? 'true' : undefined}
             onClick={() => onSelectRoom(room)}
           >
             <div className="frame6">
@@ -117,7 +118,7 @@ export default function ChatListWrapper({
                 </div>
               </div>
             </div>
-          </div>
+          </button>
         ))}
       </div>
     </div>

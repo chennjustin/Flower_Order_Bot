@@ -26,7 +26,8 @@ interface ApiMessageRow {
 export async function getLatestMessages(): Promise<ChatRoomUi[]> {
   const res = await api.get<ApiChatRoomRow[]>('/chat_rooms')
   return res.data.map((room) => ({
-    id: room.room_id,
+    // Coerce to string so selection state and URL params always match serialized JSON (room_id may arrive as number).
+    id: String(room.room_id ?? ''),
     name: room.user_name,
     lastMessage: room.last_message?.text ?? '',
     lastMessageTime: room.last_message?.timestamp

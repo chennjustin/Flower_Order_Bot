@@ -100,11 +100,21 @@
   color: #00000099;
 }
 
+/* Reset native <button> chrome; whole row is clickable (div was easy to miss in some focus/tap cases). */
 .customer-card-wrapper {
   width: 360px;
   height: 100px;
   display: flex;
   align-items: center;
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  box-sizing: border-box;
 }
 
 .customer-card-wrapper.active {

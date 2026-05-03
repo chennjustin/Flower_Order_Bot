@@ -33,6 +33,9 @@
   gap: 12px;
   min-height: 40px;
   margin-bottom: 12px;
+  user-select: text;
+  -webkit-user-select: text;
+  cursor: text;
 }
 
 .avatar-slot {
@@ -95,6 +98,9 @@
   justify-content: flex-end;
   min-height: 40px;
   margin-bottom: 12px;
+  user-select: text;
+  -webkit-user-select: text;
+  cursor: text;
 }
 
 .message-myself .message-bubble {

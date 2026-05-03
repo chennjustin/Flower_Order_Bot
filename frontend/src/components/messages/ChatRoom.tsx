@@ -28,6 +28,11 @@ export default function ChatRoom({
   const qc = useQueryClient()
   const listRef = useRef<HTMLDivElement>(null)
   const [draft, setDraft] = useState('')
+  /** Avoid forcing scroll on every poll when the tail of the thread is unchanged (lets users select incoming text). */
+  const scrollTailRef = useRef<{ length: number; lastId: string | number | undefined }>({
+    length: 0,
+    lastId: undefined,
+  })
 
   const messagesQuery = useQuery({
     queryKey: ['roomMessages', roomId],
@@ -39,8 +44,23 @@ export default function ChatRoom({
   })
 
   useEffect(() => {
+    scrollTailRef.current = { length: 0, lastId: undefined }
+  }, [roomId])
+
+  useEffect(() => {
+    const rows = messagesQuery.data ?? []
     const el = listRef.current
-    if (el) el.scrollTop = el.scrollHeight
+    if (!el) return
+
+    const len = rows.length
+    const lastId = len > 0 ? rows[len - 1]!.id : undefined
+    const prev = scrollTailRef.current
+    const tailChanged = len !== prev.length || lastId !== prev.lastId
+
+    if (tailChanged) {
+      el.scrollTop = el.scrollHeight
+      scrollTailRef.current = { length: len, lastId }
+    }
   }, [messagesQuery.data])
 
   const sendMutation = useMutation({
