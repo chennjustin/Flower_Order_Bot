@@ -1,0 +1,287 @@
+.order-section {
+  background: #fff;
+  border-radius: 8px;
+  padding-top: 24px;
+  padding-bottom: 24px;
+  padding-left: 32px;
+  padding-right: 32px;
+  margin-top: 24px;
+  margin-bottom: 32px;
+  border-bottom: 1.5px solid #e9e9e9;
+}
+
+.order-title-row {
+  width: 100%;
+  margin-bottom: 8px;
+}
+
+.order-table-title {
+  color: #4f51ff;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  white-space: nowrap;
+}
+
+.order-filter-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.order-tabs {
+  display: inline-flex;
+  gap: 4px;
+  padding: 6px 12px;
+  background: #f7f7f7;
+  border-radius: 36px;
+  height: 40px;
+  align-items: center;
+}
+
+.tab {
+  display: flex;
+  align-items: center;
+  padding: 11px 24px;
+  height: 28px;
+  border-radius: 36px;
+  border: none;
+  background: transparent;
+  font-family: 'Noto Sans TC', sans-serif;
+  font-weight: 700;
+  font-size: 14px;
+  color: rgba(0, 0, 0, 0.6);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.tab.active {
+  background: #c5c7ff;
+  border-radius: 36px;
+}
+
+.date-filter.compact {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 16px;
+  height: 40px;
+  background: #f7f7f7;
+  border-radius: 36px;
+}
+
+.date-nav-btn {
+  background: #d9d9d9;
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+}
+
+.date-nav-btn:hover {
+  background: #c5c7ff;
+}
+
+.current-date {
+  font-family: 'Noto Sans TC', sans-serif;
+  font-weight: 700;
+  font-size: 14px;
+  color: rgba(0, 0, 0, 0.4);
+  min-width: 140px;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.search-group {
+  position: relative;
+  width: 360px;
+  min-width: 240px;
+  height: 46px;
+  background: #d8eaff;
+  border-radius: 36px;
+  display: flex;
+  align-items: center;
+  padding: 11px 24px;
+}
+
+.search-input {
+  width: 100%;
+  border: none;
+  background: transparent;
+  font-family: 'Noto Sans TC', sans-serif;
+  font-size: 16px;
+  color: rgba(0, 0, 0, 0.62);
+}
+
+.search-input::placeholder {
+  color: rgba(0, 0, 0, 0.38);
+}
+
+.search-icon {
+  position: absolute;
+  right: 24px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 24px;
+  height: 24px;
+  color: rgba(0, 0, 0, 0.38);
+}
+
+.download-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 46px;
+  padding: 12px;
+  background: #77b5ff;
+  box-shadow: 2px 2px 2px rgba(0, 0, 0, 0.25);
+  border-radius: 12px;
+  border: none;
+  cursor: pointer;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.download-btn i {
+  color: #fff;
+  font-size: 20px;
+}
+
+.download-btn span {
+  font-family: 'Noto Sans TC', sans-serif;
+  font-weight: 700;
+  font-size: 16px;
+  color: #fff;
+}
+
+.table-container {
+  width: 100%;
+  overflow: hidden;
+}
+
+.table-wrapper-inner {
+  width: 100%;
+  overflow-x: auto;
+  padding: 0 8px;
+}
+
+.order-section table {
+  border-collapse: separate;
+  border-spacing: 0 8px;
+  width: max-content;
+  min-width: 100%;
+}
+
+.order-section thead {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.order-section th {
+  font-family: 'Noto Sans TC', sans-serif;
+  font-weight: bold;
+  font-size: 16px;
+  color: rgba(0, 0, 0, 0.87);
+  padding: 12px 20px;
+  text-align: left;
+  background-color: #f7f7f7;
+  white-space: nowrap;
+  border: 0.5px solid rgba(175, 175, 175, 0.6);
+}
+
+.order-section td {
+  padding: 12px 20px;
+  font-family: 'Noto Sans TC', sans-serif;
+  font-weight: bold;
+  font-size: 16px;
+  color: rgba(0, 0, 0, 0.6);
+  vertical-align: middle;
+  background: #fff;
+  border: 0.5px solid rgba(175, 175, 175, 0.6);
+}
+
+.order-section tr:hover td {
+  background-color: #f0f6ff;
+}
+
+.status-badge {
+  display: inline-flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+  padding: 6px 16px;
+  height: 28px;
+  border-radius: 8px;
+  font-family: 'Noto Sans TC', sans-serif;
+  font-weight: 700;
+  font-size: 14px;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.badge-welcome {
+  background: #ffcee7;
+  color: #ff349a;
+}
+
+.badge-prepare {
+  background: #c5c7ff;
+  color: #6168fc;
+}
+
+.badge-wait {
+  background: #ebcdcc;
+  color: #81386a;
+}
+
+.badge-auto {
+  background: #d8eaff;
+  color: #6168fc;
+}
+
+.no-results {
+  text-align: center;
+  padding: 40px;
+  color: #aaa;
+}
+
+.work-order-btn,
+.cancel-order-btn {
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+  padding: 6px 16px;
+  width: 60px;
+  height: 28px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  font-family: 'Noto Sans TC', sans-serif;
+  font-weight: 700;
+  font-size: 14px;
+  color: #fff;
+}
+
+.work-order-btn {
+  background: #77b5ff;
+}
+
+.cancel-order-btn {
+  background: #ae1914;
+  color: #ebcdcc;
+}
+
+.work-order-btn:hover,
+.cancel-order-btn:hover {
+  opacity: 0.85;
+}

@@ -1,0 +1,123 @@
+.date-block {
+  width: 87px;
+  height: 24px;
+  margin: 0 auto 12px;
+  border-radius: 8px;
+  padding: 2px 8px;
+  background: #c5c7ff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.date-text {
+  font-family: 'Noto Sans TC', sans-serif;
+  font-weight: 400;
+  font-size: 14px;
+  line-height: 140%;
+  color: #fff;
+  text-align: center;
+}
+
+.message-bubble {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  min-height: 40px;
+  max-width: 360px;
+}
+
+.message-customer {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  min-height: 40px;
+  margin-bottom: 12px;
+}
+
+.avatar-slot {
+  width: 32px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  align-self: flex-end;
+  margin-bottom: 4px;
+}
+
+.pic {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: #d9d9d9;
+  display: block;
+}
+
+.pic[src=''] {
+  background: #d9d9d9;
+}
+
+.sender {
+  min-height: 40px;
+  max-width: 360px;
+  border-radius: 24px;
+  padding: 9px 16px;
+  background: #d9d9d9;
+  word-break: break-word;
+  display: inline-block;
+}
+
+.message-text {
+  font-family: 'Noto Sans TC', sans-serif;
+  font-weight: 400;
+  font-size: 16px;
+  line-height: 140%;
+  color: #000000de;
+}
+
+.time {
+  width: 50px;
+  height: 17px;
+  font-family: 'Noto Sans TC', sans-serif;
+  font-weight: 400;
+  font-size: 12px;
+  line-height: 140%;
+  color: #00000061;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.message-myself {
+  display: flex;
+  justify-content: flex-end;
+  min-height: 40px;
+  margin-bottom: 12px;
+}
+
+.message-myself .message-bubble {
+  flex-direction: row-reverse;
+  gap: 2px;
+}
+
+.sender.myself {
+  background: #77b5ff;
+  color: #fff;
+}
+
+.message-myself .message-text {
+  color: #fff;
+}
+
+.time.myself {
+  width: 44px;
+  color: #00000061;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 4px;
+  padding: 0 6px;
+}

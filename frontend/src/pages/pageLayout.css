@@ -1,0 +1,55 @@
+.order-title-wrapper {
+  position: absolute;
+  top: 56px;
+  left: 0;
+  width: 100vw;
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  z-index: 0;
+}
+
+.main-title-bar {
+  position: relative;
+  width: 100vw;
+  height: 80px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.38);
+}
+
+.main-title {
+  position: relative;
+  top: 20px;
+  left: 72px;
+  height: 40px;
+  font-family: 'Noto Sans TC', sans-serif;
+  font-weight: 700;
+  font-size: 32px;
+  line-height: 40px;
+  color: #6168fc;
+}
+
+.page-content {
+  padding-top: 160px;
+  padding-left: 8px;
+  padding-right: 8px;
+  max-width: 1280px;
+  margin: 0 auto;
+}
+
+.dashboard-section + .dashboard-section {
+  margin-top: 32px;
+}
+
+.error-message {
+  color: #dc3545;
+  text-align: center;
+  padding: 20px;
+  font-size: 18px;
+}
+
+.loading-message {
+  text-align: center;
+  padding: 20px;
+  font-size: 18px;
+  color: #6168fc;
+}

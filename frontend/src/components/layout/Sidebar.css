@@ -1,0 +1,87 @@
+.sidebar-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.4);
+  z-index: 999;
+}
+
+.sidebar-slide {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 280px;
+  height: 100vh;
+  background: #f7f7f7;
+  box-shadow: 2px 0 12px rgba(0, 0, 0, 0.2);
+  border-top-right-radius: 12px;
+  border-bottom-right-radius: 12px;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.sidebar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px;
+  height: 56px;
+  background: #f5f5f5;
+  border-bottom: 1px solid #00000061;
+}
+
+.sidebar-header h2 {
+  margin: 0;
+  font-size: 18px;
+  color: #6168fc;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  color: #999;
+}
+
+.close-btn:hover {
+  color: #333;
+}
+
+.sidebar-menu {
+  padding: 20px 0;
+  flex: 1;
+  overflow-y: auto;
+}
+
+.sidebar-menu ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.sidebar-menu li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 24px;
+  font-size: 16px;
+  color: #555;
+  cursor: pointer;
+  border-radius: 24px;
+}
+
+.sidebar-menu li:hover,
+.sidebar-menu li.active {
+  background: #e4e7ff;
+  color: #4f68ff;
+}
+
+.sidebar-menu i {
+  width: 20px;
+  text-align: center;
+}

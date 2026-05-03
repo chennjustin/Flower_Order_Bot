@@ -24,7 +24,7 @@
 
 * ✅ 提供 `/orders` 頁面查詢訂單，並支援 CSV 匯出（前端產生下載）與 DOCX 工單匯出（後端下載）
 
-* ✅ 前端以 Vue 框架實作，可即時查看與操作訂單系統
+* ✅ 前端以 **React** 搭配 **TypeScript** 與 **Vite** 實作，可即時查看與操作訂單系統
 
 * ✅ 使用 Alembic 作資料庫版本控制
 
@@ -114,7 +114,7 @@ pip install -r requirements.txt
 
 
 
-### 3. 安裝前端依賴（Vue）
+### 3. 安裝前端依賴（React / TypeScript）
 
 
 
@@ -481,11 +481,28 @@ pytest tests/test_contract_smoke.py
 
 
 
-### `frontend/` 前端（Vue）
+### `frontend/` 前端（React + TypeScript）
 
 
 
-* Vue 專案：提供聊天室介面、訂單列表等操作頁面
+* **Vite**：開發伺服器與編譯；**TanStack Query** 管理列表輪詢與資料快取；**React Router** 對應 `/`、`/orders`、`/messages`、`/stats`。
+* `.env.example`：可設定 **`VITE_API_BASE_URL`** 指向後端來源（本機開發預設常為 `http://localhost:8000`）。
+* 路由與版面：側邊欄導覽、`Dashboard`/`Orders`、`Messages`（三欄含訂單草稿面板）、統計卡片與 DOCX 匯出等行為自舊版 Vue 對齊。
+
+
+
+---
+
+
+
+### 前端手動 smoke（重構後建議跑一次）
+
+
+
+* 後端已啟動時，確認首頁可載入訂單表與統計卡，刪除訂單後列表與統計數字會刷新。
+* `Messages`：`/messages` 可切換聊天室、送出新訊息、頭像側「整理資料」與返回箭頭能開啟／關閉右側草稿；「更新工單」「建立新工單」成功或缺欄位提示與舊版一致。
+* 「工單」DOCX：下載 `order_<id>.docx`；「下載 CSV」可於瀏覽器取得檔案。
+* **`docker compose up`**：`frontend` 服務對外 `5173`、`VITE_API_BASE_URL` 行為與先前相同。
 
 
 

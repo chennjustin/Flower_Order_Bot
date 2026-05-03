@@ -1,0 +1,28 @@
+/* Fill parent `.msgs-room-pane` (already under navbar). Do NOT use 100vh or the panel is ~56px too tall. */
+.chat-room-root {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+  max-height: 100%;
+  background-color: #fff;
+  overflow: hidden;
+}
+
+.chat-room-root.shrink {
+  max-width: calc(100vw - 340px - 360px);
+}
+
+@media (max-width: 1100px) {
+  .chat-room-root.shrink {
+    max-width: none;
+  }
+}
+
+.message-list-container {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}

@@ -1,0 +1,180 @@
+.order-detail-panel {
+  width: 340px;
+  height: calc(100vh - 56px);
+  position: fixed;
+  top: 56px;
+  right: 0;
+  background: #fff;
+  border-left: 1px solid #b3b3b3;
+  display: flex;
+  flex-direction: column;
+  z-index: 900;
+}
+
+.dp-section-head {
+  height: 80px;
+  display: flex;
+  align-items: center;
+  border-bottom: 1.5px solid #e9e9e9;
+}
+
+.dp-head-inner {
+  width: 100%;
+  margin: 0 26px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.dp-title-group {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.dp-section-title {
+  font-weight: 700;
+  font-size: 18px;
+  color: #000;
+}
+
+.edit-btn {
+  width: 36px;
+  height: 36px;
+  border: none;
+  cursor: pointer;
+  background: none;
+}
+
+.press-inner {
+  width: 32px;
+  height: 32px;
+  background: #d9d9d9;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.press-inner .icon {
+  font-size: 16px;
+  color: #6168fc;
+}
+
+.close-panel-btn {
+  width: 36px;
+  height: 36px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  rotate: -180deg;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ellipse-bg {
+  width: 32px;
+  height: 32px;
+  background: #d8eaff;
+  border-radius: 50%;
+  position: absolute;
+}
+
+.dp-row {
+  display: flex;
+  align-items: center;
+  min-height: 32px;
+  gap: 8px;
+}
+
+.dp-col-label {
+  width: 110px;
+  font-weight: 700;
+  font-size: 16px;
+}
+
+.dp-value {
+  flex: 1;
+}
+
+.data {
+  font-weight: 700;
+  font-size: 16px;
+}
+
+.edit-input,
+.edit-select {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1.5px solid #e0e3ed;
+  border-radius: 6px;
+  background: #fafbff;
+  font-size: 15px;
+}
+
+.edit-select {
+  appearance: none;
+}
+
+.order-detail-scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px;
+  gap: 16px;
+  display: flex;
+  flex-direction: column;
+  padding-bottom: 120px;
+}
+
+.frame-actions {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 16px;
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  z-index: 20;
+}
+
+.order-act-btn {
+  width: 136px;
+  height: 40px;
+  border-radius: 12px;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-weight: 700;
+}
+
+.order-act-btn.editing.create,
+.order-act-btn.editing.update {
+  background: #c5c7ff;
+}
+
+.order-act-btn.update {
+  background: #77b5ff;
+}
+
+.order-act-btn.create {
+  background: #6168fc;
+}
+
+.order-act-btn .btn-icon {
+  margin-right: 8px;
+}
+
+.missing-field {
+  color: #dc3545 !important;
+  font-weight: 700 !important;
+}
+
+.missing-field-input {
+  border-color: #dc3545 !important;
+  background-color: #fff5f5 !important;
+}
