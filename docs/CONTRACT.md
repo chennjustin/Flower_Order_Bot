@@ -2,6 +2,40 @@
 
 本文件用來「凍結」目前專案的**對外行為契約**，作為後續架構重構（Clean Architecture / 模組拆分）時的回歸基準。
 
+## Freeze Baseline Metadata
+
+- Baseline name: `contract-freeze-v1`
+- Freeze date: `2026-05-02`
+- Branch: `ultimate_refactor`
+- Scope: API routes、HTTP method、status code、關鍵回應模型、LINE 對話流程語意
+
+## Change Policy
+
+- 任何影響上述 scope 的修改，都需要同步更新本文件與對應測試。
+- 若是重構（檔案搬移、分層調整）但行為不變，測試必須保持全綠。
+- 若是產品需求導致契約變更，需升版為 `contract-freeze-v2+` 並記錄變更摘要。
+
+## Verification Gate
+
+每次重構前後，至少要執行以下命令（在 repo root）：
+
+```bash
+pytest backend/tests/test_openapi_contract.py
+```
+
+建議額外執行（需可連到測試資料庫）：
+
+```bash
+pytest backend/tests/test_contract_smoke.py
+```
+
+## PR Checklist (Contract Related)
+
+- [ ] OpenAPI 路徑未意外刪除（`test_openapi_contract.py` 綠燈）
+- [ ] Swagger UI (`/`) 與 OpenAPI (`/openapi.json`) 可正常存取
+- [ ] 若有契約變更，已更新本文件與對應測試
+- [ ] 已說明此次是「行為不變重構」或「契約升版變更」
+
 ## Backend API Endpoints (FastAPI)
 
 ### Health
