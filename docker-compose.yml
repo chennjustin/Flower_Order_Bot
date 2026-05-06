@@ -5,7 +5,7 @@ services:
       - ./backend/.env
     ports:
       # 對外改 5433，避免與本機 PostgreSQL(5432) 衝突
-      - "5433:5432"
+      - "5434:5432"
     volumes:
       - db_data:/var/lib/postgresql/data
     healthcheck:
