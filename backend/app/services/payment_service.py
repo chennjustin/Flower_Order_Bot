@@ -1,10 +1,14 @@
 
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, update
-from sqlalchemy.orm import joinedload
 from typing import Optional
-from app.models.payment import Payment, PaymentMethod
+from app.models.payment import PaymentMethod
 from app.schemas.payment import PaymentMethodBase
+from app.repositories.payment_repository import (
+    get_payment_method_by_id as repo_get_payment_method_by_id,
+    get_payment_method_by_order_id,
+    list_payment_methods,
+    save_payment_method,
+)
 
 
 def payment_method_to_base(method) -> PaymentMethodBase:
@@ -19,9 +23,7 @@ def payment_method_to_base(method) -> PaymentMethodBase:
     )
 
 async def get_all_payment_methods(db: AsyncSession) -> Optional[list[PaymentMethodBase]]:
-    payment_stmt = select(PaymentMethod)
-    payment_result = await db.execute(payment_stmt)
-    payment_methods = payment_result.scalars().all()
+    payment_methods = await list_payment_methods(db)
 
     return [
         payment_method_to_base(method) for method in payment_methods if method.active
@@ -29,29 +31,15 @@ async def get_all_payment_methods(db: AsyncSession) -> Optional[list[PaymentMeth
 
 
 async def get_pay_way_by_order_id(db: AsyncSession, order_id: int) -> PaymentMethod:
-    payment_stmt = (
-        select(Payment, PaymentMethod)
-        .join(PaymentMethod, Payment.method_id == PaymentMethod.id)
-        .where(Payment.order_id == order_id)
-        .limit(1)
-    )
-    payment_result = await db.execute(payment_stmt)
-    payment = payment_result.first()
-    if payment is None:
-        return None
-    payment_method = payment[1]
-    return payment_method
+    return await get_payment_method_by_order_id(db, order_id)
 
 async def get_payment_method_by_id(db: AsyncSession, payment_method_id: int) -> Optional[PaymentMethod]:
-    stmt = select(PaymentMethod).where(PaymentMethod.id == payment_method_id)
-    result = await db.execute(stmt)
-    return result.scalar_one_or_none()
+    return await repo_get_payment_method_by_id(db, payment_method_id)
 
 async def toggle_payment_method_active(db: AsyncSession, payment_method_id: int) -> Optional[PaymentMethodBase]:
     payment_method = await get_payment_method_by_id(db, payment_method_id) 
     if not payment_method:
         return None
     payment_method.active = not payment_method.active
-    await db.commit()
-    await db.refresh(payment_method)
+    payment_method = await save_payment_method(db, payment_method)
     return payment_method_to_base(payment_method)

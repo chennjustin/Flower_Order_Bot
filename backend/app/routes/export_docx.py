@@ -1,13 +1,15 @@
 from fastapi import APIRouter, Depends
+from fastapi import HTTPException
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.services.order_service import get_all_orders
 from app.core.database import get_db
 from docxtpl import DocxTemplate
 import io
+from pathlib import Path
 
 api_router = APIRouter()
-TEMPLATE_PATH = "order_template.docx"
+TEMPLATE_PATH = Path(__file__).resolve().parents[2] / "docs" / "order_template.docx"
 
 @api_router.get("/orders/{order_id}.docx")
 async def export_order_docx(order_id: int, db: AsyncSession = Depends(get_db)):
@@ -50,7 +52,10 @@ async def export_order_docx(order_id: int, db: AsyncSession = Depends(get_db)):
         "total_amount": getattr(order, "total_amount", 0),
     }
 
-    tpl = DocxTemplate(TEMPLATE_PATH)
+    if not TEMPLATE_PATH.exists():
+        raise HTTPException(status_code=500, detail="DOCX template not found")
+
+    tpl = DocxTemplate(str(TEMPLATE_PATH))
     tpl.render(context)
 
     file_stream = io.BytesIO()

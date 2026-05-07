@@ -4,15 +4,17 @@
     <span class="date-text">{{ message.text }}</span>
   </div>
 
-  <!-- 對方訊息（message customer） -->
+  <!-- 對方訊息（message customer）；頭像欄固定寬，同分鐘連續訊息才不會跑版 -->
   <div v-else-if="message.direction === 'INCOMING'" class="message-customer">
-    <img
-      v-if="message.isFirstInMinute"
-      class="pic"
-      :src="message.avatar || ''"
-      :alt="message.sender"
-      @error="onImgError"
-    />
+    <div class="avatar-slot">
+      <img
+        v-if="message.isFirstInMinute"
+        class="pic"
+        :src="message.avatar || ''"
+        :alt="message.sender"
+        @error="onImgError"
+      />
+    </div>
     <div class="message-bubble">
       <div class="sender">
         <span class="message-text">{{ message.text }}</span>
@@ -92,15 +94,23 @@ function onImgError(event) {
   margin-left: 0;
   margin-bottom: 12px;
 }
+.avatar-slot {
+  width: 32px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  align-self: flex-end;
+  margin-bottom: 4px;
+}
 .pic {
   width: 32px;
   height: 32px;
   border-radius: 50%;
   object-fit: cover;
-  margin-bottom: 4px;
   background: #D9D9D9;
   /* 沒有 src 時顯示灰色 */
-  display: inline-block;
+  display: block;
 }
 .pic[src=""] {
   background: #D9D9D9;
