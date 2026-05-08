@@ -2,7 +2,7 @@
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List, Optional
-from datetime import datetime, timezone, timedelta
+from datetime import datetime
 from fastapi import HTTPException, status
 
 from app.models.user import User
@@ -27,6 +27,7 @@ from app.repositories.order_repository import (
     save_order,
     save_order_draft,
 )
+from app.core.time import to_taipei_aware, to_taipei_naive
 
 async def get_order(db: AsyncSession, order_id: int) -> Order:
     return await get_order_by_id(db, order_id)
@@ -53,7 +54,8 @@ async def get_all_orders(db: AsyncSession) -> Optional[List[OrderOut]]:
             receiver_name=receiver_user.name if receiver_user else user.name,
             receiver_phone=receiver_user.phone if receiver_user else user.phone,
 
-            order_date=order.created_at,
+            # Return timezone-aware (+08:00) to avoid frontend/browser parsing ambiguity.
+            order_date=to_taipei_aware(order.created_at),
             order_status=order.status,
             
             pay_way=pay_way.display_name if pay_way else None,
@@ -66,7 +68,12 @@ async def get_all_orders(db: AsyncSession) -> Optional[List[OrderOut]]:
             
             shipment_method=order.shipment_method,
             weekday=order.created_at.strftime("%A"),
-            send_datetime=order.delivery_datetime or order.created_at, # TODO fix datetime error
+            # 取貨/送達時間：若有填則用它，否則回傳空（不要用建立時間混充）
+            send_datetime=(
+                to_taipei_aware(order.delivery_datetime)
+                if order.delivery_datetime
+                else None
+            ),
             receipt_address=order.receipt_address,
             delivery_address=order.delivery_address or order.receipt_address or ""
         ))
@@ -282,7 +289,7 @@ async def get_order_draft_out_by_room(db: AsyncSession, room_id: int) -> Optiona
             receiver_name=receiver_user.name if receiver_user else user.name,
             receiver_phone=receiver_user.phone if receiver_user else user.phone,
 
-            order_date=order_draft.created_at,
+            order_date=to_taipei_aware(order_draft.created_at),
             
             pay_way=pay_way.display_name if pay_way else None, 
             total_amount=order_draft.total_amount,
@@ -294,7 +301,11 @@ async def get_order_draft_out_by_room(db: AsyncSession, room_id: int) -> Optiona
             
             shipment_method=order_draft.shipment_method,
             weekday=order_draft.created_at.strftime("%A"),
-            send_datetime=order_draft.delivery_datetime or None, # 這裡指的是取貨時間
+            send_datetime=(
+                to_taipei_aware(order_draft.delivery_datetime)
+                if order_draft.delivery_datetime
+                else None
+            ),  # 這裡指的是取貨時間
             receipt_address=order_draft.receipt_address,
             delivery_address=order_draft.delivery_address or order_draft.receipt_address or ""
         )
@@ -332,7 +343,7 @@ async def create_order_draft_by_room_id(
         room_id=room.id,
         user_id=room.user_id,
         receiver_user_id=room.user_id,
-        created_at=datetime.now(timezone(timedelta(hours=8))).replace(tzinfo=None),
+        created_at=now_taipei_naive(),
         updated_at=now_taipei_naive()
     )
     await save_order_draft(db, order_draft)
@@ -398,9 +409,8 @@ async def update_order_draft_by_room_id(
     if draft_in.shipment_method is not None:
         order_draft.shipment_method = draft_in.shipment_method
     if draft_in.send_datetime is not None:
-        order_draft.delivery_datetime = draft_in.send_datetime
-        # 把 send_datetime 轉成 UTC +8
-        order_draft.delivery_datetime = draft_in.send_datetime.astimezone(timezone(timedelta(hours=8))).replace(tzinfo=None)
+        # 取貨 / 送達時間：統一存成 GMT+8（台北時間）的 naive wall time
+        order_draft.delivery_datetime = to_taipei_naive(draft_in.send_datetime)
     if draft_in.receipt_address is not None:
         order_draft.receipt_address = draft_in.receipt_address
     if draft_in.delivery_address is not None:

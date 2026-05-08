@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+from datetime import datetime
 from typing import Optional
 
 from sqlalchemy import select
@@ -6,10 +6,18 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.enums.order import OrderStatus
 from app.models.order import Order, OrderDraft
+from app.core.time import now_taipei_naive
 
 
-def now_taipei_naive() -> datetime:
-    return datetime.now(timezone(timedelta(hours=8))).replace(tzinfo=None)
+__all__ = [
+    "now_taipei_naive",
+    "get_order_by_id",
+    "list_active_orders",
+    "get_latest_confirmed_order_by_room",
+    "get_latest_order_draft_by_room",
+    "save_order",
+    "save_order_draft",
+]
 
 
 async def get_order_by_id(db: AsyncSession, order_id: int) -> Optional[Order]:
