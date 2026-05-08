@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import Sidebar from './Sidebar'
+import { cn } from '@/lib/utils'
 
 export default function Navbar() {
   const [showSidebar, setShowSidebar] = useState(false)
@@ -15,11 +16,33 @@ export default function Navbar() {
       >
         <button
           type="button"
-          onClick={() => setShowSidebar(true)}
-          className="absolute top-[13px] left-[28px] flex h-8 w-8 cursor-pointer items-center border-none bg-transparent text-[28px] text-white"
-          aria-label="開啟側邊欄"
+          onClick={() => setShowSidebar(s => !s)}
+          aria-label={showSidebar ? '關閉側邊欄' : '開啟側邊欄'}
+          aria-expanded={showSidebar}
+          className="group absolute top-[13px] left-[28px] h-8 w-8 border-none bg-transparent p-0 transition-transform duration-200 ease-out hover:scale-110 active:scale-90"
         >
-          <i className="fas fa-bars" />
+          <span
+            className={cn(
+              'absolute left-[2px] block h-[3px] w-7 rounded-full bg-white transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]',
+              showSidebar ? 'top-[14.5px] rotate-45' : 'top-[8px] group-hover:w-6',
+            )}
+          />
+          <span
+            className={cn(
+              'absolute left-[2px] top-[14.5px] block h-[3px] w-7 rounded-full bg-white transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]',
+              showSidebar
+                ? 'scale-x-0 opacity-0'
+                : 'opacity-100 group-hover:w-5',
+            )}
+          />
+          <span
+            className={cn(
+              'absolute left-[2px] block h-[3px] w-7 rounded-full bg-white transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]',
+              showSidebar
+                ? 'top-[14.5px] -rotate-45'
+                : 'top-[21px] group-hover:w-6',
+            )}
+          />
         </button>
         <span className="absolute top-[13px] left-[73px] flex h-[30px] items-center gap-[13px] text-[1.4rem] font-bold tracking-[3px] text-white">
           奇美花店 <b>Chi-Mei Floral</b>
