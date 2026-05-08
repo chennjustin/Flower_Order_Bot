@@ -20,7 +20,7 @@ export default function MessageInput({ disabled, onSend }: MessageInputProps) {
   return (
     <div className="relative px-6 pb-6">
       <div
-        className="flex h-[42px] w-full items-center justify-between rounded-3xl border-2 border-[#77B5FF] bg-white px-4 py-[9px] shadow-[2px_2px_4px_rgba(0,0,0,0.25)]"
+        className="flex h-[42px] w-full cursor-text items-center justify-between rounded-3xl border-2 border-[#77B5FF] bg-white px-4 py-[9px] shadow-[2px_2px_4px_rgba(0,0,0,0.25)] transition focus-within:shadow-[0_0_0_3px_rgba(119,181,255,0.25)]"
         onClick={() => inputRef.current?.focus()}
       >
         <div className="flex flex-1 items-center gap-3">
@@ -41,8 +41,8 @@ export default function MessageInput({ disabled, onSend }: MessageInputProps) {
         <button
           type="button"
           onClick={emitSend}
-          disabled={disabled}
-          className="flex h-6 w-6 flex-shrink-0 items-center justify-center text-[#528DD2] transition disabled:opacity-40"
+          disabled={disabled || value.trim().length === 0}
+          className="flex h-6 w-6 flex-shrink-0 items-center justify-center text-[#528DD2] transition hover:text-[#6168FC] active:scale-90 disabled:opacity-40"
           aria-label="送出"
         >
           <Send className="h-5 w-5" />

@@ -27,7 +27,7 @@ export default function StatisticsCards({ stats }: StatisticsCardsProps) {
       {CARDS.map((card) => (
         <div
           key={card.title}
-          className="relative h-36 flex-1 cursor-pointer rounded-lg bg-white shadow-[2px_2px_8px_rgba(0,0,0,0.25)] transition-colors duration-200 hover:bg-[#D8EAFF]"
+          className="relative h-36 flex-1 rounded-lg bg-white shadow-[2px_2px_8px_rgba(0,0,0,0.25)] transition-colors duration-200 hover:bg-[#D8EAFF]"
         >
           <i
             className={`${card.icon} absolute top-[27px] left-[38px] h-6 w-6 text-2xl text-brand-primary`}

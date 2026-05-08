@@ -55,7 +55,7 @@ export default function ChatHeader({
         <button
           type="button"
           onClick={onOpenDetail}
-          className="flex h-8 w-8 flex-shrink-0 items-center justify-center text-black/60 transition hover:text-black"
+          className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full text-black/60 transition hover:bg-black/5 hover:text-black active:scale-95"
           aria-label="開啟訂單詳情"
         >
           <ChevronsLeft className="h-6 w-6" strokeWidth={2.5} />
@@ -66,7 +66,7 @@ export default function ChatHeader({
         type="button"
         onClick={onOrganizeOrder}
         disabled={isOrganizing}
-        className="mr-6 flex h-10 w-[120px] flex-shrink-0 items-center justify-center gap-3 rounded-xl bg-[#C5C7FF] px-3 text-base font-bold text-white transition hover:shadow-[2px_2px_2px_rgba(0,0,0,0.25)] active:scale-95 disabled:opacity-70 font-['Noto_Sans_TC',sans-serif]"
+        className="mr-6 flex h-10 w-[120px] flex-shrink-0 items-center justify-center gap-3 rounded-xl bg-[#C5C7FF] px-3 text-base font-bold text-white transition hover:bg-[#A8ACFF] hover:shadow-[2px_2px_4px_rgba(0,0,0,0.25)] active:scale-95 disabled:opacity-70 font-['Noto_Sans_TC',sans-serif]"
       >
         {isOrganizing ? (
           <Loader2 className="h-5 w-5 animate-spin" />

@@ -37,6 +37,35 @@ interface FieldDef {
   variant?: 'text' | 'number' | 'amount' | 'select' | 'datetime'
 }
 
+/**
+ * Backend missing-field keys (from POST /order/:roomId) don't always match
+ * the frontend column keys. This table folds every backend variant into the
+ * relevant editable column so the UI can flag the right row in red.
+ */
+const MISSING_KEY_TO_FIELD: Record<string, FieldKey> = {
+  user_id: 'customer_name',
+  user: 'customer_name',
+  user_name: 'customer_name',
+  customer_name: 'customer_name',
+  user_phone: 'customer_phone',
+  customer_phone: 'customer_phone',
+  receiver_user_id: 'receiver_name',
+  receiver: 'receiver_name',
+  receiver_name: 'receiver_name',
+  receiver_phone: 'receiver_phone',
+  item_type: 'item',
+  item: 'item',
+  quantity: 'quantity',
+  total_amount: 'total_amount',
+  shipment_method: 'shipment_method',
+  send_datetime: 'send_datetime',
+  receipt_address: 'receipt_address',
+  delivery_address: 'delivery_address',
+  pay_way: 'pay_way',
+  card_message: 'card_message',
+  note: 'note',
+}
+
 const FIELDS: FieldDef[] = [
   { key: 'customer_name', label: '客戶姓名', editable: true },
   { key: 'customer_phone', label: '客戶電話', editable: true },
@@ -285,8 +314,17 @@ export default function DetailPanel({ roomId, open, onClose }: DetailPanelProps)
     }
   }
 
+  const missingFieldSet = useMemo(() => {
+    const set = new Set<FieldKey>()
+    for (const raw of missing) {
+      const mapped = MISSING_KEY_TO_FIELD[raw]
+      if (mapped) set.add(mapped)
+    }
+    return set
+  }, [missing])
+
   function isFieldMissing(key: FieldKey): boolean {
-    return missing.includes(key)
+    return missingFieldSet.has(key)
   }
 
   const isPending =
@@ -303,7 +341,7 @@ export default function DetailPanel({ roomId, open, onClose }: DetailPanelProps)
             type="button"
             onClick={isEditing ? confirmEditing : startEditing}
             disabled={isPending && !isEditing}
-            className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-[#D9D9D9] text-[#6168FC] transition active:scale-95 disabled:opacity-60"
+            className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-[#D9D9D9] text-[#6168FC] transition hover:bg-[#C5C7FF] hover:text-white active:scale-95 disabled:opacity-60"
             aria-label={isEditing ? '完成編輯' : '開始編輯'}
           >
             {isEditing ? <Check className="h-4 w-4" /> : <Pencil className="h-4 w-4" />}
@@ -312,7 +350,7 @@ export default function DetailPanel({ roomId, open, onClose }: DetailPanelProps)
         <button
           type="button"
           onClick={onClose}
-          className="relative flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-[#D8EAFF] text-[#528DD2] transition active:scale-95"
+          className="relative flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-[#D8EAFF] text-[#528DD2] transition hover:bg-[#77B5FF] hover:text-white active:scale-95"
           aria-label="收起訂單詳情"
         >
           <ChevronsRight className="h-4 w-4" />
@@ -367,7 +405,9 @@ export default function DetailPanel({ roomId, open, onClose }: DetailPanelProps)
           className={cn(
             'flex h-10 w-[136px] items-center justify-center gap-2 rounded-xl px-3 text-base font-bold text-white transition active:scale-95 disabled:opacity-60',
             "font-['Noto_Sans_TC',sans-serif]",
-            isEditing ? 'bg-[#D8EAFF] text-[#528DD2]' : 'bg-[#77B5FF]',
+            isEditing
+              ? 'bg-[#D8EAFF] text-[#528DD2] hover:bg-[#B6D6FF]'
+              : 'bg-[#77B5FF] hover:bg-[#5C9FE8] hover:shadow-[2px_2px_4px_rgba(0,0,0,0.25)]',
           )}
         >
           <Upload className="h-4 w-4" />
@@ -380,7 +420,9 @@ export default function DetailPanel({ roomId, open, onClose }: DetailPanelProps)
           className={cn(
             'flex h-10 w-[136px] items-center justify-center gap-2 rounded-xl px-3 text-base font-bold text-white transition active:scale-95 disabled:opacity-60',
             "font-['Noto_Sans_TC',sans-serif]",
-            isEditing ? 'bg-[#C5C7FF]' : 'bg-[#6168FC]',
+            isEditing
+              ? 'bg-[#C5C7FF] hover:bg-[#A8ACFF]'
+              : 'bg-[#6168FC] hover:bg-[#4F51FF] hover:shadow-[2px_2px_4px_rgba(0,0,0,0.25)]',
           )}
         >
           <Plus className="h-4 w-4" />
@@ -410,11 +452,21 @@ function FormRow({ field, isEditing, form, setField, display, missing }: FormRow
     <div className="flex min-h-8 items-center gap-2">
       <div className={labelClasses}>{field.label}</div>
       <div className="flex-1">
-        {isEditing ? renderEditor(field, form, setField, missing) : (
+        {isEditing ? (
+          renderEditor(field, form, setField, missing)
+        ) : missing ? (
+          <span
+            className={cn(
+              "block w-full rounded-md border-[1.5px] border-red-500 bg-red-50 px-3 py-1.5 font-bold text-red-600",
+              "font-['Noto_Sans_TC',sans-serif] text-base",
+            )}
+          >
+            {display?.[field.key] || '請填寫'}
+          </span>
+        ) : (
           <span
             className={cn(
               "font-bold font-['Noto_Sans_TC',sans-serif] text-base text-black",
-              missing && 'text-red-600',
             )}
           >
             {display?.[field.key] || '—'}
