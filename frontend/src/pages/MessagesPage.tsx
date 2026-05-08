@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
 import ChatList from '@/components/messages/ChatList'
 import ChatRoom from '@/components/messages/ChatRoom'
+import DetailPanel from '@/components/messages/DetailPanel'
 import { useChatRooms } from '@/hooks/useChatRooms'
+import { useOrganizeData } from '@/hooks/useOrderDraft'
 import type { ChatRoom as ChatRoomType } from '@/types/domain'
 
 export default function MessagesPage() {
@@ -10,6 +12,8 @@ export default function MessagesPage() {
 
   const [selectedRoomId, setSelectedRoomId] = useState<number | null>(null)
   const [showDetail, setShowDetail] = useState(false)
+
+  const organizeMutation = useOrganizeData(selectedRoomId)
 
   useEffect(() => {
     if (rooms.length === 0) {
@@ -30,6 +34,17 @@ export default function MessagesPage() {
     setShowDetail(false)
   }
 
+  async function handleOrganizeOrder() {
+    if (selectedRoomId == null) return
+    try {
+      await organizeMutation.mutateAsync()
+      setShowDetail(true)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err)
+      alert(`整理資料失敗：${message}`)
+    }
+  }
+
   return (
     <div className="flex h-[calc(100vh-56px)] mt-14 border-b-[1.5px] border-[#e9e9e9]">
       <ChatList
@@ -47,7 +62,8 @@ export default function MessagesPage() {
           <ChatRoom
             room={selectedRoom}
             onOpenDetail={() => setShowDetail(true)}
-            onOrganizeOrder={() => setShowDetail(true)}
+            onOrganizeOrder={handleOrganizeOrder}
+            isOrganizing={organizeMutation.isPending}
           />
         ) : (
           <div className="flex flex-1 items-center justify-center text-sm text-black/40">
@@ -56,23 +72,11 @@ export default function MessagesPage() {
         )}
       </div>
       {showDetail && selectedRoom && (
-        <aside className="w-[340px] overflow-y-auto border-l border-[#e9e9e9] bg-white p-6">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-bold text-[#6168FC] font-['Noto_Sans_TC',sans-serif]">
-              訂單詳情
-            </h2>
-            <button
-              type="button"
-              onClick={() => setShowDetail(false)}
-              className="text-sm text-black/60 hover:text-black"
-            >
-              收起
-            </button>
-          </div>
-          <div className="mt-6 rounded-md border border-dashed border-gray-300 p-6 text-sm text-gray-500">
-            (Order draft details arrive in Step 7.)
-          </div>
-        </aside>
+        <DetailPanel
+          roomId={selectedRoom.room_id}
+          open={showDetail}
+          onClose={() => setShowDetail(false)}
+        />
       )}
     </div>
   )
