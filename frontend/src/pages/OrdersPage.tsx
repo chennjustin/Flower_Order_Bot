@@ -1,10 +1,13 @@
+import OrderTable from '@/components/orders/OrderTable'
+import PageHeader from '@/components/layout/PageHeader'
+
 export default function OrdersPage() {
   return (
-    <div className="px-6 py-8">
-      <h1 className="text-2xl font-bold text-gray-800">訂單管理</h1>
-      <p className="mt-3 text-sm text-gray-500">
-        (Order table with filters and exports arrives in Step 5.)
-      </p>
-    </div>
+    <>
+      <PageHeader title="訂單管理" />
+      <div className="mx-auto max-w-[1280px] px-2 pt-[160px]">
+        <OrderTable />
+      </div>
+    </>
   )
 }
