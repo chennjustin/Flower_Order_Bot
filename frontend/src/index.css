@@ -1,0 +1,33 @@
+@import 'tailwindcss';
+@import '@fortawesome/fontawesome-free/css/all.min.css';
+
+@theme {
+  --color-brand-primary: #6168fc;
+  --color-brand-secondary: #77b5ff;
+  --color-brand-soft: #f4f7ff;
+
+  --color-status-welcome: #faf3e0;
+  --color-status-prepare: #fde2e1;
+  --color-status-wait: #d1ecf1;
+  --color-status-auto: #d4edda;
+
+  --font-sans: 'Microsoft JhengHei', 'PingFang TC', system-ui, -apple-system,
+    'Segoe UI', Roboto, sans-serif;
+}
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    margin: 0;
+    font-family: var(--font-sans);
+    background-color: #f6f8fb;
+    color: #1f2937;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}
