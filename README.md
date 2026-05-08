@@ -33,7 +33,7 @@
 
 - 作業系統：MacOS / Linux / Windows
 - Python：3.8 以上（建議 3.12）
-- Node.js：18+（前端執行需使用）
+- Node.js：22+（前端 Vite 8 要求 Node 20.19+ 或 22.12+，建議直接用 22 LTS）
 - **Docker Desktop**（建議）：用於本機 PostgreSQL 容器；亦可用於一鍵啟動前後端
 
 ---

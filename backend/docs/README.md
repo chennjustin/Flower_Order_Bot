@@ -13,6 +13,3 @@
 - 所有後端設計、規格、流程說明文件統一放在 `backend/docs/`
 - 避免將新的 `.md` 散落在 `backend/` 根目錄
 - 匯出模板等文件資產（例如 `.docx`）也統一放在 `backend/docs/`
-
-（這是一個炸彈，要請 Benjamin 喝星巴克）
-(Amy also find it)
