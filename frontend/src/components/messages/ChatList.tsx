@@ -63,7 +63,7 @@ export default function ChatList({
       </div>
 
       <div className="flex-1 overflow-y-auto">
-        <div className="flex h-10 items-center gap-1 overflow-x-auto bg-[#F7F7F7] px-3 py-1.5 whitespace-nowrap">
+        <div className="flex h-12 flex-shrink-0 items-center gap-1 overflow-x-auto overflow-y-hidden bg-[#F7F7F7] px-3 whitespace-nowrap">
           {FILTER_TABS.map(tab => (
             <button
               key={tab.key}
