@@ -4,9 +4,10 @@ from sqlalchemy import (
     ForeignKey, Numeric
 )
 from sqlalchemy.orm import relationship, Mapped, mapped_column
-from datetime import datetime, timezone, timedelta
+from datetime import datetime
 from app.enums.user import StaffRole
 from sqlalchemy import Enum as SAEnum
+from app.core.time import now_taipei_naive
 
 
 class StaffUser(Base):
@@ -20,5 +21,5 @@ class StaffUser(Base):
         default=StaffRole.CLERK
     )
     password_hash: Mapped[str] = mapped_column(String)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now(timezone(timedelta(hours=8))).replace(tzinfo=None))
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now(timezone(timedelta(hours=8))).replace(tzinfo=None), onupdate=datetime.now(timezone(timedelta(hours=8))).replace(tzinfo=None))
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=now_taipei_naive)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=now_taipei_naive, onupdate=now_taipei_naive)

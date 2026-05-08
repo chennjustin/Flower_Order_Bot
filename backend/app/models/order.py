@@ -4,10 +4,11 @@ from sqlalchemy import (
     ForeignKey, Numeric
 )
 from sqlalchemy.orm import relationship, Mapped, mapped_column
-from datetime import datetime, timezone, timedelta
+from datetime import datetime
 from app.enums.order import OrderStatus
 from app.enums.shipment import ShipmentMethod, ShipmentStatus
 from sqlalchemy import Enum as SAEnum
+from app.core.time import now_taipei_naive
 
 
 class OrderDraft(Base):
@@ -36,8 +37,8 @@ class OrderDraft(Base):
     receipt_address: Mapped[str] = mapped_column(String, nullable=True)
     delivery_address: Mapped[str] = mapped_column(Text, nullable=True)
     delivery_datetime: Mapped[datetime] = mapped_column(DateTime, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now(timezone(timedelta(hours=8))).replace(tzinfo=None))
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now(timezone(timedelta(hours=8))).replace(tzinfo=None), onupdate=datetime.now(timezone(timedelta(hours=8))).replace(tzinfo=None))
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=now_taipei_naive)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=now_taipei_naive, onupdate=now_taipei_naive)
 
     user = relationship("User", foreign_keys=[user_id], back_populates="order_drafts")
     receiver = relationship("User", foreign_keys=[receiver_user_id], back_populates="received_order_drafts")
@@ -72,8 +73,8 @@ class Order(Base):
     receipt_address: Mapped[str] = mapped_column(String, nullable=True)
     delivery_address: Mapped[str] = mapped_column(Text, nullable=True)
     delivery_datetime: Mapped[datetime] = mapped_column(DateTime, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now(timezone(timedelta(hours=8))).replace(tzinfo=None))
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now(timezone(timedelta(hours=8))).replace(tzinfo=None), onupdate=datetime.now(timezone(timedelta(hours=8))).replace(tzinfo=None))
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=now_taipei_naive)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=now_taipei_naive, onupdate=now_taipei_naive)
 
     user = relationship("User", foreign_keys=[user_id], back_populates="orders")
     receiver = relationship("User", foreign_keys=[receiver_user_id], back_populates="received_orders")

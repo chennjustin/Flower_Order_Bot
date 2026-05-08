@@ -4,10 +4,11 @@ from sqlalchemy import (
     ForeignKey, Numeric
 )
 from sqlalchemy.orm import relationship, Mapped, mapped_column
-from datetime import datetime, timezone, timedelta
+from datetime import datetime
 
 from sqlalchemy import Enum as SAEnum
 from app.enums.notification import NotificationReceiverType, NotificationChannel, NotificationStatus
+from app.core.time import now_taipei_naive
 
 class Notification(Base):
     __tablename__ = "notification"
@@ -27,7 +28,7 @@ class Notification(Base):
         default=NotificationStatus.QUEUED
     )
     send_at: Mapped[datetime] = mapped_column(DateTime, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now(timezone(timedelta(hours=8))).replace(tzinfo=None))
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=now_taipei_naive)
 
 class AuditLog(Base):
     __tablename__ = "audit_log"
@@ -38,4 +39,4 @@ class AuditLog(Base):
     target_table: Mapped[str] = mapped_column(String)
     target_id: Mapped[int] = mapped_column(Integer)
     diff: Mapped[str] = mapped_column(Text, nullable=True)
-    logged_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now(timezone(timedelta(hours=8))).replace(tzinfo=None))
+    logged_at: Mapped[datetime] = mapped_column(DateTime, default=now_taipei_naive)
