@@ -401,12 +401,15 @@ export default function DetailPanel({ roomId, open, onClose }: DetailPanelProps)
         <button
           type="button"
           onClick={handleUpdateOrder}
-          disabled={isPending}
+          disabled={isPending || isEditing}
+          aria-disabled={isPending || isEditing}
+          title={isEditing ? '請先完成編輯（點 ✓）後再更新工單' : undefined}
           className={cn(
-            'flex h-10 w-[136px] items-center justify-center gap-2 rounded-xl px-3 text-base font-bold text-white transition active:scale-95 disabled:opacity-60',
+            'flex h-10 w-[136px] items-center justify-center gap-2 rounded-xl px-3 text-base font-bold text-white transition active:scale-95',
             "font-['Noto_Sans_TC',sans-serif]",
+            'disabled:cursor-not-allowed disabled:opacity-50 disabled:active:scale-100 disabled:hover:shadow-none',
             isEditing
-              ? 'bg-[#D8EAFF] text-[#528DD2] hover:bg-[#B6D6FF]'
+              ? 'bg-[#D8EAFF] text-[#528DD2]'
               : 'bg-[#77B5FF] hover:bg-[#5C9FE8] hover:shadow-[2px_2px_4px_rgba(0,0,0,0.25)]',
           )}
         >
@@ -416,12 +419,15 @@ export default function DetailPanel({ roomId, open, onClose }: DetailPanelProps)
         <button
           type="button"
           onClick={handleCreateOrder}
-          disabled={isPending}
+          disabled={isPending || isEditing}
+          aria-disabled={isPending || isEditing}
+          title={isEditing ? '請先完成編輯（點 ✓）後再建立新工單' : undefined}
           className={cn(
-            'flex h-10 w-[136px] items-center justify-center gap-2 rounded-xl px-3 text-base font-bold text-white transition active:scale-95 disabled:opacity-60',
+            'flex h-10 w-[136px] items-center justify-center gap-2 rounded-xl px-3 text-base font-bold text-white transition active:scale-95',
             "font-['Noto_Sans_TC',sans-serif]",
+            'disabled:cursor-not-allowed disabled:opacity-50 disabled:active:scale-100 disabled:hover:shadow-none',
             isEditing
-              ? 'bg-[#C5C7FF] hover:bg-[#A8ACFF]'
+              ? 'bg-[#C5C7FF]'
               : 'bg-[#6168FC] hover:bg-[#4F51FF] hover:shadow-[2px_2px_4px_rgba(0,0,0,0.25)]',
           )}
         >
