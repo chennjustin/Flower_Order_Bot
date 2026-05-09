@@ -1,5 +1,6 @@
 # .env
 **/.env*
+**/.venv_ben
 !**/.env.example
 
 
