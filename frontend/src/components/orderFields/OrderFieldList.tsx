@@ -20,12 +20,56 @@ import { useOrderDisplayConfig } from '@/context/OrderDisplayConfigContext'
 import { cn } from '@/lib/utils'
 import type { OrderFieldConfigItem } from '@/types/orderDisplay'
 
-interface SortableFieldRowProps {
+interface OrderFieldListProps {
+  /** When false, list is display-only (no drag or visibility toggle). */
+  isEditable?: boolean
+}
+
+interface FieldRowProps {
   field: OrderFieldConfigItem
+  isEditable: boolean
   onToggleVisible: (key: OrderFieldConfigItem['key']) => void
 }
 
-function SortableFieldRow({ field, onToggleVisible }: SortableFieldRowProps) {
+function ReadOnlyFieldRow({ field }: { field: OrderFieldConfigItem }) {
+  const label = getRegistryEntry(field.key).label
+
+  return (
+    <li
+      className={cn(
+        'flex items-center gap-3 rounded-lg px-2 py-2.5',
+        !field.visible && 'opacity-70',
+      )}
+    >
+      <span
+        className="flex h-9 w-9 flex-shrink-0 items-center justify-center text-black/20"
+        aria-hidden
+      >
+        <GripVertical className="h-5 w-5" strokeWidth={2} />
+      </span>
+      <span
+        className={cn(
+          'flex-1 text-base font-medium font-["Noto_Sans_TC",sans-serif]',
+          field.visible ? 'text-black' : 'text-black/40',
+        )}
+      >
+        {label}
+      </span>
+      <span
+        className="flex h-9 w-9 flex-shrink-0 items-center justify-center text-black/25"
+        aria-hidden
+      >
+        {field.visible ? (
+          <Eye className="h-5 w-5" strokeWidth={2} />
+        ) : (
+          <EyeOff className="h-5 w-5" strokeWidth={2} />
+        )}
+      </span>
+    </li>
+  )
+}
+
+function EditableFieldRow({ field, onToggleVisible }: FieldRowProps) {
   const label = getRegistryEntry(field.key).label
   const locked = isFieldLockedVisible(field.key)
 
@@ -98,7 +142,7 @@ function SortableFieldRow({ field, onToggleVisible }: SortableFieldRowProps) {
 /**
  * Configurable field list with drag-and-drop ordering and visibility toggles.
  */
-export default function OrderFieldList() {
+export default function OrderFieldList({ isEditable = false }: OrderFieldListProps) {
   const { sortedDraftFields, toggleVisible, reorder } = useOrderDisplayConfig()
 
   const sensors = useSensors(
@@ -113,6 +157,9 @@ export default function OrderFieldList() {
   const sortableIds = sortedDraftFields.map(field => field.key)
 
   function handleDragEnd(event: DragEndEvent) {
+    if (!isEditable) {
+      return
+    }
     const { active, over } = event
     if (!over || active.id === over.id) {
       return
@@ -125,28 +172,41 @@ export default function OrderFieldList() {
     reorder(fromIndex, toIndex)
   }
 
+  const listContent = (
+    <ul className="m-0 flex list-none flex-col gap-1">
+      {sortedDraftFields.map(field =>
+        isEditable ? (
+          <EditableFieldRow
+            key={field.key}
+            field={field}
+            isEditable
+            onToggleVisible={toggleVisible}
+          />
+        ) : (
+          <ReadOnlyFieldRow key={field.key} field={field} />
+        ),
+      )}
+    </ul>
+  )
+
   return (
     <div className="flex flex-col gap-3">
       <h3 className="m-0 text-lg font-bold text-[#333] font-['Noto_Sans_TC',sans-serif]">
         選擇欄位與順序
       </h3>
-      <DndContext
-        sensors={sensors}
-        collisionDetection={closestCenter}
-        onDragEnd={handleDragEnd}
-      >
-        <SortableContext items={sortableIds} strategy={verticalListSortingStrategy}>
-          <ul className="m-0 flex list-none flex-col gap-1">
-            {sortedDraftFields.map(field => (
-              <SortableFieldRow
-                key={field.key}
-                field={field}
-                onToggleVisible={toggleVisible}
-              />
-            ))}
-          </ul>
-        </SortableContext>
-      </DndContext>
+      {isEditable ? (
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleDragEnd}
+        >
+          <SortableContext items={sortableIds} strategy={verticalListSortingStrategy}>
+            {listContent}
+          </SortableContext>
+        </DndContext>
+      ) : (
+        listContent
+      )}
     </div>
   )
 }

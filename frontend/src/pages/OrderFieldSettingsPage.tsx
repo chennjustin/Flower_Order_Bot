@@ -1,4 +1,5 @@
-import { Check, X } from 'lucide-react'
+import { useState } from 'react'
+import { Check, Pencil, X } from 'lucide-react'
 import OrderFieldList from '@/components/orderFields/OrderFieldList'
 import PreviewPanel from '@/components/orderFields/PreviewPanel'
 import PageHeader from '@/components/layout/PageHeader'
@@ -7,9 +8,21 @@ import { cn } from '@/lib/utils'
 
 export default function OrderFieldSettingsPage() {
   const { hasChanges, resetDraft, save } = useOrderDisplayConfig()
+  const [isEditing, setIsEditing] = useState(false)
+
+  function handleStartEdit() {
+    resetDraft()
+    setIsEditing(true)
+  }
+
+  function handleCancel() {
+    resetDraft()
+    setIsEditing(false)
+  }
 
   function handleSave() {
     save()
+    setIsEditing(false)
     window.alert('已儲存訂單欄位設定')
   }
 
@@ -25,39 +38,53 @@ export default function OrderFieldSettingsPage() {
             )}
           >
             <div className="flex-1">
-              <OrderFieldList />
+              <OrderFieldList isEditable={isEditing} />
             </div>
             <div className="mt-6 flex flex-wrap justify-end gap-3 border-t border-[#e9e9e9] pt-5">
-              <button
-                type="button"
-                onClick={resetDraft}
-                disabled={!hasChanges}
-                className={cn(
-                  'inline-flex h-10 items-center gap-2 rounded-lg px-5 text-sm font-bold transition',
-                  "font-['Noto_Sans_TC',sans-serif]",
-                  hasChanges
-                    ? 'cursor-pointer bg-[#FCE8E8] text-[#AE1914] hover:opacity-90'
-                    : 'cursor-not-allowed bg-[#F5F5F5] text-black/30',
-                )}
-              >
-                <X className="h-4 w-4" strokeWidth={2.5} />
-                取消
-              </button>
-              <button
-                type="button"
-                onClick={handleSave}
-                disabled={!hasChanges}
-                className={cn(
-                  'inline-flex h-10 items-center gap-2 rounded-lg px-5 text-sm font-bold text-white transition',
-                  "font-['Noto_Sans_TC',sans-serif]",
-                  hasChanges
-                    ? 'cursor-pointer bg-[#6168FC] hover:bg-[#4F51FF]'
-                    : 'cursor-not-allowed bg-[#C5C7FF]',
-                )}
-              >
-                <Check className="h-4 w-4" strokeWidth={2.5} />
-                儲存
-              </button>
+              {isEditing ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={handleCancel}
+                    className={cn(
+                      'inline-flex h-10 items-center gap-2 rounded-lg px-5 text-sm font-bold transition',
+                      "font-['Noto_Sans_TC',sans-serif]",
+                      'cursor-pointer bg-[#FCE8E8] text-[#AE1914] hover:opacity-90',
+                    )}
+                  >
+                    <X className="h-4 w-4" strokeWidth={2.5} />
+                    取消
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSave}
+                    disabled={!hasChanges}
+                    className={cn(
+                      'inline-flex h-10 items-center gap-2 rounded-lg px-5 text-sm font-bold text-white transition',
+                      "font-['Noto_Sans_TC',sans-serif]",
+                      hasChanges
+                        ? 'cursor-pointer bg-[#6168FC] hover:bg-[#4F51FF]'
+                        : 'cursor-not-allowed bg-[#C5C7FF]',
+                    )}
+                  >
+                    <Check className="h-4 w-4" strokeWidth={2.5} />
+                    儲存
+                  </button>
+                </>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleStartEdit}
+                  className={cn(
+                    'inline-flex h-10 items-center gap-2 rounded-lg px-5 text-sm font-bold text-white transition',
+                    "font-['Noto_Sans_TC',sans-serif]",
+                    'cursor-pointer bg-[#6168FC] hover:bg-[#4F51FF]',
+                  )}
+                >
+                  <Pencil className="h-4 w-4" strokeWidth={2.5} />
+                  編輯
+                </button>
+              )}
             </div>
           </section>
 
