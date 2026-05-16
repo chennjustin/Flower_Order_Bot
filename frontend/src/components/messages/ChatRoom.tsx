@@ -3,6 +3,7 @@ import MessageInput from './MessageInput'
 import MessageList from './MessageList'
 import { useRoomMessages, useSendMessage } from '@/hooks/useRoomMessages'
 import type { ChatRoom as ChatRoomType } from '@/types/domain'
+import { ChatMessageStatus } from '@/types/enums'
 
 interface ChatRoomProps {
   room: ChatRoomType
@@ -42,7 +43,10 @@ export default function ChatRoom({
         disabled={sendMutation.isPending}
         onSend={async body => {
           try {
-            await sendMutation.mutateAsync(body)
+            const sent = await sendMutation.mutateAsync(body)
+            if (sent.status === ChatMessageStatus.FAILED) {
+              alert('訊息已建立，但 LINE 傳送失敗，請確認貼圖 ID 或圖片連結可用後重試。')
+            }
           } catch (err) {
             const msg = err instanceof Error ? err.message : String(err)
             alert(`送出訊息失敗：${msg}`)

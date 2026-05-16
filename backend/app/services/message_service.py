@@ -11,7 +11,7 @@ from app.schemas.chat import (
     ChatMessagePayload,
     ChatMessageCreate,
 )
-from app.enums.chat import ChatMessageDirection
+from app.enums.chat import ChatMessageDirection, ChatMessageStatus
 from app.utils.line_send_message import LINE_push_message
 from app.services.user_service import get_user_by_line_uid, get_user_by_id
 from app.repositories.chat_repository import (
@@ -125,8 +125,15 @@ async def create_chat_message_entry(
     room_id: int,
     data: ChatMessagePayload,
     direction: ChatMessageDirection,
+    message_status: ChatMessageStatus = ChatMessageStatus.SENT,
 ) -> ChatMessage:
-    return await repo_create_chat_message_entry(db, room_id, data, direction)
+    return await repo_create_chat_message_entry(
+        db,
+        room_id,
+        data,
+        direction,
+        message_status=message_status,
+    )
 
 
 async def create_staff_message(
@@ -141,13 +148,15 @@ async def create_staff_message(
     if not user:
         raise ValueError("User not found")
 
-    LINE_push_message(user.line_uid, payload)
+    push_ok = LINE_push_message(user.line_uid, payload)
+    message_status = ChatMessageStatus.SENT if push_ok else ChatMessageStatus.FAILED
 
     message = await repo_create_chat_message_entry(
         db=db,
         room_id=room.id,
         data=payload,
         direction=ChatMessageDirection.OUTGOING_BY_STAFF,
+        message_status=message_status,
     )
 
     await touch_chat_room_updated_at(db, room)

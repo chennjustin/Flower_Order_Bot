@@ -92,6 +92,7 @@ async def create_chat_message_entry(
     room_id: int,
     data: ChatMessagePayload,
     direction: ChatMessageDirection,
+    message_status: ChatMessageStatus = ChatMessageStatus.SENT,
 ) -> ChatMessage:
     pkg = (data.sticker_package_id or "").strip() or None
     sid = (data.sticker_id or "").strip() or None
@@ -108,7 +109,7 @@ async def create_chat_message_entry(
         image_url=img,
         sticker_package_id=pkg,
         sticker_id=sid,
-        status=ChatMessageStatus.SENT,
+        status=message_status,
         processed=False,
         created_at=datetime.now(timezone(timedelta(hours=8))).replace(tzinfo=None),
         updated_at=datetime.now(timezone(timedelta(hours=8))).replace(tzinfo=None),
