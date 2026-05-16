@@ -149,12 +149,12 @@ async def handle_incoming_image_message(event: MessageEvent, db: AsyncSession) -
     _, chat_room = await resolve_line_user_and_room(db, user_line_id)
     mid = event.message.id
     settings = get_settings()
-    public_url: str | None = None
     try:
         raw, ct = await asyncio.to_thread(fetch_line_message_binary, mid)
         public_url = save_inbound_line_image(settings.public_base_url, raw, ct)
     except Exception as e:
         print(f"[LINE] 無法下載使用者圖片 message_id={mid}: {e}")
+        raise
 
     message = ChatMessage(
         room_id=chat_room.id,
