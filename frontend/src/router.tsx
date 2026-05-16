@@ -1,6 +1,9 @@
-import { createBrowserRouter } from 'react-router-dom'
+import type { ReactNode } from 'react'
+import { createBrowserRouter, Navigate } from 'react-router-dom'
 import RequireAuth from '@/components/auth/RequireAuth'
+import RequireOnboardingDone from '@/components/auth/RequireOnboardingDone'
 import OnboardingStepGuard from '@/components/auth/OnboardingStepGuard'
+import OnboardingIndexRedirect from '@/components/auth/OnboardingIndexRedirect'
 import App from './App'
 import OnboardingLayout from './layouts/OnboardingLayout'
 import DashboardPage from './pages/DashboardPage'
@@ -11,6 +14,11 @@ import LoginPage from './pages/LoginPage'
 import OnboardingNamePage from './pages/onboarding/OnboardingNamePage'
 import OnboardingLineOfficialPage from './pages/onboarding/OnboardingLineOfficialPage'
 import OrderFieldsPage from './pages/settings/OrderFieldsPage'
+
+/** Wraps main back-office pages; blocks until onboarding is DONE. */
+function ProtectedPage({ children }: { children: ReactNode }) {
+  return <RequireOnboardingDone>{children}</RequireOnboardingDone>
+}
 
 export const router = createBrowserRouter([
   {
@@ -25,6 +33,7 @@ export const router = createBrowserRouter([
       </RequireAuth>
     ),
     children: [
+      { index: true, element: <OnboardingIndexRedirect /> },
       {
         path: 'name',
         element: (
@@ -44,22 +53,54 @@ export const router = createBrowserRouter([
     ],
   },
   {
-    path: '/settings',
+    path: '/',
     element: (
       <RequireAuth>
         <App />
       </RequireAuth>
     ),
-    children: [{ path: 'order-fields', element: <OrderFieldsPage /> }],
+    children: [
+      {
+        index: true,
+        element: (
+          <ProtectedPage>
+            <DashboardPage />
+          </ProtectedPage>
+        ),
+      },
+      {
+        path: 'orders',
+        element: (
+          <ProtectedPage>
+            <OrdersPage />
+          </ProtectedPage>
+        ),
+      },
+      {
+        path: 'messages',
+        element: (
+          <ProtectedPage>
+            <MessagesPage />
+          </ProtectedPage>
+        ),
+      },
+      {
+        path: 'stats',
+        element: (
+          <ProtectedPage>
+            <StatsPage />
+          </ProtectedPage>
+        ),
+      },
+      {
+        // Allowed during LINE_OA so mount can call completeOnboarding()
+        path: 'settings/order-fields',
+        element: <OrderFieldsPage />,
+      },
+    ],
   },
   {
-    path: '/',
-    element: <App />,
-    children: [
-      { index: true, element: <DashboardPage /> },
-      { path: 'orders', element: <OrdersPage /> },
-      { path: 'messages', element: <MessagesPage /> },
-      { path: 'stats', element: <StatsPage /> },
-    ],
+    path: '*',
+    element: <Navigate to="/" replace />,
   },
 ])
