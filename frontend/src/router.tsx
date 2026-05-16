@@ -10,6 +10,7 @@ import StatsPage from './pages/StatsPage'
 import LoginPage from './pages/LoginPage'
 import OnboardingNamePage from './pages/onboarding/OnboardingNamePage'
 import OnboardingLineOfficialPage from './pages/onboarding/OnboardingLineOfficialPage'
+import OrderFieldsPage from './pages/settings/OrderFieldsPage'
 
 export const router = createBrowserRouter([
   {
@@ -41,6 +42,15 @@ export const router = createBrowserRouter([
         ),
       },
     ],
+  },
+  {
+    path: '/settings',
+    element: (
+      <RequireAuth>
+        <App />
+      </RequireAuth>
+    ),
+    children: [{ path: 'order-fields', element: <OrderFieldsPage /> }],
   },
   {
     path: '/',
