@@ -10,7 +10,7 @@ from sqlalchemy.orm import selectinload
 from app.models.chat import ChatRoom
 from app.models.customer import Customer
 from app.repositories.store_repository import get_first_store_id
-from app.schemas.user import UserCreate
+from app.schemas.customer import CustomerCreate
 
 
 def now_taipei_naive() -> datetime:
@@ -41,7 +41,7 @@ async def get_user_by_chat_room_id(db: AsyncSession, chat_room_id: int) -> Optio
     return chat_room.customer
 
 
-async def create_user(db: AsyncSession, user_data: UserCreate) -> Customer:
+async def create_user(db: AsyncSession, user_data: CustomerCreate) -> Customer:
     payload = user_data.model_dump() if hasattr(user_data, "model_dump") else user_data.dict()
     if not payload.get("store_id"):
         store_id = await get_first_store_id(db)

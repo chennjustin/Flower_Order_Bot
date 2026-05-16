@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.deps import get_line_bot_api, get_settings
 from app.enums.chat import ChatMessageDirection, ChatMessageStatus, ChatRoomStage
 from app.models.chat import ChatMessage, ChatRoom
-from app.schemas.user import UserCreate
+from app.schemas.customer import CustomerCreate
 from app.services.message_service import (
     create_chat_room,
     get_chat_room_by_user_id,
@@ -36,7 +36,7 @@ async def handle_incoming_text_message(event: MessageEvent, db: AsyncSession) ->
 
     user = await get_user_by_line_uid(db, user_line_id)
     if not user:
-        user = await create_user(db, UserCreate(line_uid=user_line_id, name="Unknown User"))
+        user = await create_user(db, CustomerCreate(line_uid=user_line_id, name="Unknown User"))
 
     if user.name == "Unknown User" or user.avatar_url is None:
         try:

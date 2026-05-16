@@ -1,32 +1,20 @@
-from typing import Optional
-from datetime import datetime
-from pydantic import BaseModel, Field
+"""向後相容：請改用 app.schemas.customer。"""
 
-from app.enums.user import StaffRole
+from app.schemas.customer import (
+    CustomerBase,
+    CustomerCreate,
+    CustomerRead,
+)
 
-class UserBase(BaseModel):
-    line_uid: Optional[str] = None
-    name: Optional[str] = None
-    phone: Optional[str] = None
-    avatar_url: Optional[str] = None
+UserBase = CustomerBase
+UserCreate = CustomerCreate
+UserRead = CustomerRead
 
-class UserCreate(UserBase):
-    store_id: Optional[int] = None
-    has_ordered: bool = False
-
-
-class StaffBase(BaseModel):
-    line_uid: str
-    name: str
-    role: StaffRole = Field(default=StaffRole.CLERK)
-
-class StaffCreate(StaffBase):
-    password: str = Field(alias="password_hash")
-
-class StaffRead(StaffBase):
-    id: int
-    created_at: datetime
-    updated_at: datetime
-
-    class Config:
-        from_attributes = True 
+__all__ = [
+    "CustomerBase",
+    "CustomerCreate",
+    "CustomerRead",
+    "UserBase",
+    "UserCreate",
+    "UserRead",
+]

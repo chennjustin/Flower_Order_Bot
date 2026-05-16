@@ -34,7 +34,7 @@ from app.services.user_service import (
     get_user_by_id,
     update_user_info,
 )
-from app.schemas.user import UserCreate
+from app.schemas.customer import CustomerCreate
 from app.utils.line_send_message import LINE_push_message
 
 
@@ -309,7 +309,7 @@ async def update_order_draft_by_room_id(
         store_id = base.store_id if base else room.store_id
         await create_user(
             db,
-            UserCreate(
+            CustomerCreate(
                 name=draft_in.receiver_name or "收件人",
                 phone=draft_in.receiver_phone,
                 store_id=store_id,

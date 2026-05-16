@@ -123,12 +123,17 @@ async def create_staff_message(db: AsyncSession, room_id: int, data: ChatMessage
     # 查找聊天室
     room = await get_chat_room_by_room_id(db, room_id)
     if not room:
-        raise ValueError("Chat room not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Chat room not found")
     
     # 查找用戶
+    if not room.customer or not room.customer.line_uid:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Customer has no LINE UID; cannot push message",
+        )
     user = await get_user_by_line_uid(db, room.customer.line_uid)
     if not user:
-        raise ValueError("User not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
     
     # 發送訊息到 LINE
     success = LINE_push_message(user.line_uid, data)
