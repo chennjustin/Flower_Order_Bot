@@ -88,7 +88,7 @@ async def get_chat_messages(db: AsyncSession, room_id: int, after: Optional[date
     
     messages = await list_chat_messages(db, room_id, after=after)
 
-    user = await get_user_by_id(db, chatroom.user_id)
+    user = await get_user_by_id(db, chatroom.customer_id)
     if user:
         user_avatar_url = user.avatar_url
     else:
@@ -126,7 +126,7 @@ async def create_staff_message(db: AsyncSession, room_id: int, data: ChatMessage
         raise ValueError("Chat room not found")
     
     # 查找用戶
-    user = await get_user_by_line_uid(db, room.user.line_uid)
+    user = await get_user_by_line_uid(db, room.customer.line_uid)
     if not user:
         raise ValueError("User not found")
     
@@ -140,7 +140,7 @@ async def create_staff_message(db: AsyncSession, room_id: int, data: ChatMessage
         db=db,
         room_id=room.id,
         data=data,
-        direction=ChatMessageDirection.OUTGOING_BY_STAFF
+        direction=ChatMessageDirection.OUTGOING_BY_STORE
     )
     
     # 更新聊天室狀態

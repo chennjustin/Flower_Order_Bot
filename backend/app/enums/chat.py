@@ -15,4 +15,6 @@ class ChatMessageStatus(str, Enum):
 class ChatMessageDirection(str, Enum):
     INCOMING = "INCOMING"
     OUTGOING_BY_BOT = "OUTGOING_BY_BOT"
-    OUTGOING_BY_STAFF = "OUTGOING_BY_STAFF" 
+    OUTGOING_BY_STORE = "OUTGOING_BY_STORE"
+    # 相容舊程式／舊 prompt 字串
+    OUTGOING_BY_STAFF = "OUTGOING_BY_STORE" 

@@ -11,7 +11,8 @@ class UserBase(BaseModel):
     avatar_url: Optional[str] = None
 
 class UserCreate(UserBase):
-    pass
+    store_id: Optional[int] = None
+    has_ordered: bool = False
 
 
 class StaffBase(BaseModel):

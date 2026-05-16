@@ -87,7 +87,7 @@ class OrderBase(BaseModel):
     card_message: Optional[str] = None
 
     # 運送資訊
-    shipment_method: ShipmentMethod
+    shipment_method: Optional[ShipmentMethod] = None
     # 取貨/送達時間：某些訂單（如店取未填時間）可能為空；列表/草稿需允許為 None
     send_datetime: Optional[datetime] = None
     receipt_address: Optional[str] = None
