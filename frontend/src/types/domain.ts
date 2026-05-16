@@ -76,6 +76,8 @@ export interface ChatRoom {
 export interface ChatMessageBody {
   text?: string | null
   image_url?: string | null
+  sticker_package_id?: string | null
+  sticker_id?: string | null
 }
 
 export interface ChatMessage {

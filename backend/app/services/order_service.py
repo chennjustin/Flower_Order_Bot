@@ -13,7 +13,6 @@ from app.enums.chat import ChatMessageDirection, ChatMessageStatus, ChatRoomStag
 from app.enums.order import OrderStatus
 from app.enums.shipment import ShipmentMethod
 from app.models.chat import ChatMessage
-from app.models.customer import Customer
 from app.models.order import Order, OrderDraft
 from app.repositories.order_repository import (
     get_latest_confirmed_order_by_room,
@@ -24,7 +23,7 @@ from app.repositories.order_repository import (
     save_order,
     save_order_draft,
 )
-from app.schemas.chat import ChatMessageBase
+from app.schemas.chat import ChatMessagePayload
 from app.schemas.order import OrderDraftOut, OrderDraftUpdate, OrderOut
 from app.services.message_service import get_chat_room_by_room_id
 from app.services.payment_service import get_pay_way_by_order_id, get_payment_method_by_id
@@ -145,7 +144,9 @@ async def create_order_by_room(db: AsyncSession, room_id: int) -> list[str]:
     line_uid = await get_line_uid_by_chatroom_id(db, room.id)
     msg = "訂單已經由後台送出囉～\n\n"
     if line_uid:
-        LINE_push_message(line_uid, ChatMessageBase(text=msg))
+        LINE_push_message(line_uid, ChatMessagePayload(text=msg))
+    else:
+        print("❗ 無法取得 LINE UID，無法推播訂單已送出提醒。")
     db.add(
         ChatMessage(
             room_id=room.id,

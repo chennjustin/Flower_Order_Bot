@@ -27,3 +27,16 @@ export async function sendMessage(
   )
   return data
 }
+
+export async function uploadStaffChatImage(
+  roomId: number,
+  file: File,
+): Promise<string> {
+  const fd = new FormData()
+  fd.append('file', file)
+  const { data } = await api.post<{ image_url: string }>(
+    `/chat_rooms/${roomId}/messages/upload_image`,
+    fd,
+  )
+  return data.image_url
+}

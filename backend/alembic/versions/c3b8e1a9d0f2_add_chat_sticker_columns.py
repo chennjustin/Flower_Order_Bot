@@ -1,9 +1,8 @@
-"""add_chat_sticker_columns
+"""add chat_message sticker columns
 
 Revision ID: c3b8e1a9d0f2
 Revises: d42d661dc523
-Create Date: 2025-01-01
-
+Create Date: 2026-05-16 12:00:00.000000
 """
 
 from alembic import op
@@ -18,9 +17,13 @@ depends_on = None
 
 def upgrade() -> None:
     op.add_column(
-        "chat_message", sa.Column("sticker_package_id", sa.String(), nullable=True)
+        "chat_message",
+        sa.Column("sticker_package_id", sa.String(), nullable=True),
     )
-    op.add_column("chat_message", sa.Column("sticker_id", sa.String(), nullable=True))
+    op.add_column(
+        "chat_message",
+        sa.Column("sticker_id", sa.String(), nullable=True),
+    )
 
 
 def downgrade() -> None:

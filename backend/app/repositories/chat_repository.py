@@ -9,7 +9,7 @@ from sqlalchemy.orm import joinedload
 
 from app.enums.chat import ChatMessageDirection, ChatMessageStatus, ChatRoomStage
 from app.models.chat import ChatMessage, ChatRoom
-from app.schemas.chat import ChatMessageBase
+from app.schemas.chat import ChatMessagePayload
 
 
 async def get_latest_chat_message(db: AsyncSession, room_id: int) -> Optional[ChatMessage]:
@@ -102,15 +102,26 @@ async def switch_chat_room_mode(db: AsyncSession, room_id: int, mode: str) -> No
 async def create_chat_message_entry(
     db: AsyncSession,
     room_id: int,
-    data: ChatMessageBase,
+    data: ChatMessagePayload,
     direction: ChatMessageDirection,
+    message_status: ChatMessageStatus = ChatMessageStatus.SENT,
 ) -> ChatMessage:
+    pkg = (data.sticker_package_id or "").strip() or None
+    sid = (data.sticker_id or "").strip() or None
+    img = (data.image_url or "").strip() or None
+    text_val = (data.text or "").strip()
+    if pkg and sid:
+        text_val = text_val or "[貼圖]"
+    elif img:
+        text_val = text_val or "[圖片]"
     message = ChatMessage(
         room_id=room_id,
         direction=direction,
-        text=data.text,
-        image_url=data.image_url,
-        status=ChatMessageStatus.SENT,
+        text=text_val,
+        image_url=img,
+        sticker_package_id=pkg,
+        sticker_id=sid,
+        status=message_status,
         processed=False,
         created_at=datetime.now(timezone(timedelta(hours=8))).replace(tzinfo=None),
         updated_at=datetime.now(timezone(timedelta(hours=8))).replace(tzinfo=None),
