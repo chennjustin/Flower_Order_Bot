@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
+from app.core.deps import get_current_user
 from app.schemas.store_display import (
     StoreDisplayFieldsOut,
     StoreDisplayFieldsUpdate,
@@ -13,7 +14,7 @@ from app.services.store_display_service import (
     update_store_display_fields,
 )
 
-api_router = APIRouter(prefix="/stores", tags=["Store Display"])
+api_router = APIRouter(prefix="/stores", tags=["Store Display"], dependencies=[Depends(get_current_user)])
 
 
 @api_router.get("/{store_key}/display-fields", response_model=StoreDisplayFieldsOut)

@@ -15,6 +15,8 @@ class Settings:
     database_url: str
     # 與此字串完全相符的 LINE 文字訊息會觸發開發用清除（見 linebot_flow）
     line_test_reset_phrase: str | None
+    supabase_url: str
+    supabase_anon_key: str
 
 
 def _postgres_connection_params() -> tuple[str, str, str, str, str]:
@@ -98,5 +100,7 @@ def load_settings() -> Settings:
         line_channel_secret=os.getenv("LINE_CHANNEL_SECRET"),
         database_url=database_url,
         line_test_reset_phrase=phrase or None,
+        supabase_url=os.getenv("SUPABASE_URL", ""),
+        supabase_anon_key=os.getenv("SUPABASE_ANON_KEY", ""),
     )
 

@@ -4,11 +4,12 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.services.order_service import get_all_orders
 from app.core.database import get_db
+from app.core.deps import get_current_user
 from docxtpl import DocxTemplate
 import io
 from pathlib import Path
 
-api_router = APIRouter()
+api_router = APIRouter(dependencies=[Depends(get_current_user)])
 TEMPLATE_PATH = Path(__file__).resolve().parents[2] / "docs" / "order_template.docx"
 
 @api_router.get("/orders/{order_id}.docx")

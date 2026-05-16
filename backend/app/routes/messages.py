@@ -6,6 +6,7 @@ from typing import Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List
 from app.core.database import get_db
+from app.core.deps import get_current_user
 from app.enums.chat import ChatRoomStage
 from app.schemas.chat import ChatRoomOut
 from app.schemas.chat import ChatMessageOut, ChatMessageBase
@@ -16,7 +17,7 @@ from app.services.message_service import (
     switch_chat_room_mode
 )
 
-api_router = APIRouter(prefix="/chat_rooms", tags=["Chat"])
+api_router = APIRouter(prefix="/chat_rooms", tags=["Chat"], dependencies=[Depends(get_current_user)])
 
 @api_router.get("", response_model=List[ChatRoomOut])
 async def list_chat_rooms(db: AsyncSession = Depends(get_db)):

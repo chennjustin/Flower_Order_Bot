@@ -4,8 +4,10 @@ from typing import List, Optional
 
 from app.services.order_service import get_all_orders, get_order_draft_out_by_room, update_order_draft_by_room_id, delete_order_by_id, create_order_by_room, update_order_by_room_id
 from app.core.database import get_db
+from app.core.deps import get_current_user
 from app.schemas.order import OrderOut, OrderDraftOut, OrderDraftUpdate, OrderDraftCreate
-api_router = APIRouter()
+
+api_router = APIRouter(dependencies=[Depends(get_current_user)])
 
 @api_router.get("/orders", response_model=Optional[List[OrderOut]])
 async def get_orders(db: AsyncSession = Depends(get_db)):
