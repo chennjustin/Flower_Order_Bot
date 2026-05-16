@@ -13,8 +13,6 @@ import { cn } from '@/lib/utils'
 type EditableKey =
   | 'customer_name'
   | 'customer_phone'
-  | 'receiver_name'
-  | 'receiver_phone'
   | 'total_amount'
   | 'item'
   | 'quantity'
@@ -49,10 +47,6 @@ const MISSING_KEY_TO_FIELD: Record<string, FieldKey> = {
   customer_name: 'customer_name',
   user_phone: 'customer_phone',
   customer_phone: 'customer_phone',
-  receiver_user_id: 'receiver_name',
-  receiver: 'receiver_name',
-  receiver_name: 'receiver_name',
-  receiver_phone: 'receiver_phone',
   item_type: 'item',
   item: 'item',
   quantity: 'quantity',
@@ -69,8 +63,6 @@ const MISSING_KEY_TO_FIELD: Record<string, FieldKey> = {
 const FIELDS: FieldDef[] = [
   { key: 'customer_name', label: '客戶姓名', editable: true },
   { key: 'customer_phone', label: '客戶電話', editable: true },
-  { key: 'receiver_name', label: '收件人姓名', editable: true },
-  { key: 'receiver_phone', label: '收件人電話', editable: true },
   { key: 'total_amount', label: '總金額', editable: true, variant: 'amount' },
   { key: 'item', label: '品項', editable: true },
   { key: 'quantity', label: '數量', editable: true, variant: 'number' },
@@ -88,8 +80,6 @@ const FIELDS: FieldDef[] = [
 interface FormState {
   customer_name: string
   customer_phone: string
-  receiver_name: string
-  receiver_phone: string
   total_amount: string
   item: string
   quantity: string
@@ -106,8 +96,6 @@ interface FormState {
 const EMPTY_FORM: FormState = {
   customer_name: '',
   customer_phone: '',
-  receiver_name: '',
-  receiver_phone: '',
   total_amount: '',
   item: '',
   quantity: '',
@@ -152,8 +140,6 @@ function formStateFromDraft(draft: OrderDraft | null | undefined): FormState {
   return {
     customer_name: draft.customer_name ?? '',
     customer_phone: draft.customer_phone ?? '',
-    receiver_name: draft.receiver_name ?? '',
-    receiver_phone: draft.receiver_phone ?? '',
     total_amount: draft.total_amount != null ? String(draft.total_amount) : '',
     item: draft.item ?? '',
     quantity: draft.quantity != null ? String(draft.quantity) : '',
@@ -174,8 +160,6 @@ function formStateToUpdate(form: FormState): OrderDraftUpdate {
   return {
     customer_name: form.customer_name || null,
     customer_phone: form.customer_phone || null,
-    receiver_name: form.receiver_name || null,
-    receiver_phone: form.receiver_phone || null,
     total_amount: Number.isFinite(total) ? total : null,
     item: form.item || null,
     quantity: Number.isFinite(qty) ? qty : null,
@@ -237,8 +221,6 @@ export default function DetailPanel({ roomId, open, onClose }: DetailPanelProps)
     return {
       customer_name: draft.customer_name ?? '',
       customer_phone: draft.customer_phone ?? '',
-      receiver_name: draft.receiver_name ?? '',
-      receiver_phone: draft.receiver_phone ?? '',
       total_amount:
         draft.total_amount != null ? `NT ${draft.total_amount}` : '',
       item: draft.item ?? '',
