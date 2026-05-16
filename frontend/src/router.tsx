@@ -4,6 +4,7 @@ import DashboardPage from './pages/DashboardPage'
 import OrdersPage from './pages/OrdersPage'
 import MessagesPage from './pages/MessagesPage'
 import StatsPage from './pages/StatsPage'
+import OrderFieldSettingsPage from './pages/OrderFieldSettingsPage'
 
 export const router = createBrowserRouter([
   {
@@ -14,6 +15,7 @@ export const router = createBrowserRouter([
       { path: 'orders', element: <OrdersPage /> },
       { path: 'messages', element: <MessagesPage /> },
       { path: 'stats', element: <StatsPage /> },
+      { path: 'settings/order-fields', element: <OrderFieldSettingsPage /> },
     ],
   },
 ])
