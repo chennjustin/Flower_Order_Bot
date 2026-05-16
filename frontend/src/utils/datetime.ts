@@ -9,6 +9,11 @@ export function formatHeaderDate(date: Date): string {
   return `${date.getMonth() + 1} 月 ${date.getDate()} 日 (${WEEKDAYS_ZH[date.getDay()]})`
 }
 
+/** Compact header date for narrow layouts, e.g. `5/16 （六）`. */
+export function formatHeaderDateCompact(date: Date): string {
+  return `${date.getMonth() + 1}/${date.getDate()} （${WEEKDAYS_ZH[date.getDay()]}）`
+}
+
 /** Cell datetime, e.g. `26/05/08（五）14:30`. Empty input -> empty string. */
 export function formatCellDateTime(input: string | Date | null | undefined): string {
   if (!input) return ''

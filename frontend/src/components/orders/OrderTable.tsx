@@ -236,115 +236,148 @@ export default function OrderTable({
     }
   }
 
-  return (
-    <section className="rounded-lg bg-white px-8 py-6 mt-6 mb-8 border-b-[1.5px] border-[#e9e9e9]">
-      {/* Title row */}
-      <div className="mb-4 flex flex-wrap items-center gap-4">
-        {showTitle && (
-          <span className="text-[22px] font-bold tracking-wider whitespace-nowrap text-[#6168FC]">
-            訂單總覽
-          </span>
+  const viewToggle = (
+    <div className="flex shrink-0 items-center gap-[9px] rounded-[32px] bg-[#F5F5F5] px-3 py-2 md:px-4">
+      <button
+        type="button"
+        onClick={() => setViewMode('list')}
+        className={cn(
+          'flex h-7 items-center gap-2 rounded-[36px] px-2 py-1 text-sm font-bold text-black/60 transition',
+          "font-['Noto_Sans_TC',sans-serif]",
+          viewMode === 'list' && 'bg-[#C5C7FF]',
         )}
+      >
+        <List className="h-4 w-4 shrink-0" />
+        列表
+      </button>
+      <button
+        type="button"
+        onClick={() => setViewMode('calendar')}
+        className={cn(
+          'flex h-7 items-center gap-2 rounded-[36px] px-2 py-1 text-sm font-bold text-black/60 transition',
+          "font-['Noto_Sans_TC',sans-serif]",
+          viewMode === 'calendar' && 'bg-[#C5C7FF]',
+        )}
+      >
+        <Calendar className="h-4 w-4 shrink-0" />
+        日曆
+      </button>
+    </div>
+  )
 
-        {/* List / Calendar toggle */}
-        <div className="flex items-center gap-[9px] rounded-[32px] bg-[#F5F5F5] px-4 py-2">
+  const dateNavigator = (className?: string) => (
+    <div className={cn('flex h-10 items-center gap-2 rounded-[36px] bg-[#F7F7F7] px-3', className)}>
+      <button
+        type="button"
+        onClick={() => shiftDate(-1)}
+        aria-label="前一天"
+        className="flex h-7 w-7 items-center justify-center rounded-full bg-[#D9D9D9] text-white transition hover:bg-[#C5C7FF]"
+      >
+        <ChevronLeft className="h-3.5 w-3.5" strokeWidth={3} />
+      </button>
+      <OrderDatePicker value={currentDate} onChange={selectDate} active={dateFilterActive} />
+      <button
+        type="button"
+        onClick={() => shiftDate(1)}
+        aria-label="後一天"
+        className="flex h-7 w-7 items-center justify-center rounded-full bg-[#D9D9D9] text-white transition hover:bg-[#C5C7FF]"
+      >
+        <ChevronRight className="h-3.5 w-3.5" strokeWidth={3} />
+      </button>
+    </div>
+  )
+
+  const filterTabs = () => (
+    <div className="flex w-fit max-w-full shrink-0 self-start items-center gap-1 overflow-x-auto rounded-[36px] bg-[#F7F7F7] px-3 py-1.5">
+      {FILTER_TABS.map(tab => (
           <button
+            key={tab.value}
             type="button"
-            onClick={() => setViewMode('list')}
+            onClick={() => selectTab(tab.value)}
             className={cn(
-              'flex h-7 items-center gap-2 rounded-[36px] px-2 py-1 text-sm font-bold text-black/60 transition',
+              'flex h-7 shrink-0 items-center whitespace-nowrap rounded-[36px] px-3 py-[11px] text-sm font-bold leading-[112.5%] text-black/60 transition md:px-6',
               "font-['Noto_Sans_TC',sans-serif]",
-              viewMode === 'list' && 'bg-[#C5C7FF]',
+              isTabHighlighted(tab.value) && 'bg-[#C5C7FF]',
             )}
           >
-            <List className="h-4 w-4 shrink-0" />
-            列表
+            {tab.label}
           </button>
-          <button
-            type="button"
-            onClick={() => setViewMode('calendar')}
-            className={cn(
-              'flex h-7 items-center gap-2 rounded-[36px] px-2 py-1 text-sm font-bold text-black/60 transition',
-              "font-['Noto_Sans_TC',sans-serif]",
-              viewMode === 'calendar' && 'bg-[#C5C7FF]',
-            )}
-          >
-            <Calendar className="h-4 w-4 shrink-0" />
-            日曆
-          </button>
+      ))}
+    </div>
+  )
+
+  return (
+    <>
+      {showTitle && (
+        <h2 className="mb-3 text-[20px] font-bold tracking-wider text-[#6168FC] md:hidden">
+          訂單總覽
+        </h2>
+      )}
+
+      <section className="mt-6 mb-8 rounded-lg border-b-[1.5px] border-[#e9e9e9] bg-white px-4 py-4 md:px-8 md:py-6">
+        <div className="mb-4 hidden flex-wrap items-center gap-4 md:flex">
+          {showTitle && (
+            <span className="whitespace-nowrap text-[22px] font-bold tracking-wider text-[#6168FC]">
+              訂單總覽
+            </span>
+          )}
+          {viewToggle}
+          <div className="ml-auto flex items-center gap-4">
+            <div className="relative flex h-[46px] w-[360px] items-center rounded-[36px] bg-[#D8EAFF] px-6 py-[11px]">
+              <input
+                type="text"
+                value={searchText}
+                onChange={e => setSearchText(e.target.value)}
+                placeholder="搜尋訂單（姓名、編號等）"
+                className="w-full border-0 bg-transparent p-0 text-base leading-[140%] text-black/[0.38] outline-none placeholder:text-black/[0.38] font-['Noto_Sans_TC',sans-serif]"
+              />
+              <Search className="absolute right-6 top-1/2 h-5 w-5 -translate-y-1/2 text-black/[0.38]" />
+            </div>
+            <button
+              type="button"
+              onClick={handleDownloadCsv}
+              className="flex h-[46px] shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-xl border-0 bg-[#77B5FF] px-4 py-3 text-white shadow-[2px_2px_2px_rgba(0,0,0,0.25)] transition hover:opacity-90"
+            >
+              <Download className="h-5 w-5" strokeWidth={2.5} />
+              <span className="text-base font-bold leading-[112.5%] font-['Noto_Sans_TC',sans-serif]">
+                下載 CSV
+              </span>
+            </button>
+          </div>
         </div>
 
-        <div className="ml-auto flex flex-wrap items-center gap-4">
-          {/* Search */}
-          <div className="relative flex h-[46px] w-[360px] min-w-[200px] items-center rounded-[36px] bg-[#D8EAFF] px-6 py-[11px]">
+        <div className="mb-4 hidden items-center gap-2 md:flex">
+          {filterTabs()}
+          {dateNavigator('shrink-0 gap-3 px-4')}
+        </div>
+
+        <div className="mb-4 flex flex-col items-start gap-3 md:hidden">
+          <div className="flex w-full flex-nowrap items-center justify-between gap-2">
+            {viewToggle}
+            {dateNavigator('min-w-0 shrink gap-1.5 px-2')}
+          </div>
+          <div className="relative flex h-[46px] w-full items-center rounded-[36px] bg-[#D8EAFF] px-5 py-[11px]">
             <input
               type="text"
               value={searchText}
               onChange={e => setSearchText(e.target.value)}
-              placeholder="搜尋訂單（姓名、編號等）"
+              placeholder="搜尋訂單"
               className="w-full border-0 bg-transparent p-0 text-base leading-[140%] text-black/[0.38] outline-none placeholder:text-black/[0.38] font-['Noto_Sans_TC',sans-serif]"
             />
-            <Search className="absolute right-6 top-1/2 h-5 w-5 -translate-y-1/2 text-black/[0.38]" />
+            <Search className="absolute right-5 top-1/2 h-5 w-5 -translate-y-1/2 text-black/[0.38]" />
           </div>
-
-          {/* Download CSV */}
           <button
             type="button"
             onClick={handleDownloadCsv}
-            className="flex h-[46px] shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-xl border-0 bg-[#77B5FF] px-4 py-3 text-white shadow-[2px_2px_2px_rgba(0,0,0,0.25)] transition hover:opacity-90"
+            className="flex h-10 w-fit items-center justify-center gap-2 whitespace-nowrap rounded-xl border-0 bg-[#77B5FF] px-4 py-2 text-white shadow-[2px_2px_2px_rgba(0,0,0,0.25)] transition hover:opacity-90"
           >
-            <Download className="h-5 w-5" strokeWidth={2.5} />
-            <span className="text-base font-bold leading-[112.5%] font-['Noto_Sans_TC',sans-serif]">
+            <Download className="h-4 w-4" strokeWidth={2.5} />
+            <span className="text-sm font-bold leading-[112.5%] font-['Noto_Sans_TC',sans-serif]">
               下載 CSV
             </span>
           </button>
+          {filterTabs()}
         </div>
-      </div>
-
-      {/* Filter bar */}
-      <div className="mb-4 flex flex-wrap items-center gap-2">
-        <div className="inline-flex h-10 items-center gap-1 rounded-[36px] bg-[#F7F7F7] px-3 py-1.5">
-          {FILTER_TABS.map(tab => (
-            <button
-              key={tab.value}
-              type="button"
-              onClick={() => selectTab(tab.value)}
-              className={cn(
-                'flex h-7 items-center whitespace-nowrap rounded-[36px] px-6 py-[11px] text-sm font-bold leading-[112.5%] text-black/60 transition',
-                "font-['Noto_Sans_TC',sans-serif]",
-                isTabHighlighted(tab.value) && 'bg-[#C5C7FF]',
-              )}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
-
-        {/* Date navigator */}
-        <div className="flex h-10 items-center gap-3 rounded-[36px] bg-[#F7F7F7] px-4">
-          <button
-            type="button"
-            onClick={() => shiftDate(-1)}
-            className="flex h-7 w-7 items-center justify-center rounded-full bg-[#D9D9D9] text-white transition hover:bg-[#C5C7FF]"
-            aria-label="前一天"
-          >
-            <ChevronLeft className="h-3.5 w-3.5" strokeWidth={3} />
-          </button>
-          <OrderDatePicker
-            value={currentDate}
-            onChange={selectDate}
-            active={dateFilterActive}
-          />
-          <button
-            type="button"
-            onClick={() => shiftDate(1)}
-            className="flex h-7 w-7 items-center justify-center rounded-full bg-[#D9D9D9] text-white transition hover:bg-[#C5C7FF]"
-            aria-label="後一天"
-          >
-            <ChevronRight className="h-3.5 w-3.5" strokeWidth={3} />
-          </button>
-        </div>
-      </div>
 
       {/* Content */}
       {viewMode === 'calendar' ? (
@@ -464,6 +497,7 @@ export default function OrderTable({
         </DialogContent>
       </Dialog>
     </section>
+    </>
   )
 }
 

@@ -25,7 +25,7 @@ export default function DashboardPage() {
   return (
     <>
       <PageHeader title="訂單管理平台" />
-      <div className="mx-auto max-w-[1280px] px-2 pt-[160px]">
+      <div className="mx-auto max-w-[1280px] px-7 pt-[160px] md:px-2">
         {error && (
           <div className="mb-4 rounded-md bg-red-50 px-4 py-3 text-sm text-red-600">
             無法載入統計資料：{(error as Error).message}
