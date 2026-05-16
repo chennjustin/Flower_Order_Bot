@@ -1,0 +1,39 @@
+{
+  "name": "flower-order-backend",
+  "private": true,
+  "version": "2.0.0",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/index.js",
+    "migrate": "drizzle-kit migrate",
+    "generate": "drizzle-kit generate",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@fastify/cors": "^11.0.1",
+    "@fastify/swagger": "^9.4.2",
+    "@fastify/swagger-ui": "^5.2.2",
+    "@line/bot-sdk": "^9.7.1",
+    "docxtemplater": "^3.60.0",
+    "dotenv": "^16.5.0",
+    "drizzle-orm": "^0.43.1",
+    "fastify": "^5.2.2",
+    "openai": "^4.96.0",
+    "pizzip": "^3.1.8",
+    "postgres": "^3.4.5",
+    "zod": "^3.24.4"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.17",
+    "drizzle-kit": "^0.31.1",
+    "tsx": "^4.19.4",
+    "typescript": "^5.8.3",
+    "vitest": "^3.1.3"
+  }
+}

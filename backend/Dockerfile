@@ -1,17 +1,15 @@
-FROM python:3.12-slim
+FROM node:22-alpine
 
 WORKDIR /app
 
-ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1
+COPY package*.json ./
+RUN npm ci
 
-COPY requirements.txt /app/requirements.txt
-RUN pip install --no-cache-dir -r /app/requirements.txt
+COPY . .
+RUN npm run build
 
-COPY . /app
+ENV NODE_ENV=production
 
 EXPOSE 8000
 
-# Run migrations on container start, then launch API
-CMD ["sh", "-c", "alembic upgrade head && python -m uvicorn app.main:app --host 0.0.0.0 --port 8000"]
-
+CMD ["node", "dist/index.js"]

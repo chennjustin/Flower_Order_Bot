@@ -20,13 +20,13 @@
 每次重構前後，至少要執行以下命令（在 repo root）：
 
 ```bash
-pytest backend/tests/test_openapi_contract.py
+cd backend && npm run test -- tests/http_contract.test.ts
 ```
 
-建議額外執行（需可連到測試資料庫）：
+單元測試（不需資料庫）：
 
 ```bash
-pytest backend/tests/test_contract_smoke.py
+cd backend && npm run test -- tests/parse_order_draft.test.ts
 ```
 
 ## PR Checklist (Contract Related)
@@ -36,7 +36,7 @@ pytest backend/tests/test_contract_smoke.py
 - [ ] 若有契約變更，已更新本文件與對應測試
 - [ ] 已說明此次是「行為不變重構」或「契約升版變更」
 
-## Backend API Endpoints (FastAPI)
+## Backend API Endpoints (Fastify)
 
 ### Health
 - **GET** `/health`

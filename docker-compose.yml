@@ -20,11 +20,9 @@ services:
     env_file:
       - ./backend/.env
     environment:
-      # 與本機差異僅主機名：容器內用 compose 服務名 db（帳密見 backend/.env）
       POSTGRES_HOST: db
       POSTGRES_PORT: 5432
-      PYTHONDONTWRITEBYTECODE: "1"
-      PYTHONUNBUFFERED: "1"
+      NODE_ENV: development
     depends_on:
       db:
         condition: service_healthy
@@ -32,7 +30,8 @@ services:
       - "8000:8000"
     volumes:
       - ./backend:/app
-    command: sh -c "alembic upgrade head && python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
+      - /app/node_modules
+    command: sh -c "npm ci && npm run dev"
 
   frontend:
     build:

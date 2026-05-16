@@ -12,7 +12,7 @@
 - ✅ 管理訂單、顧客資料與歷史訊息
 - ✅ 提供 `/orders` 頁面查詢訂單，並支援 CSV 匯出（前端產生下載）與 DOCX 工單匯出（後端下載）
 - ✅ 前端以 **React** 搭配 **TypeScript** 與 **Vite** 實作，可即時查看與操作訂單系統
-- ✅ 使用 Alembic 作資料庫版本控制
+- ✅ 使用 Drizzle Kit 作資料庫版本控制（TypeScript 後端）
 
 ---
 
@@ -32,8 +32,7 @@
 ## ⚙️ 系統需求
 
 - 作業系統：MacOS / Linux / Windows
-- Python：3.8 以上（建議 3.12）
-- Node.js：22+（前端 Vite 8 要求 Node 20.19+ 或 22.12+，建議直接用 22 LTS）
+- Node.js：22+（後端 Fastify 與前端 Vite；建議 22 LTS）
 - **Docker Desktop**（建議）：用於本機 PostgreSQL 容器；亦可用於一鍵啟動前後端
 
 ---
@@ -50,17 +49,13 @@ cd <repository-folder>
 
 ```
 
-### 2. 建立虛擬環境（後端）
+### 2. 安裝後端依賴（Node / TypeScript）
 
 ```bash
 
 cd backend
 
-python3 -m venv venv
-
-source venv/bin/activate  # Windows 用 venv\Scripts\activate
-
-pip install -r requirements.txt
+npm install
 
 ```
 
@@ -87,9 +82,9 @@ npm install
 
 ### 資料庫相關（`POSTGRES_*`）
 
-後端會依 `POSTGRES_USER`、`POSTGRES_PASSWORD`、`POSTGRES_DB`、`POSTGRES_HOST`、`POSTGRES_PORT` 組出連線字串；若直接在 `.env` 設定 `DATABASE_URL` / `DATABASE_ALEM_URL`，則以該值為優先（見 `app/core/settings.py`）。
+後端會依 `POSTGRES_USER`、`POSTGRES_PASSWORD`、`POSTGRES_DB`、`POSTGRES_HOST`、`POSTGRES_PORT` 組出連線字串；若直接在 `.env` 設定 `DATABASE_URL`，則以該值為優先（見 `backend/src/config/settings.ts`）。
 
-- **本機只跑 uvicorn**：通常 `POSTGRES_HOST=localhost`，`POSTGRES_PORT` 對應到 Docker 對外映射的埠（預設為 `5434`，見下方 [資料庫與連線](#資料庫與連線)）。
+- **本機只跑 Node 後端**：通常 `POSTGRES_HOST=localhost`，`POSTGRES_PORT` 對應到 Docker 對外映射的埠（預設為 `5434`，見下方 [資料庫與連線](#資料庫與連線)）。
 - `**docker compose` 跑 backend 容器**：Compose 會覆寫 `POSTGRES_HOST=db`，容器內固定連 compose 服務名，埠為容器內 `5432`。
 
 ---
@@ -138,18 +133,18 @@ docker compose up -d db
    docker compose up -d db
 
   ```
-2. 套用 schema（在 `backend` 目錄、已啟用虛擬環境）：
+2. 套用 schema（在 `backend` 目錄；**全新空資料庫**才需要，若 DB 已是舊版 Alembic schema 可略過）：
   ```bash
 
    cd backend
 
-   alembic upgrade head
+   npm run migrate
 
   ```
-3. 啟動後端（**務必在 `backend` 目錄**，否則找不到 `app` 模組）：
+3. 啟動後端（在 `backend` 目錄）：
   ```bash
 
-   python -m uvicorn app.main:app --reload --port 8000
+   npm run dev
 
   ```
 4. 啟動前端：
@@ -165,15 +160,13 @@ docker compose up -d db
   - 後端：`http://localhost:8000`（Swagger UI 在根路徑 `/`）
   - Postgres（由主機連進容器）：`localhost:5434`（預設帳號／密碼／資料庫名見 `backend/.env` 與 `docker-compose.yml` 的 `db` 服務）
 
-修改過 `backend/.env` 後，請**重啟 uvicorn**，否則可能仍沿用舊連線設定。
+修改過 `backend/.env` 後，請**重啟後端程序**，否則可能仍沿用舊連線設定。
 
 #### 選用：寫入測試資料
 
 ```bash
 
-cd backend
-
-PYTHONPATH=. python app/seeds/seed_all.py
+curl "http://localhost:8000/generate-fake-data?count=10"
 
 ```
 
@@ -196,7 +189,7 @@ PYTHONPATH=. python app/seeds/seed_all.py
   ```
 3. 開發模式說明（Compose Dev）：
   - `backend` 與 `frontend` 都有掛載 volume，修改程式碼會即時反映
-  - backend 使用 `uvicorn --reload`
+  - backend 使用 `npm run dev`（tsx watch）
   - frontend 使用 `npm run dev`（Vite HMR）
   - 不需要每次改 code 都 `--build`
 4. 服務位址：
@@ -242,37 +235,18 @@ https://your-domain.example.com/callback
 
 ---
 
-## ✅ API 契約守門（重構必跑）
-
-重構期間請以 `docs/CONTRACT.md` 作為 API 行為基線，並在每次改動後執行：
-
-```bash
-cd backend
-make contract-check
-```
-
-若環境可連到測試資料庫，建議再補跑：
-
-```bash
-cd backend
-pytest tests/test_contract_smoke.py
-```
-
----
-
 ## 🧠 程式架構說明
 
-### `backend/app/` 後端（FastAPI）
+### `backend/src/` 後端（Fastify + TypeScript）
 
-- `main.py`：主應用與路由掛載
-- `api/v1/`：新版 API 路由入口（目前逐步轉接既有 `routes/`）
-- `models/`：資料表定義（User、Order、Message、Shipment 等）
-- `routes/`：API 路由模組（linebot、orders、health 等）
-- `services`：實作各種資料庫 CRUD 功能
-- `repositories/`：資料存取層（重構中，將逐步由 service 下沉查詢邏輯）
-- `schemas/`：定義資料 Input 與 Output 格式
-- `core/`：設定（含資料庫連線字串組裝）與共用依賴
-- `seeds/`：測試／假資料產生程式
+- `index.ts`：啟動、Drizzle migrate、監聽埠
+- `app.ts`：HTTP 路由與 Swagger
+- `db/schema.ts`：Drizzle ORM 資料表
+- `db/repositories.ts`：資料存取
+- `services/`：商業邏輯
+- `usecases/`：LINE 流程、GPT 整理訂單草稿
+- `adapters/`：OpenAI 等外部整合
+- `prompts/`：GPT 提示詞範本
 
 ### `frontend/` 前端（React + TypeScript）
 
