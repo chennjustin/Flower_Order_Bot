@@ -1,10 +1,26 @@
+import { useMemo, useState } from 'react'
 import OrderTable from '@/components/orders/OrderTable'
 import PageHeader from '@/components/layout/PageHeader'
 import StatisticsCards from '@/components/stats/StatisticsCards'
 import { useStats } from '@/hooks/useStats'
+import { useOrders } from '@/hooks/useOrders'
+
+export type QuickFilter = 'today' | 'pending' | null
 
 export default function DashboardPage() {
   const { data, isLoading, error } = useStats()
+  const ordersQuery = useOrders()
+  const [quickFilter, setQuickFilter] = useState<QuickFilter>(null)
+
+  const monthlyOrders = useMemo(() => {
+    const orders = ordersQuery.data ?? []
+    const now = new Date()
+    return orders.filter(o => {
+      if (!o.order_date) return false
+      const d = new Date(o.order_date)
+      return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth()
+    }).length
+  }, [ordersQuery.data])
 
   return (
     <>
@@ -18,9 +34,14 @@ export default function DashboardPage() {
         {isLoading && !data && (
           <div className="text-sm text-gray-500">載入中...</div>
         )}
-        <StatisticsCards stats={data} />
+        <StatisticsCards
+          stats={data}
+          monthlyOrders={monthlyOrders}
+          quickFilter={quickFilter}
+          onQuickFilter={setQuickFilter}
+        />
         <div className="mt-8">
-          <OrderTable />
+          <OrderTable quickFilter={quickFilter} onQuickFilterClear={() => setQuickFilter(null)} />
         </div>
       </div>
     </>
