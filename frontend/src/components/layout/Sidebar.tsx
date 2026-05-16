@@ -20,10 +20,10 @@ const PRIMARY_MENU: MenuItem[] = [
   { label: '首頁', icon: Home, route: '/' },
   { label: '訂單管理', icon: ShoppingBag, route: '/orders' },
   { label: '顧客溝通', icon: MessageCircle, route: '/messages' },
-  { label: '訂單欄位設定', icon: MessageCircle, route: '/settings/order-fields' },
 ]
 
 const SECONDARY_MENU: MenuItem[] = [
+  { label: '訂單欄位設定', icon: MessageCircle, route: '/settings/order-fields' },
   { label: '統計資料', icon: BarChart2, route: '/stats' },
 ]
 
