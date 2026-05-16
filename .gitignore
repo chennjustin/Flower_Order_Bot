@@ -54,3 +54,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Uploaded media
+backend/uploads/
