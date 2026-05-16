@@ -23,6 +23,7 @@ const PRIMARY_MENU: MenuItem[] = [
 ]
 
 const SECONDARY_MENU: MenuItem[] = [
+  { label: '訂單欄位設定', icon: MessageCircle, route: '/settings/order-fields' },
   { label: '統計資料', icon: BarChart2, route: '/stats' },
 ]
 
