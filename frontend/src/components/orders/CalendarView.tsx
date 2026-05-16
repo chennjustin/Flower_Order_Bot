@@ -1,8 +1,9 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import type { Order } from '@/types/domain'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { normalizeStatus, statusBadgeClasses, statusText } from '@/utils/orderStatus'
-import { toLocalDateKey } from '@/utils/datetime'
+import { formatHeaderDate, toLocalDateKey } from '@/utils/datetime'
 import { cn } from '@/lib/utils'
 
 interface CalendarViewProps {
@@ -13,6 +14,109 @@ interface CalendarViewProps {
 }
 
 const WEEKDAY_LABELS = ['日', '一', '二', '三', '四', '五', '六'] as const
+const MAX_VISIBLE_IN_CELL = 3
+
+interface OrderPillProps {
+  order: Order
+  onSelect: (order: Order) => void
+  stopTrigger?: boolean
+}
+
+function OrderPill({ order, onSelect, stopTrigger = false }: OrderPillProps) {
+  const bucket = normalizeStatus(order.order_status as unknown as string)
+  return (
+    <button
+      type="button"
+      onClick={e => {
+        if (stopTrigger) e.stopPropagation()
+        onSelect(order)
+      }}
+      className={cn(
+        'mb-0.5 w-full truncate rounded px-1.5 py-0.5 text-left text-xs font-bold transition hover:opacity-80',
+        statusBadgeClasses(bucket),
+      )}
+      title={`${order.customer_name} - ${statusText(bucket)}`}
+    >
+      {order.customer_name}
+    </button>
+  )
+}
+
+interface CalendarDayCellProps {
+  day: Date
+  dayOrders: Order[]
+  isToday: boolean
+  onOrderClick?: (order: Order) => void
+}
+
+function CalendarDayCell({ day, dayOrders, isToday, onOrderClick }: CalendarDayCellProps) {
+  const [open, setOpen] = useState(false)
+  const hasOverflow = dayOrders.length > MAX_VISIBLE_IN_CELL
+  const visibleOrders = dayOrders.slice(0, MAX_VISIBLE_IN_CELL)
+  const hiddenCount = dayOrders.length - MAX_VISIBLE_IN_CELL
+
+  function selectOrder(order: Order) {
+    onOrderClick?.(order)
+    setOpen(false)
+  }
+
+  const cellClassName = cn(
+    'flex min-h-[90px] w-full flex-col rounded-xl border border-[rgba(175,175,175,0.3)] p-2 text-left transition-colors',
+    isToday ? 'bg-[#D8EAFF]' : 'bg-white',
+    hasOverflow && 'cursor-pointer hover:ring-1 hover:ring-[#6168FC]/40',
+  )
+
+  const cellBody = (
+    <>
+      <div className={cn('mb-1.5 shrink-0 text-sm font-bold', isToday ? 'text-[#6168FC]' : 'text-black/60')}>
+        {day.getDate()}
+      </div>
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+        {visibleOrders.map(order => (
+          <OrderPill
+            key={order.id}
+            order={order}
+            onSelect={selectOrder}
+            stopTrigger={hasOverflow}
+          />
+        ))}
+        {hasOverflow && (
+          <span className="mt-auto shrink-0 pt-0.5 text-xs font-bold text-[#6168FC]">
+            +{hiddenCount} 筆
+          </span>
+        )}
+      </div>
+    </>
+  )
+
+  if (!hasOverflow) {
+    return <div className={cellClassName}>{cellBody}</div>
+  }
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button type="button" className={cellClassName} aria-label={`${formatHeaderDate(day)}，共 ${dayOrders.length} 筆訂單`}>
+          {cellBody}
+        </button>
+      </PopoverTrigger>
+      <PopoverContent
+        side="bottom"
+        align="start"
+        className="z-[1050] w-[220px] border border-[rgba(175,175,175,0.3)] p-2 shadow-[0_4px_12px_rgba(0,0,0,0.15)]"
+      >
+        <p className="mb-2 px-1 text-sm font-bold text-[#6168FC] font-['Noto_Sans_TC',sans-serif]">
+          {formatHeaderDate(day)} · {dayOrders.length} 筆
+        </p>
+        <div className="flex max-h-[220px] flex-col gap-0.5 overflow-y-auto">
+          {dayOrders.map(order => (
+            <OrderPill key={order.id} order={order} onSelect={selectOrder} />
+          ))}
+        </div>
+      </PopoverContent>
+    </Popover>
+  )
+}
 
 export default function CalendarView({
   orders,
@@ -73,12 +177,9 @@ export default function CalendarView({
         </button>
       </div>
 
-      <div className="grid grid-cols-7 gap-1.5 mb-1.5">
+      <div className="mb-1.5 grid grid-cols-7 gap-1.5">
         {WEEKDAY_LABELS.map(label => (
-          <div
-            key={label}
-            className="py-1 text-center text-sm font-bold text-black/40"
-          >
+          <div key={label} className="py-1 text-center text-sm font-bold text-black/40">
             {label}
           </div>
         ))}
@@ -92,42 +193,13 @@ export default function CalendarView({
           const isToday = key === todayKey
 
           return (
-            <div
+            <CalendarDayCell
               key={key}
-              className={cn(
-                'min-h-[90px] rounded-xl border border-[rgba(175,175,175,0.3)] p-2 transition-colors',
-                isToday ? 'bg-[#D8EAFF]' : 'bg-white',
-              )}
-            >
-              <div
-                className={cn(
-                  'mb-1.5 text-sm font-bold',
-                  isToday ? 'text-[#6168FC]' : 'text-black/60',
-                )}
-              >
-                {day.getDate()}
-              </div>
-              {dayOrders.slice(0, 3).map(order => {
-                const bucket = normalizeStatus(order.order_status as unknown as string)
-                return (
-                  <button
-                    key={order.id}
-                    type="button"
-                    onClick={() => onOrderClick?.(order)}
-                    className={cn(
-                      'mb-0.5 w-full truncate rounded px-1.5 py-0.5 text-left text-xs font-bold transition hover:opacity-80',
-                      statusBadgeClasses(bucket),
-                    )}
-                    title={`${order.customer_name} - ${statusText(bucket)}`}
-                  >
-                    {order.customer_name}
-                  </button>
-                )
-              })}
-              {dayOrders.length > 3 && (
-                <div className="text-xs text-black/40">+{dayOrders.length - 3} 筆</div>
-              )}
-            </div>
+              day={day}
+              dayOrders={dayOrders}
+              isToday={isToday}
+              onOrderClick={onOrderClick}
+            />
           )
         })}
       </div>
