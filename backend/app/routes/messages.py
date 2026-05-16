@@ -8,12 +8,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.core.deps import get_settings
-from app.enums.chat import ChatRoomStage
 from app.schemas.chat import (
     ChatMessageCreate,
     ChatMessageOut,
     ChatRoomOut,
     StaffChatImageUploadOut,
+    SwitchModeBody,
 )
 from app.services.message_service import (
     create_staff_message,
@@ -84,6 +84,10 @@ async def post_message(
     
 
 @api_router.post("/{room_id}/switch_mode", response_model=dict)
-async def switch_mode(room_id: int, body: ChatRoomStage, db: AsyncSession = Depends(get_db)):
-    await switch_chat_room_mode(db, room_id, body)
+async def switch_mode(
+    room_id: int,
+    body: SwitchModeBody,
+    db: AsyncSession = Depends(get_db),
+):
+    await switch_chat_room_mode(db, room_id, body.stage)
     return {"message": "success"}

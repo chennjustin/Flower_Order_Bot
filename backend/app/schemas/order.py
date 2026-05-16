@@ -59,8 +59,8 @@ class OrderDraftCreate(OrderDraftBase):
 class OrderDraftOut(OrderDraftBase):
     id: int
     order_date: datetime
-    pay_way: Optional[str]
-    weekday: Optional[str]
+    pay_way: Optional[str] = None
+    weekday: Optional[str] = None
 
 """
 Order:
@@ -104,5 +104,5 @@ class OrderOut(OrderBase):
     id: int
     order_date: datetime
     order_status: OrderStatus
-    pay_way: Optional[str]
-    weekday: Optional[str]
+    pay_way: Optional[str] = None
+    weekday: Optional[str] = None

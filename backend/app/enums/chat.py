@@ -16,5 +16,13 @@ class ChatMessageDirection(str, Enum):
     INCOMING = "INCOMING"
     OUTGOING_BY_BOT = "OUTGOING_BY_BOT"
     OUTGOING_BY_STORE = "OUTGOING_BY_STORE"
-    # 相容舊程式／舊 prompt 字串
-    OUTGOING_BY_STAFF = "OUTGOING_BY_STORE" 
+    # 舊庫／舊資料可能仍存此值（與 OUTGOING_BY_STORE 語意相同）
+    OUTGOING_BY_STAFF = "OUTGOING_BY_STAFF"
+
+
+def normalize_chat_message_direction(value: str | ChatMessageDirection) -> ChatMessageDirection:
+    if isinstance(value, ChatMessageDirection):
+        return value
+    if value == "OUTGOING_BY_STAFF":
+        return ChatMessageDirection.OUTGOING_BY_STORE
+    return ChatMessageDirection(value)

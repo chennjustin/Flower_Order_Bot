@@ -172,7 +172,6 @@ function formStateToUpdate(form: FormState): OrderDraftUpdate {
     send_datetime: combineDateTimeIso(form.send_datetime_date, form.send_datetime_time),
     delivery_address: form.delivery_address || null,
     pay_way: form.pay_way || null,
-    pay_way_id: 0,
   }
 }
 
