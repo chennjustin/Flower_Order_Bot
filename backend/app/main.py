@@ -18,8 +18,16 @@ class EnsureCorsHeadersMiddleware(BaseHTTPMiddleware):
     """
 
     async def dispatch(self, request: Request, call_next):
-        response = await call_next(request)
         origin = request.headers.get("origin")
+        try:
+            response = await call_next(request)
+        except Exception:
+            from starlette.responses import JSONResponse
+
+            response = JSONResponse(
+                status_code=500,
+                content={"detail": "Internal Server Error"},
+            )
         if not origin:
             return response
         if any(k.lower() == "access-control-allow-origin" for k in response.headers.keys()):
