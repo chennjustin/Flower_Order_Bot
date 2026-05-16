@@ -15,25 +15,21 @@ export interface OrderFieldRegistryEntry {
 }
 
 /**
- * Canonical field catalog — fixed 18 keys, no add/remove in settings UI.
+ * Canonical field catalog — fixed keys, no add/remove in settings UI.
  * Order in this array is the default display sequence.
  */
 export const ORDER_FIELD_REGISTRY: readonly OrderFieldRegistryEntry[] = [
   { key: 'id', label: '訂單編號', hidePolicy: 'optional', editable: false },
   { key: 'customer_name', label: '顧客姓名', hidePolicy: 'never', editable: true },
-  { key: 'customer_phone', label: '顧客電話', hidePolicy: 'optional', editable: true },
-  { key: 'receiver_name', label: '收件人姓名', hidePolicy: 'optional', editable: true },
-  { key: 'receiver_phone', label: '收件人電話', hidePolicy: 'optional', editable: true },
+  { key: 'customer_phone', label: '顧客電話', hidePolicy: 'never', editable: true },
   { key: 'item', label: '品項', hidePolicy: 'never', editable: true },
   { key: 'quantity', label: '數量', hidePolicy: 'optional', editable: true },
   { key: 'note', label: '備註', hidePolicy: 'optional', editable: true },
-  { key: 'card_message', label: '卡片訊息', hidePolicy: 'optional', editable: true },
   { key: 'shipment_method', label: '取貨方式', hidePolicy: 'optional', editable: true },
   { key: 'send_datetime', label: '取貨時間', hidePolicy: 'never', editable: true },
   { key: 'total_amount', label: '總金額', hidePolicy: 'never', editable: true },
   { key: 'pay_way', label: '付款方式', hidePolicy: 'optional', editable: true },
   { key: 'pay_status', label: '付款狀態', hidePolicy: 'optional', editable: true },
-  { key: 'receipt_address', label: '收據地址', hidePolicy: 'optional', editable: true },
   { key: 'delivery_address', label: '送貨地址', hidePolicy: 'optional', editable: true },
   { key: 'order_date', label: '訂單日期', hidePolicy: 'optional', editable: false },
   { key: 'order_status', label: '狀態', hidePolicy: 'never', editable: false },
@@ -42,6 +38,7 @@ export const ORDER_FIELD_REGISTRY: readonly OrderFieldRegistryEntry[] = [
 /** Fields that cannot be hidden (eye toggle disabled). */
 export const LOCKED_VISIBLE_KEYS: readonly OrderFieldKey[] = [
   'customer_name',
+  'customer_phone',
   'item',
   'total_amount',
   'order_status',
@@ -52,8 +49,18 @@ export const LOCKED_VISIBLE_KEYS: readonly OrderFieldKey[] = [
 export const READ_ONLY_KEYS: readonly OrderFieldKey[] = ['id', 'order_date'] as const
 
 /**
+ * Removed from catalog v1 — stripped when loading saved config.
+ * Kept for reference until DB migration removes these columns.
+ */
+export const REMOVED_FIELD_KEYS = [
+  'receiver_name',
+  'receiver_phone',
+  'card_message',
+  'receipt_address',
+] as const
+
+/**
  * Phase 2 surface hints — not enforced in Phase 1.
- * Documents where each field will appear once consumers are wired.
  */
 export const SURFACE_NOTES: Partial<
   Record<
@@ -61,10 +68,6 @@ export const SURFACE_NOTES: Partial<
     { list?: boolean; draft?: boolean; csv?: boolean; docx?: boolean; line?: boolean }
   >
 > = {
-  receiver_name: { list: false, csv: false },
-  receiver_phone: { list: false, csv: false },
-  card_message: { list: false, csv: false },
-  receipt_address: { list: false, csv: false },
   delivery_address: { list: false, csv: false },
   pay_status: { draft: false, csv: false, docx: false },
 }
@@ -107,7 +110,7 @@ export function getDefaultConfig(): OrderDisplayConfig {
   return { version: 1, fields }
 }
 
-/** All valid keys in catalog order (for merge/strip logic in Step 3). */
+/** All valid keys in catalog order (for merge/strip logic). */
 export function getAllFieldKeys(): OrderFieldKey[] {
   return ORDER_FIELD_REGISTRY.map(entry => entry.key)
 }

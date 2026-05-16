@@ -54,3 +54,33 @@ export function fieldLabelClass(visible: boolean) {
 export function fieldIconClass(visible: boolean) {
   return visible ? 'text-black/60' : 'text-black/38'
 }
+
+/** Drag handle (ChevronsUpDown) — bolder stroke in settings list. */
+export const dragHandleClass = 'text-black/60'
+
+/** Eye icon in edit mode: locked = grayscale; visible toggleable = black bold. */
+export function eyeIconClass(locked: boolean, visible: boolean, isEditMode: boolean) {
+  if (!isEditMode) {
+    return fieldIconClass(visible)
+  }
+  if (locked) {
+    return 'text-black/30 grayscale'
+  }
+  if (visible) {
+    return 'text-black'
+  }
+  return 'text-black/38'
+}
+
+export const eyeIconStroke = (locked: boolean, visible: boolean, isEditMode: boolean) => {
+  if (!isEditMode) {
+    return 2
+  }
+  if (locked) {
+    return 2
+  }
+  if (visible) {
+    return 3
+  }
+  return 2
+}

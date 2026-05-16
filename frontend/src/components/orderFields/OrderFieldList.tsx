@@ -20,10 +20,15 @@ import { useOrderDisplayConfig } from '@/context/OrderDisplayConfigContext'
 import { cn } from '@/lib/utils'
 import type { OrderFieldConfigItem } from '@/types/orderDisplay'
 import {
-  fieldIconClass,
+  dragHandleClass,
+  eyeIconClass,
+  eyeIconStroke,
   fieldLabelClass,
   settingsSectionTitleClass,
 } from '@/components/orderFields/orderFieldSettingsStyles'
+
+/** Bolder drag-handle stroke (view + edit). */
+const DRAG_STROKE = 3
 
 interface OrderFieldListProps {
   /** When false, list is display-only (no drag or visibility toggle). */
@@ -35,35 +40,77 @@ interface FieldRowProps {
   onToggleVisible: (key: OrderFieldConfigItem['key']) => void
 }
 
+interface EyeToggleProps {
+  locked: boolean
+  visible: boolean
+  isEditMode: boolean
+  label: string
+  onToggle: () => void
+}
+
+function EyeToggle({ locked, visible, isEditMode, label, onToggle }: EyeToggleProps) {
+  const stroke = eyeIconStroke(locked, visible, isEditMode)
+  const iconClass = cn('h-5 w-5', eyeIconClass(locked, visible, isEditMode))
+
+  if (!isEditMode || locked) {
+    return (
+      <span
+        className={cn(
+          'ml-auto flex h-5 w-5 flex-shrink-0 items-center justify-center',
+          locked && isEditMode && 'grayscale',
+        )}
+        aria-hidden
+      >
+        {visible ? (
+          <Eye className={iconClass} strokeWidth={stroke} />
+        ) : (
+          <EyeOff className={iconClass} strokeWidth={stroke} />
+        )}
+      </span>
+    )
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-label={visible ? `隱藏${label}` : `顯示${label}`}
+      aria-pressed={visible}
+      className="ml-auto flex h-5 w-5 flex-shrink-0 cursor-pointer items-center justify-center border-0 bg-transparent p-0"
+    >
+      {visible ? (
+        <Eye className={iconClass} strokeWidth={stroke} />
+      ) : (
+        <EyeOff className={iconClass} strokeWidth={stroke} />
+      )}
+    </button>
+  )
+}
+
 function ReadOnlyFieldRow({ field }: { field: OrderFieldConfigItem }) {
   const label = getRegistryEntry(field.key).label
   const visible = field.visible
+  const locked = isFieldLockedVisible(field.key)
 
   return (
     <li className="flex h-[30px] items-center gap-2 py-1">
       <span
         className={cn(
           'flex h-5 w-5 flex-shrink-0 items-center justify-center',
-          fieldIconClass(visible),
+          dragHandleClass,
         )}
         aria-hidden
       >
-        <ChevronsUpDown className="h-5 w-5" strokeWidth={2} />
+        <ChevronsUpDown className="h-5 w-5" strokeWidth={DRAG_STROKE} />
       </span>
       <span className={fieldLabelClass(visible)}>{label}</span>
-      <span
-        className={cn(
-          'ml-auto flex h-5 w-5 flex-shrink-0 items-center justify-center',
-          fieldIconClass(visible),
-        )}
-        aria-hidden
-      >
-        {visible ? (
-          <Eye className="h-5 w-5" strokeWidth={2} />
-        ) : (
-          <EyeOff className="h-5 w-5" strokeWidth={2} />
-        )}
-      </span>
+      <EyeToggle
+        locked={locked}
+        visible={visible}
+        isEditMode={false}
+        label={label}
+        onToggle={() => {}}
+      />
     </li>
   )
 }
@@ -103,33 +150,22 @@ function EditableFieldRow({ field, onToggleVisible }: FieldRowProps) {
         className={cn(
           'flex h-5 w-5 flex-shrink-0 cursor-grab items-center justify-center border-0 bg-transparent p-0',
           'active:cursor-grabbing',
-          fieldIconClass(visible),
+          dragHandleClass,
         )}
         aria-label={`拖曳調整${label}順序`}
         {...attributes}
         {...listeners}
       >
-        <ChevronsUpDown className="h-5 w-5" strokeWidth={2} />
+        <ChevronsUpDown className="h-5 w-5" strokeWidth={DRAG_STROKE} />
       </button>
       <span className={fieldLabelClass(visible)}>{label}</span>
-      <button
-        type="button"
-        disabled={locked}
-        onClick={() => onToggleVisible(field.key)}
-        aria-label={visible ? `隱藏${label}` : `顯示${label}`}
-        aria-pressed={visible}
-        className={cn(
-          'ml-auto flex h-5 w-5 flex-shrink-0 items-center justify-center border-0 bg-transparent p-0',
-          locked ? 'cursor-not-allowed opacity-40' : 'cursor-pointer',
-          fieldIconClass(visible),
-        )}
-      >
-        {visible ? (
-          <Eye className="h-5 w-5" strokeWidth={2} />
-        ) : (
-          <EyeOff className="h-5 w-5" strokeWidth={2} />
-        )}
-      </button>
+      <EyeToggle
+        locked={locked}
+        visible={visible}
+        isEditMode
+        label={label}
+        onToggle={() => onToggleVisible(field.key)}
+      />
     </li>
   )
 }
