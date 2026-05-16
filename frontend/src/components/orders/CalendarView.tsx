@@ -32,7 +32,7 @@ function OrderPill({ order, onSelect, stopTrigger = false }: OrderPillProps) {
         onSelect(order)
       }}
       className={cn(
-        'mb-0.5 w-full truncate rounded px-1.5 py-0.5 text-left text-xs font-bold transition hover:opacity-80',
+        'mb-0.5 box-border block w-full min-w-0 max-w-full shrink-0 self-stretch truncate rounded px-1.5 py-0.5 text-left text-xs font-bold transition hover:opacity-80',
         statusBadgeClasses(bucket),
       )}
       title={`${order.customer_name} - ${statusText(bucket)}`}
@@ -61,9 +61,10 @@ function CalendarDayCell({ day, dayOrders, isToday, onOrderClick }: CalendarDayC
   }
 
   const cellClassName = cn(
-    'flex min-h-[90px] w-full flex-col rounded-xl border border-[rgba(175,175,175,0.3)] p-2 text-left transition-colors',
+    'flex min-h-[90px] w-full min-w-0 flex-col rounded-xl border border-[rgba(175,175,175,0.3)] p-2 text-left transition-colors',
     isToday ? 'bg-[#D8EAFF]' : 'bg-white',
-    hasOverflow && 'cursor-pointer hover:ring-1 hover:ring-[#6168FC]/40',
+    hasOverflow &&
+      'cursor-pointer hover:ring-1 hover:ring-[#6168FC]/40 data-[state=open]:w-full',
   )
 
   const cellBody = (
@@ -71,7 +72,7 @@ function CalendarDayCell({ day, dayOrders, isToday, onOrderClick }: CalendarDayC
       <div className={cn('mb-1.5 shrink-0 text-sm font-bold', isToday ? 'text-[#6168FC]' : 'text-black/60')}>
         {day.getDate()}
       </div>
-      <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+      <div className="flex w-full min-w-0 flex-1 flex-col items-stretch overflow-hidden">
         {visibleOrders.map(order => (
           <OrderPill
             key={order.id}
@@ -96,9 +97,14 @@ function CalendarDayCell({ day, dayOrders, isToday, onOrderClick }: CalendarDayC
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <button type="button" className={cellClassName} aria-label={`${formatHeaderDate(day)}，共 ${dayOrders.length} 筆訂單`}>
+        <div
+          role="button"
+          tabIndex={0}
+          className={cellClassName}
+          aria-label={`${formatHeaderDate(day)}，共 ${dayOrders.length} 筆訂單`}
+        >
           {cellBody}
-        </button>
+        </div>
       </PopoverTrigger>
       <PopoverContent
         side="bottom"
@@ -193,13 +199,14 @@ export default function CalendarView({
           const isToday = key === todayKey
 
           return (
-            <CalendarDayCell
-              key={key}
-              day={day}
-              dayOrders={dayOrders}
-              isToday={isToday}
-              onOrderClick={onOrderClick}
-            />
+            <div key={key} className="min-w-0">
+              <CalendarDayCell
+                day={day}
+                dayOrders={dayOrders}
+                isToday={isToday}
+                onOrderClick={onOrderClick}
+              />
+            </div>
           )
         })}
       </div>
