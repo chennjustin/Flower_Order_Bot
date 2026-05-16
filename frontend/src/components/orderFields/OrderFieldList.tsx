@@ -14,11 +14,16 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { Eye, EyeOff, GripVertical } from 'lucide-react'
+import { ChevronsUpDown, Eye, EyeOff } from 'lucide-react'
 import { getRegistryEntry, isFieldLockedVisible } from '@/config/orderDisplayFields'
 import { useOrderDisplayConfig } from '@/context/OrderDisplayConfigContext'
 import { cn } from '@/lib/utils'
 import type { OrderFieldConfigItem } from '@/types/orderDisplay'
+import {
+  fieldIconClass,
+  fieldLabelClass,
+  settingsSectionTitleClass,
+} from '@/components/orderFields/orderFieldSettingsStyles'
 
 interface OrderFieldListProps {
   /** When false, list is display-only (no drag or visibility toggle). */
@@ -27,39 +32,33 @@ interface OrderFieldListProps {
 
 interface FieldRowProps {
   field: OrderFieldConfigItem
-  isEditable: boolean
   onToggleVisible: (key: OrderFieldConfigItem['key']) => void
 }
 
 function ReadOnlyFieldRow({ field }: { field: OrderFieldConfigItem }) {
   const label = getRegistryEntry(field.key).label
+  const visible = field.visible
 
   return (
-    <li
-      className={cn(
-        'flex items-center gap-3 rounded-lg px-2 py-2.5',
-        !field.visible && 'opacity-70',
-      )}
-    >
-      <span
-        className="flex h-9 w-9 flex-shrink-0 items-center justify-center text-black/20"
-        aria-hidden
-      >
-        <GripVertical className="h-5 w-5" strokeWidth={2} />
-      </span>
+    <li className="flex h-[30px] items-center gap-2 py-1">
       <span
         className={cn(
-          'flex-1 text-base font-medium font-["Noto_Sans_TC",sans-serif]',
-          field.visible ? 'text-black' : 'text-black/40',
+          'flex h-5 w-5 flex-shrink-0 items-center justify-center',
+          fieldIconClass(visible),
         )}
-      >
-        {label}
-      </span>
-      <span
-        className="flex h-9 w-9 flex-shrink-0 items-center justify-center text-black/25"
         aria-hidden
       >
-        {field.visible ? (
+        <ChevronsUpDown className="h-5 w-5" strokeWidth={2} />
+      </span>
+      <span className={fieldLabelClass(visible)}>{label}</span>
+      <span
+        className={cn(
+          'ml-auto flex h-5 w-5 flex-shrink-0 items-center justify-center',
+          fieldIconClass(visible),
+        )}
+        aria-hidden
+      >
+        {visible ? (
           <Eye className="h-5 w-5" strokeWidth={2} />
         ) : (
           <EyeOff className="h-5 w-5" strokeWidth={2} />
@@ -72,6 +71,7 @@ function ReadOnlyFieldRow({ field }: { field: OrderFieldConfigItem }) {
 function EditableFieldRow({ field, onToggleVisible }: FieldRowProps) {
   const label = getRegistryEntry(field.key).label
   const locked = isFieldLockedVisible(field.key)
+  const visible = field.visible
 
   const {
     attributes,
@@ -93,43 +93,38 @@ function EditableFieldRow({ field, onToggleVisible }: FieldRowProps) {
       ref={setNodeRef}
       style={style}
       className={cn(
-        'flex items-center gap-3 rounded-lg px-2 py-2.5',
-        !field.visible && 'opacity-70',
-        isDragging && 'z-10 bg-white shadow-md',
+        'flex h-[30px] items-center gap-2 py-1',
+        isDragging && 'z-10 rounded-lg bg-white shadow-md',
       )}
     >
       <button
         type="button"
         ref={setActivatorNodeRef}
-        className="flex h-9 w-9 flex-shrink-0 cursor-grab items-center justify-center rounded-md border-0 bg-transparent text-[#999] active:cursor-grabbing hover:bg-black/5"
+        className={cn(
+          'flex h-5 w-5 flex-shrink-0 cursor-grab items-center justify-center border-0 bg-transparent p-0',
+          'active:cursor-grabbing',
+          fieldIconClass(visible),
+        )}
         aria-label={`拖曳調整${label}順序`}
         {...attributes}
         {...listeners}
       >
-        <GripVertical className="h-5 w-5" strokeWidth={2} />
+        <ChevronsUpDown className="h-5 w-5" strokeWidth={2} />
       </button>
-      <span
-        className={cn(
-          'flex-1 text-base font-medium font-["Noto_Sans_TC",sans-serif]',
-          field.visible ? 'text-black' : 'text-black/40',
-        )}
-      >
-        {label}
-      </span>
+      <span className={fieldLabelClass(visible)}>{label}</span>
       <button
         type="button"
         disabled={locked}
         onClick={() => onToggleVisible(field.key)}
-        aria-label={field.visible ? `隱藏${label}` : `顯示${label}`}
-        aria-pressed={field.visible}
+        aria-label={visible ? `隱藏${label}` : `顯示${label}`}
+        aria-pressed={visible}
         className={cn(
-          'flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-md border-0 bg-transparent transition-colors',
-          locked
-            ? 'cursor-not-allowed text-black/25'
-            : 'cursor-pointer text-[#555] hover:bg-black/5',
+          'ml-auto flex h-5 w-5 flex-shrink-0 items-center justify-center border-0 bg-transparent p-0',
+          locked ? 'cursor-not-allowed opacity-40' : 'cursor-pointer',
+          fieldIconClass(visible),
         )}
       >
-        {field.visible ? (
+        {visible ? (
           <Eye className="h-5 w-5" strokeWidth={2} />
         ) : (
           <EyeOff className="h-5 w-5" strokeWidth={2} />
@@ -173,13 +168,12 @@ export default function OrderFieldList({ isEditable = false }: OrderFieldListPro
   }
 
   const listContent = (
-    <ul className="m-0 flex list-none flex-col gap-1">
+    <ul className="m-0 flex list-none flex-col gap-2">
       {sortedDraftFields.map(field =>
         isEditable ? (
           <EditableFieldRow
             key={field.key}
             field={field}
-            isEditable
             onToggleVisible={toggleVisible}
           />
         ) : (
@@ -190,23 +184,23 @@ export default function OrderFieldList({ isEditable = false }: OrderFieldListPro
   )
 
   return (
-    <div className="flex flex-col gap-3">
-      <h3 className="m-0 text-lg font-bold text-[#333] font-['Noto_Sans_TC',sans-serif]">
-        選擇欄位與順序
-      </h3>
-      {isEditable ? (
-        <DndContext
-          sensors={sensors}
-          collisionDetection={closestCenter}
-          onDragEnd={handleDragEnd}
-        >
-          <SortableContext items={sortableIds} strategy={verticalListSortingStrategy}>
-            {listContent}
-          </SortableContext>
-        </DndContext>
-      ) : (
-        listContent
-      )}
-    </div>
+    <>
+      <h3 className={settingsSectionTitleClass}>選擇欄位與順序</h3>
+      <div className="mt-4 flex-1">
+        {isEditable ? (
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
+          >
+            <SortableContext items={sortableIds} strategy={verticalListSortingStrategy}>
+              {listContent}
+            </SortableContext>
+          </DndContext>
+        ) : (
+          listContent
+        )}
+      </div>
+    </>
   )
 }

@@ -2,9 +2,14 @@ import { useState } from 'react'
 import { Check, Pencil, X } from 'lucide-react'
 import OrderFieldList from '@/components/orderFields/OrderFieldList'
 import PreviewPanel from '@/components/orderFields/PreviewPanel'
+import {
+  settingsCancelBtnClass,
+  settingsCardClass,
+  settingsEditBtnClass,
+  settingsSaveBtnClass,
+} from '@/components/orderFields/orderFieldSettingsStyles'
 import PageHeader from '@/components/layout/PageHeader'
 import { useOrderDisplayConfig } from '@/context/OrderDisplayConfigContext'
-import { cn } from '@/lib/utils'
 
 export default function OrderFieldSettingsPage() {
   const { hasChanges, resetDraft, save } = useOrderDisplayConfig()
@@ -27,47 +32,32 @@ export default function OrderFieldSettingsPage() {
   }
 
   return (
-    <>
+    <div className="min-h-screen bg-[#F7F7F7]">
       <PageHeader title="訂單欄位設定" />
-      <div className="mx-auto max-w-[1280px] px-4 pt-[160px] pb-12 sm:px-6">
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:items-stretch">
-          <section
-            className={cn(
-              'flex flex-col rounded-2xl border border-[#e0e3ed] bg-white p-6',
-              'shadow-[0_2px_8px_rgba(0,0,0,0.06)]',
-            )}
-          >
-            <div className="flex-1">
+      <div className="flex justify-center px-4 pb-12 pt-[136px]">
+        <div className="flex w-full max-w-[820px] flex-col items-center justify-center gap-6 lg:flex-row lg:items-stretch lg:gap-8">
+          <section className={settingsCardClass}>
+            <div className="flex flex-1 flex-col px-10 pt-8">
               <OrderFieldList isEditable={isEditing} />
             </div>
-            <div className="mt-6 flex flex-wrap justify-end gap-3 border-t border-[#e9e9e9] pt-5">
+            <div className="flex justify-center gap-4 px-10 pb-8 pt-6">
               {isEditing ? (
                 <>
                   <button
                     type="button"
                     onClick={handleCancel}
-                    className={cn(
-                      'inline-flex h-10 items-center gap-2 rounded-lg px-5 text-sm font-bold transition',
-                      "font-['Noto_Sans_TC',sans-serif]",
-                      'cursor-pointer bg-[#FCE8E8] text-[#AE1914] hover:opacity-90',
-                    )}
+                    className={settingsCancelBtnClass(true)}
                   >
-                    <X className="h-4 w-4" strokeWidth={2.5} />
+                    <X className="h-6 w-6 shrink-0" strokeWidth={2.5} />
                     取消
                   </button>
                   <button
                     type="button"
                     onClick={handleSave}
                     disabled={!hasChanges}
-                    className={cn(
-                      'inline-flex h-10 items-center gap-2 rounded-lg px-5 text-sm font-bold text-white transition',
-                      "font-['Noto_Sans_TC',sans-serif]",
-                      hasChanges
-                        ? 'cursor-pointer bg-[#6168FC] hover:bg-[#4F51FF]'
-                        : 'cursor-not-allowed bg-[#C5C7FF]',
-                    )}
+                    className={settingsSaveBtnClass(hasChanges)}
                   >
-                    <Check className="h-4 w-4" strokeWidth={2.5} />
+                    <Check className="h-6 w-6 shrink-0" strokeWidth={2.5} />
                     儲存
                   </button>
                 </>
@@ -75,29 +65,22 @@ export default function OrderFieldSettingsPage() {
                 <button
                   type="button"
                   onClick={handleStartEdit}
-                  className={cn(
-                    'inline-flex h-10 items-center gap-2 rounded-lg px-5 text-sm font-bold text-white transition',
-                    "font-['Noto_Sans_TC',sans-serif]",
-                    'cursor-pointer bg-[#6168FC] hover:bg-[#4F51FF]',
-                  )}
+                  className={settingsEditBtnClass()}
                 >
-                  <Pencil className="h-4 w-4" strokeWidth={2.5} />
+                  <Pencil className="h-6 w-6 shrink-0" strokeWidth={2.5} />
                   編輯
                 </button>
               )}
             </div>
           </section>
 
-          <section
-            className={cn(
-              'flex flex-col rounded-2xl border border-[#e0e3ed] bg-white p-6',
-              'shadow-[0_2px_8px_rgba(0,0,0,0.06)]',
-            )}
-          >
-            <PreviewPanel />
+          <section className={settingsCardClass}>
+            <div className="flex flex-1 flex-col px-10 pt-8">
+              <PreviewPanel />
+            </div>
           </section>
         </div>
       </div>
-    </>
+    </div>
   )
 }

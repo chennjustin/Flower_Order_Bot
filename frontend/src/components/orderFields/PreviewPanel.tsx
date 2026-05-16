@@ -1,8 +1,9 @@
 import { getRegistryEntry } from '@/config/orderDisplayFields'
 import { useOrderDisplayConfig } from '@/context/OrderDisplayConfigContext'
+import { settingsSectionTitleClass } from '@/components/orderFields/orderFieldSettingsStyles'
 
 /**
- * Live preview of visible field labels in display order (mockup right panel).
+ * Live preview of visible field labels in display order (Figma right panel).
  */
 export default function PreviewPanel() {
   const { sortedDraftFields } = useOrderDisplayConfig()
@@ -10,26 +11,28 @@ export default function PreviewPanel() {
   const visibleFields = sortedDraftFields.filter(field => field.visible)
 
   return (
-    <div className="flex flex-col gap-3">
-      <h3 className="m-0 text-lg font-bold text-[#333] font-['Noto_Sans_TC',sans-serif]">
-        預覽
-      </h3>
-      <div className="flex min-h-[320px] flex-1 flex-col gap-2">
+    <>
+      <h3 className={settingsSectionTitleClass}>預覽</h3>
+      <div className="mt-4 flex min-h-[442px] flex-1 flex-col gap-2">
         {visibleFields.length === 0 ? (
-          <p className="m-0 text-sm text-black/40 font-['Noto_Sans_TC',sans-serif]">
+          <p className="m-0 text-base font-bold leading-[140%] text-black/38 font-['Noto_Sans_TC',sans-serif]">
             目前沒有可見欄位
           </p>
         ) : (
           visibleFields.map(field => (
             <span
               key={field.key}
-              className="inline-flex w-full items-center justify-center rounded-lg bg-[#E8E8E8] px-4 py-3 text-center text-base font-medium text-[#555] font-['Noto_Sans_TC',sans-serif]"
+              className={[
+                'inline-flex h-[30px] w-fit items-center rounded-lg border border-[#B3B3B3]',
+                'px-2 py-1 text-base font-bold leading-[140%] text-black/60',
+                "font-['Noto_Sans_TC',sans-serif]",
+              ].join(' ')}
             >
               {getRegistryEntry(field.key).label}
             </span>
           ))
         )}
       </div>
-    </div>
+    </>
   )
 }
