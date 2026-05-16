@@ -38,10 +38,11 @@ export default function ChatRoom({
         <MessageList messages={messagesQuery.data ?? []} />
       )}
       <MessageInput
+        roomId={room.room_id}
         disabled={sendMutation.isPending}
-        onSend={async text => {
+        onSend={async body => {
           try {
-            await sendMutation.mutateAsync({ text, image_url: null })
+            await sendMutation.mutateAsync(body)
           } catch (err) {
             const msg = err instanceof Error ? err.message : String(err)
             alert(`送出訊息失敗：${msg}`)

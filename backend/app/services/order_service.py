@@ -17,7 +17,7 @@ from app.enums.order import OrderStatus
 from app.enums.shipment import ShipmentStatus
 from app.enums.chat import ChatMessageStatus, ChatRoomStage, ChatMessageDirection
 from app.utils.line_send_message import LINE_push_message
-from app.schemas.chat import ChatMessageBase
+from app.schemas.chat import ChatMessagePayload
 from app.repositories.order_repository import (
     get_latest_confirmed_order_by_room,
     get_latest_order_draft_by_room,
@@ -174,7 +174,7 @@ async def create_order_by_room(db: AsyncSession, room_id: int) -> list[str]:
     msg = f"訂單已經由後台送出囉～\n\n"
     if not line_uid:
         print("❗ 無法取得 LINE UID，無法推播訂單已送出提醒。")
-    LINE_push_message(line_uid, ChatMessageBase(text=msg))
+    LINE_push_message(line_uid, ChatMessagePayload(text=msg))
     print("已傳送訊息: ", msg)
     
     # 儲存提醒訊息的動作

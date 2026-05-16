@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.adapters.llm.openai_chat import complete_system_prompt
 from app.enums.chat import ChatMessageDirection, ChatMessageStatus
 from app.models.chat import ChatMessage, ChatRoom
-from app.schemas.chat import ChatMessageBase
+from app.schemas.chat import ChatMessagePayload
 from app.schemas.order import OrderDraftOut, OrderDraftUpdate
 from app.services.order_service import (
     create_order_draft_by_room_id,
@@ -131,17 +131,19 @@ async def organize_order_draft(db: AsyncSession, chat_room_id: int) -> OrderDraf
         print(warning_msg)
 
         line_uid = await get_line_uid_by_chatroom_id(db, chat_room.id)
-        if not line_uid:
+        if line_uid:
+            LINE_push_message(line_uid, ChatMessagePayload(text=warning_msg))
+        else:
             print("❗ 無法取得 LINE UID，無法推播缺漏提醒。")
-
-        LINE_push_message(line_uid, ChatMessageBase(text=warning_msg))
 
         tz = timezone(timedelta(hours=8))
         message = ChatMessage(
             room_id=chat_room.id,
             direction=ChatMessageDirection.OUTGOING_BY_BOT,
             text="[自動回覆已傳送]" + warning_msg,
-            image_url="",
+            image_url=None,
+            sticker_package_id=None,
+            sticker_id=None,
             status=ChatMessageStatus.PENDING,
             processed=True,
             created_at=datetime.now(tz).replace(tzinfo=None),

@@ -2,12 +2,18 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import datetime
 from typing import List, Optional
 
+from fastapi import HTTPException, status
+
 from app.models.chat import ChatRoom, ChatMessage
-from app.schemas.chat import ChatRoomOut, ChatMessageOut, ChatMessageBase
+from app.schemas.chat import (
+    ChatRoomOut,
+    ChatMessageOut,
+    ChatMessagePayload,
+    ChatMessageCreate,
+)
 from app.enums.chat import ChatMessageDirection
 from app.utils.line_send_message import LINE_push_message
 from app.services.user_service import get_user_by_line_uid, get_user_by_id
-from fastapi import HTTPException, status
 from app.repositories.chat_repository import (
     create_chat_message_entry as repo_create_chat_message_entry,
     create_chat_room as repo_create_chat_room,
@@ -20,6 +26,15 @@ from app.repositories.chat_repository import (
     touch_chat_room_updated_at,
 )
 
+
+def _payload_from_chat_row(message: ChatMessage) -> ChatMessagePayload:
+    return ChatMessagePayload(
+        text=message.text or None,
+        image_url=message.image_url or None,
+        sticker_package_id=message.sticker_package_id,
+        sticker_id=message.sticker_id,
+    )
+
 async def get_latest_message(db: AsyncSession, room_id: int) -> Optional[ChatMessageOut]:
     message = await get_latest_chat_message(db, room_id)
     
@@ -29,10 +44,7 @@ async def get_latest_message(db: AsyncSession, room_id: int) -> Optional[ChatMes
         id=message.id,
         direction=message.direction,
         user_avatar_url=None,
-        message=ChatMessageBase(
-            text=message.text,
-            image_url=message.image_url
-        ),
+        message=_payload_from_chat_row(message),
         status=message.status,
         created_at=message.created_at
     )
@@ -52,7 +64,7 @@ async def get_chat_room_list(db: AsyncSession) -> Optional[List[ChatRoomOut]]:
             unread_count=room.unread_count,
             status=room.stage,
             last_message={
-                "text": last_msg.message.text,
+                "text": last_msg.message.text or "",
                 "timestamp": last_msg.created_at,
             } if last_msg else None,
         ))
@@ -99,10 +111,7 @@ async def get_chat_messages(db: AsyncSession, room_id: int, after: Optional[date
             id=message.id,
             direction=message.direction,
             user_avatar_url=user_avatar_url,
-            message=ChatMessageBase(
-                text=message.text,
-                image_url=message.image_url
-            ),
+            message=_payload_from_chat_row(message),
             status=message.status,
             created_at=message.created_at
         ) for message in messages
@@ -114,47 +123,40 @@ async def switch_chat_room_mode(db: AsyncSession, room_id: int, mode: str) -> No
 async def create_chat_message_entry(
     db: AsyncSession,
     room_id: int,
-    data: ChatMessageBase,
-    direction: ChatMessageDirection
+    data: ChatMessagePayload,
+    direction: ChatMessageDirection,
 ) -> ChatMessage:
     return await repo_create_chat_message_entry(db, room_id, data, direction)
 
-async def create_staff_message(db: AsyncSession, room_id: int, data: ChatMessageBase) -> ChatMessageOut:
-    # 查找聊天室
+
+async def create_staff_message(
+    db: AsyncSession, room_id: int, body: ChatMessageCreate
+) -> ChatMessageOut:
+    payload = ChatMessagePayload.model_validate(body.model_dump())
     room = await get_chat_room_by_room_id(db, room_id)
     if not room:
         raise ValueError("Chat room not found")
-    
-    # 查找用戶
+
     user = await get_user_by_line_uid(db, room.user.line_uid)
     if not user:
         raise ValueError("User not found")
-    
-    # 發送訊息到 LINE
-    success = LINE_push_message(user.line_uid, data)
-    # if not success:
-        # raise ValueError("Failed to send message to LINE")
 
-    # 創建訊息
-    message = await create_chat_message_entry(
+    LINE_push_message(user.line_uid, payload)
+
+    message = await repo_create_chat_message_entry(
         db=db,
         room_id=room.id,
-        data=data,
-        direction=ChatMessageDirection.OUTGOING_BY_STAFF
+        data=payload,
+        direction=ChatMessageDirection.OUTGOING_BY_STAFF,
     )
-    
-    # 更新聊天室狀態
+
     await touch_chat_room_updated_at(db, room)
 
-    message_out = ChatMessageOut(
+    return ChatMessageOut(
         id=message.id,
         direction=message.direction,
-        user_avatar_url=None,  
-        message=ChatMessageBase(
-            text=message.text,
-            image_url=message.image_url
-        ),
+        user_avatar_url=None,
+        message=_payload_from_chat_row(message),
         status=message.status,
-        created_at=message.created_at
+        created_at=message.created_at,
     )
-    return message_out

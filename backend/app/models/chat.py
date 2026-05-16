@@ -46,6 +46,8 @@ class ChatMessage(Base):
     )
     text: Mapped[str] = mapped_column(Text)
     image_url: Mapped[str] = mapped_column(Text, nullable=True)
+    sticker_package_id: Mapped[str | None] = mapped_column(String, nullable=True)
+    sticker_id: Mapped[str | None] = mapped_column(String, nullable=True)
     line_msg_id: Mapped[str] = mapped_column(String, nullable=True)
     processed: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=now_taipei_naive)

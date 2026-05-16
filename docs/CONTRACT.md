@@ -87,8 +87,15 @@ Base prefix: `/chat_rooms`
   - Response model: `List[ChatMessageOut]`
 
 - **POST** `/chat_rooms/{room_id}/messages`
-  - Body: `ChatMessageBase`
-  - Response model: `ChatMessageOut`
+  - Body: `ChatMessageCreate`（擇一：`text`、`image_url`，或同時提供 `sticker_package_id` + `sticker_id`）
+  - Response model: `ChatMessageOut`（其中 `message` 為 `ChatMessagePayload`，可含貼圖欄位與 `image_url`）
+
+- **POST** `/chat_rooms/{room_id}/messages/upload_image`
+  - `multipart/form-data`，欄位名 `file`（JPEG／PNG／GIF／WebP，最大約 5MB）
+  - Response model: `StaffChatImageUploadOut`：`{ "image_url": "<PUBLIC_BASE_URL>/uploads/staff_chat/…>" }`
+  - **404**：chat room 不存在
+  - **400**：格式不符或空檔
+  - **413**：檔案過大
 
 - **POST** `/chat_rooms/{room_id}/switch_mode`
   - Body: `ChatRoomStage`

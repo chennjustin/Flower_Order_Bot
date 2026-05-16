@@ -1,9 +1,15 @@
+from pathlib import Path
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 
 from app.api.v1.router import api_router
+
+_uploads_root = Path(__file__).resolve().parent.parent / "uploads"
+_uploads_root.mkdir(parents=True, exist_ok=True)
 
 app = FastAPI(
     title="花店自動化系統 API Dashboard",
@@ -39,6 +45,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 app.add_middleware(EnsureCorsHeadersMiddleware)
+
+app.mount(
+    "/uploads",
+    StaticFiles(directory=str(_uploads_root)),
+    name="uploads",
+)
 
 # === 將 APIRouter 掛進來 =================================================
 app.include_router(api_router)

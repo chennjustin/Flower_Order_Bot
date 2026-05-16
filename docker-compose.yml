@@ -25,6 +25,8 @@ services:
       POSTGRES_PORT: 5432
       PYTHONDONTWRITEBYTECODE: "1"
       PYTHONUNBUFFERED: "1"
+      # LINE 使用者傳圖後下載存档；給前端／LINE ImageSendMessage 用的公開基底網址（ngrok 請改成 https）
+      PUBLIC_BASE_URL: http://localhost:8000
     depends_on:
       db:
         condition: service_healthy
