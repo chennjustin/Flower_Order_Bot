@@ -14,7 +14,7 @@ export default function PreviewPanel() {
       <h3 className="m-0 text-lg font-bold text-[#333] font-['Noto_Sans_TC',sans-serif]">
         預覽
       </h3>
-      <div className="flex min-h-[280px] flex-col gap-2 rounded-xl bg-white p-5 shadow-[0_1px_4px_rgba(0,0,0,0.08)]">
+      <div className="flex min-h-[320px] flex-1 flex-col gap-2">
         {visibleFields.length === 0 ? (
           <p className="m-0 text-sm text-black/40 font-['Noto_Sans_TC',sans-serif]">
             目前沒有可見欄位

@@ -136,7 +136,7 @@ export default function OrderFieldList() {
         onDragEnd={handleDragEnd}
       >
         <SortableContext items={sortableIds} strategy={verticalListSortingStrategy}>
-          <ul className="m-0 flex list-none flex-col gap-1 rounded-xl bg-white p-4 shadow-[0_1px_4px_rgba(0,0,0,0.08)]">
+          <ul className="m-0 flex list-none flex-col gap-1">
             {sortedDraftFields.map(field => (
               <SortableFieldRow
                 key={field.key}
