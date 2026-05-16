@@ -9,6 +9,7 @@ import MessagesPage from './pages/MessagesPage'
 import StatsPage from './pages/StatsPage'
 import LoginPage from './pages/LoginPage'
 import OnboardingNamePage from './pages/onboarding/OnboardingNamePage'
+import OnboardingLineOfficialPage from './pages/onboarding/OnboardingLineOfficialPage'
 
 export const router = createBrowserRouter([
   {
@@ -28,6 +29,14 @@ export const router = createBrowserRouter([
         element: (
           <OnboardingStepGuard expectedStep="NAME">
             <OnboardingNamePage />
+          </OnboardingStepGuard>
+        ),
+      },
+      {
+        path: 'line-official',
+        element: (
+          <OnboardingStepGuard expectedStep="LINE_OA">
+            <OnboardingLineOfficialPage />
           </OnboardingStepGuard>
         ),
       },
