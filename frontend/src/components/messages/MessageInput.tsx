@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Paperclip, Send } from 'lucide-react'
 import type { ChatMessageBody } from '@/types/domain'
 import { uploadStaffChatImage } from '@/api/messages'
@@ -16,9 +16,11 @@ interface MessageInputProps {
 }
 
 export default function MessageInput({ roomId, disabled, onSend }: MessageInputProps) {
+  const rootRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const fileRef = useRef<HTMLInputElement>(null)
   const [mode, setMode] = useState<SendMode>('text')
+  const [showAttachMenu, setShowAttachMenu] = useState(false)
   const [text, setText] = useState('')
   const [imageUrl, setImageUrl] = useState('')
   const [pkg, setPkg] = useState('')
@@ -74,26 +76,70 @@ export default function MessageInput({ roomId, disabled, onSend }: MessageInputP
     await onSend({ sticker_package_id: packageId, sticker_id: stickerId })
   }
 
+  useEffect(() => {
+    if (!showAttachMenu) return
+
+    function onDocumentPointerDown(event: MouseEvent) {
+      const target = event.target as Node | null
+      if (rootRef.current && target && !rootRef.current.contains(target)) {
+        setShowAttachMenu(false)
+      }
+    }
+
+    function onDocumentKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') {
+        setShowAttachMenu(false)
+      }
+    }
+
+    document.addEventListener('mousedown', onDocumentPointerDown)
+    document.addEventListener('keydown', onDocumentKeyDown)
+    return () => {
+      document.removeEventListener('mousedown', onDocumentPointerDown)
+      document.removeEventListener('keydown', onDocumentKeyDown)
+    }
+  }, [showAttachMenu])
+
   return (
-    <div className="relative space-y-2 px-6 pb-6">
-      <div className="flex flex-wrap gap-2 text-xs font-['Noto_Sans_TC',sans-serif]">
-        <span className="text-black/[0.45]">送出類型：</span>
-        {(['text', 'image', 'sticker'] as const).map(m => (
+    <div ref={rootRef} className="relative space-y-2 px-6 pb-6">
+      {showAttachMenu ? (
+        <div className="flex flex-wrap gap-2 rounded-xl border border-black/[0.08] bg-black/[0.02] p-2 text-xs font-['Noto_Sans_TC',sans-serif]">
           <button
-            key={m}
             type="button"
             disabled={busy}
-            onClick={() => setMode(m)}
-            className={`rounded-full px-2 py-0.5 transition ${
-              mode === m
-                ? 'bg-[#77B5FF] text-white'
-                : 'bg-black/[0.06] text-black/[0.65] hover:bg-black/[0.09]'
-            }`}
+            onClick={() => {
+              setMode('image')
+              setShowAttachMenu(false)
+            }}
+            className="rounded-full bg-[#77B5FF]/10 px-2 py-1 text-[#528DD2] transition hover:bg-[#77B5FF]/20"
           >
-            {m === 'text' ? '文字' : m === 'image' ? '圖片' : '貼圖'}
+            上傳圖片
           </button>
-        ))}
-      </div>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => {
+              setMode('sticker')
+              setShowAttachMenu(false)
+            }}
+            className="rounded-full bg-[#77B5FF]/10 px-2 py-1 text-[#528DD2] transition hover:bg-[#77B5FF]/20"
+          >
+            選擇貼圖
+          </button>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => {
+              setMode('text')
+              setShowAttachMenu(false)
+              setTimeout(() => inputRef.current?.focus(), 0)
+            }}
+            className="rounded-full bg-black/[0.06] px-2 py-1 text-black/[0.65] transition hover:bg-black/[0.1]"
+          >
+            回到文字輸入
+          </button>
+        </div>
+      ) : null}
 
       {mode === 'image' ? (
         <div className="space-y-2">
@@ -184,7 +230,18 @@ export default function MessageInput({ roomId, disabled, onSend }: MessageInputP
         onClick={() => mode === 'text' && inputRef.current?.focus()}
       >
         <div className="flex flex-1 items-center gap-3">
-          <Paperclip className="h-5 w-5 flex-shrink-0 text-[#528DD2]" />
+          <button
+            type="button"
+            disabled={busy}
+            onClick={e => {
+              e.stopPropagation()
+              setShowAttachMenu(v => !v)
+            }}
+            className="flex h-6 w-6 flex-shrink-0 items-center justify-center text-[#528DD2] transition hover:text-[#6168FC] active:scale-90 disabled:opacity-40"
+            aria-label="附件選單"
+          >
+            <Paperclip className="h-5 w-5" />
+          </button>
           {mode === 'text' ? (
             <input
               ref={inputRef}
