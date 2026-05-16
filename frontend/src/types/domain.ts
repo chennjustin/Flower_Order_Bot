@@ -20,10 +20,8 @@ export interface OrderDraftBase {
   item?: string | null
   quantity?: number | null
   note?: string | null
-  card_message?: string | null
   shipment_method?: ShipmentMethod | null
   send_datetime?: string | null
-  receipt_address?: string | null
   delivery_address?: string | null
 }
 
@@ -48,10 +46,8 @@ export interface OrderBase {
   item: string
   quantity: number
   note?: string | null
-  card_message?: string | null
   shipment_method: ShipmentMethod
   send_datetime: string
-  receipt_address?: string | null
   delivery_address?: string | null
 }
 

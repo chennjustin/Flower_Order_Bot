@@ -14,10 +14,8 @@ def test_parse_order_draft_json_minimal_fields():
         "item": "rose",
         "quantity": 1,
         "note": "",
-        "card_message": "",
         "shipment_method": "DELIVERY",
         "send_datetime": None,
-        "receipt_address": "",
         "delivery_address": "addr",
     }
     upd = _parse_order_draft_json(json.dumps(payload))

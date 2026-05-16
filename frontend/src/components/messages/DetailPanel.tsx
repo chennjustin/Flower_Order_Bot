@@ -19,10 +19,8 @@ type EditableKey =
   | 'item'
   | 'quantity'
   | 'note'
-  | 'card_message'
   | 'shipment_method'
   | 'send_datetime'
-  | 'receipt_address'
   | 'delivery_address'
   | 'pay_way'
 
@@ -59,10 +57,8 @@ const MISSING_KEY_TO_FIELD: Record<string, FieldKey> = {
   total_amount: 'total_amount',
   shipment_method: 'shipment_method',
   send_datetime: 'send_datetime',
-  receipt_address: 'receipt_address',
   delivery_address: 'delivery_address',
   pay_way: 'pay_way',
-  card_message: 'card_message',
   note: 'note',
 }
 
@@ -75,10 +71,8 @@ const FIELDS: FieldDef[] = [
   { key: 'item', label: '品項', editable: true },
   { key: 'quantity', label: '數量', editable: true, variant: 'number' },
   { key: 'note', label: '備註', editable: true },
-  { key: 'card_message', label: '卡片訊息', editable: true },
   { key: 'shipment_method', label: '取貨方式', editable: true, variant: 'select' },
   { key: 'send_datetime', label: '送貨日期', editable: true, variant: 'datetime' },
-  { key: 'receipt_address', label: '收件地址', editable: true },
   { key: 'delivery_address', label: '送貨地址', editable: true },
   { key: 'order_date', label: '訂單日期', editable: false },
   { key: 'pay_way', label: '付款方式', editable: true },
@@ -94,11 +88,9 @@ interface FormState {
   item: string
   quantity: string
   note: string
-  card_message: string
   shipment_method: ShipmentMethod
   send_datetime_date: string
   send_datetime_time: string
-  receipt_address: string
   delivery_address: string
   pay_way: string
 }
@@ -112,11 +104,9 @@ const EMPTY_FORM: FormState = {
   item: '',
   quantity: '',
   note: '',
-  card_message: '',
   shipment_method: 'STORE_PICKUP',
   send_datetime_date: '',
   send_datetime_time: '',
-  receipt_address: '',
   delivery_address: '',
   pay_way: '',
 }
@@ -158,11 +148,9 @@ function formStateFromDraft(draft: OrderDraft | null | undefined): FormState {
     item: draft.item ?? '',
     quantity: draft.quantity != null ? String(draft.quantity) : '',
     note: draft.note ?? '',
-    card_message: draft.card_message ?? '',
     shipment_method: (draft.shipment_method as ShipmentMethod) ?? 'STORE_PICKUP',
     send_datetime_date: date,
     send_datetime_time: time,
-    receipt_address: draft.receipt_address ?? '',
     delivery_address: draft.delivery_address ?? '',
     pay_way: draft.pay_way ?? '',
   }
@@ -180,10 +168,8 @@ function formStateToUpdate(form: FormState): OrderDraftUpdate {
     item: form.item || null,
     quantity: Number.isFinite(qty) ? qty : null,
     note: form.note || null,
-    card_message: form.card_message || null,
     shipment_method: form.shipment_method,
     send_datetime: combineDateTimeIso(form.send_datetime_date, form.send_datetime_time),
-    receipt_address: form.receipt_address || null,
     delivery_address: form.delivery_address || null,
     pay_way: form.pay_way || null,
     pay_way_id: 0,
@@ -244,7 +230,6 @@ export default function DetailPanel({ roomId, open, onClose }: DetailPanelProps)
       item: draft.item ?? '',
       quantity: draft.quantity != null ? String(draft.quantity) : '',
       note: draft.note ?? '',
-      card_message: draft.card_message ?? '',
       shipment_method:
         draft.shipment_method === 'STORE_PICKUP'
           ? '店取'
@@ -252,7 +237,6 @@ export default function DetailPanel({ roomId, open, onClose }: DetailPanelProps)
             ? '外送'
             : '',
       send_datetime: formatReadOnly(draft.send_datetime),
-      receipt_address: draft.receipt_address ?? '',
       delivery_address: draft.delivery_address ?? '',
       order_date: formatReadOnly(draft.order_date),
       pay_way: draft.pay_way ?? '',

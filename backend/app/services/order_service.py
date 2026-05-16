@@ -65,13 +65,11 @@ async def _build_order_out(db: AsyncSession, order: Order) -> Optional[OrderOut]
         item=order.item_type,
         quantity=quantity,
         note=order.notes,
-        card_message=None,
         shipment_method=shipment,
         weekday=order.created_at.strftime("%A"),
         send_datetime=(
             to_taipei_aware(order.delivery_datetime) if order.delivery_datetime else None
         ),
-        receipt_address=None,
         delivery_address=order.delivery_address or "",
     )
 
@@ -242,7 +240,6 @@ async def get_order_draft_out_by_room(db: AsyncSession, room_id: int) -> Optiona
         item=order_draft.item_type,
         quantity=order_draft.quantity,
         note=order_draft.notes,
-        card_message=None,
         shipment_method=order_draft.shipment_method,
         weekday=order_draft.created_at.strftime("%A"),
         send_datetime=(
@@ -250,7 +247,6 @@ async def get_order_draft_out_by_room(db: AsyncSession, room_id: int) -> Optiona
             if order_draft.delivery_datetime
             else None
         ),
-        receipt_address=None,
         delivery_address=order_draft.delivery_address or "",
     )
 

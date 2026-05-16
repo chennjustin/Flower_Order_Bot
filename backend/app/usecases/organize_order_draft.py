@@ -48,10 +48,8 @@ def _parse_order_draft_json(gpt_reply: str) -> OrderDraftUpdate:
         item=parsed_reply.get("item"),
         quantity=parsed_reply.get("quantity"),
         note=parsed_reply.get("note"),
-        card_message=parsed_reply.get("card_message"),
         shipment_method=parsed_reply.get("shipment_method"),
         send_datetime=parsed_reply.get("send_datetime"),
-        receipt_address=parsed_reply.get("receipt_address"),
         delivery_address=parsed_reply.get("delivery_address"),
     )
 

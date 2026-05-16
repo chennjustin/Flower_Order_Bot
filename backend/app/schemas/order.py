@@ -37,12 +37,10 @@ class OrderDraftBase(BaseModel):
     item: Optional[str] = None
     quantity: Optional[int] = None
     note: Optional[str] = None
-    card_message: Optional[str] = None
 
     # 運送資訊
     shipment_method: Optional[ShipmentMethod] = None
     send_datetime: Optional[datetime] = None
-    receipt_address: Optional[str] = None
     delivery_address: Optional[str] = None
 
     class Config:
@@ -84,13 +82,11 @@ class OrderBase(BaseModel):
     item: str
     quantity: int
     note: Optional[str] = None
-    card_message: Optional[str] = None
 
     # 運送資訊
     shipment_method: Optional[ShipmentMethod] = None
     # 取貨/送達時間：某些訂單（如店取未填時間）可能為空；列表/草稿需允許為 None
     send_datetime: Optional[datetime] = None
-    receipt_address: Optional[str] = None
     delivery_address: Optional[str] = None
 
     class Config:
