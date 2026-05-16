@@ -10,6 +10,7 @@ const MENU: MenuItem[] = [
   { label: '首頁', icon: 'fas fa-home', route: '/' },
   { label: '訂單管理', icon: 'fas fa-shopping-bag', route: '/orders' },
   { label: '顧客溝通', icon: 'fas fa-comment', route: '/messages' },
+  { label: '訂單欄位設定', icon: 'fas fa-cog', route: '/settings/order-fields' },
   { label: '統計資料', icon: 'fas fa-chart-bar', route: '/stats' },
 ]
 
