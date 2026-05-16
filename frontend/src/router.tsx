@@ -4,8 +4,13 @@ import DashboardPage from './pages/DashboardPage'
 import OrdersPage from './pages/OrdersPage'
 import MessagesPage from './pages/MessagesPage'
 import StatsPage from './pages/StatsPage'
+import LoginPage from './pages/LoginPage'
 
 export const router = createBrowserRouter([
+  {
+    path: '/login',
+    element: <LoginPage />,
+  },
   {
     path: '/',
     element: <App />,
