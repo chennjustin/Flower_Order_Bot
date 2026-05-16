@@ -9,11 +9,17 @@ interface CalendarViewProps {
   orders: Order[]
   currentDate: Date
   onDateChange: (date: Date) => void
+  onOrderClick?: (order: Order) => void
 }
 
 const WEEKDAY_LABELS = ['日', '一', '二', '三', '四', '五', '六'] as const
 
-export default function CalendarView({ orders, currentDate, onDateChange }: CalendarViewProps) {
+export default function CalendarView({
+  orders,
+  currentDate,
+  onDateChange,
+  onOrderClick,
+}: CalendarViewProps) {
   const year = currentDate.getFullYear()
   const month = currentDate.getMonth()
 
@@ -45,13 +51,14 @@ export default function CalendarView({ orders, currentDate, onDateChange }: Cale
 
   return (
     <div className="w-full">
-      <div className="mb-4 flex items-center justify-center gap-6">
+      <div className="mb-4 flex items-center justify-center gap-4">
         <button
           type="button"
           onClick={() => onDateChange(new Date(year, month - 1, 1))}
-          className="flex h-8 w-8 items-center justify-center rounded-full bg-[#D9D9D9] text-white transition hover:bg-[#C5C7FF]"
+          aria-label="上個月"
+          className="flex h-8 w-8 items-center justify-center rounded-full text-black/45 transition hover:bg-[#F5F5F5] hover:text-[#6168FC]"
         >
-          <ChevronLeft className="h-4 w-4" strokeWidth={3} />
+          <ChevronLeft className="h-4 w-4" strokeWidth={2.5} />
         </button>
         <span className="min-w-[120px] text-center text-base font-bold tracking-wider text-[#6168FC]">
           {year} 年 {month + 1} 月
@@ -59,9 +66,10 @@ export default function CalendarView({ orders, currentDate, onDateChange }: Cale
         <button
           type="button"
           onClick={() => onDateChange(new Date(year, month + 1, 1))}
-          className="flex h-8 w-8 items-center justify-center rounded-full bg-[#D9D9D9] text-white transition hover:bg-[#C5C7FF]"
+          aria-label="下個月"
+          className="flex h-8 w-8 items-center justify-center rounded-full text-black/45 transition hover:bg-[#F5F5F5] hover:text-[#6168FC]"
         >
-          <ChevronRight className="h-4 w-4" strokeWidth={3} />
+          <ChevronRight className="h-4 w-4" strokeWidth={2.5} />
         </button>
       </div>
 
@@ -102,16 +110,18 @@ export default function CalendarView({ orders, currentDate, onDateChange }: Cale
               {dayOrders.slice(0, 3).map(order => {
                 const bucket = normalizeStatus(order.order_status as unknown as string)
                 return (
-                  <div
+                  <button
                     key={order.id}
+                    type="button"
+                    onClick={() => onOrderClick?.(order)}
                     className={cn(
-                      'mb-0.5 truncate rounded px-1.5 py-0.5 text-xs font-bold',
+                      'mb-0.5 w-full truncate rounded px-1.5 py-0.5 text-left text-xs font-bold transition hover:opacity-80',
                       statusBadgeClasses(bucket),
                     )}
                     title={`${order.customer_name} - ${statusText(bucket)}`}
                   >
                     {order.customer_name}
-                  </div>
+                  </button>
                 )
               })}
               {dayOrders.length > 3 && (

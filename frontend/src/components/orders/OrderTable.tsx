@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { ChevronLeft, ChevronRight, Download, Search, List, Calendar } from 'lucide-react'
 import {
   Dialog,
@@ -18,12 +18,14 @@ import {
   statusBadgeClasses,
   statusText,
 } from '@/utils/orderStatus'
-import { formatCellDateTime, formatHeaderDate, toLocalDateKey } from '@/utils/datetime'
+import { formatCellDateTime, toLocalDateKey } from '@/utils/datetime'
 import { rowsToCsvBlob } from '@/utils/csv'
 import { downloadBlob } from '@/utils/download'
 import type { Order } from '@/types/domain'
 import { cn } from '@/lib/utils'
 import CalendarView from './CalendarView'
+import OrderDatePicker from './OrderDatePicker'
+import OrderDetailDialog from './OrderDetailDialog'
 
 type QuickFilter = 'today' | 'pending' | null
 type ViewMode = 'list' | 'calendar'
@@ -32,6 +34,8 @@ type FilterTab = '' | 'WAITING_OWNER' | 'today' | 'ORDER_CONFIRM'
 interface OrderTableProps {
   quickFilter?: QuickFilter
   onQuickFilterClear?: () => void
+  /** Hide the「訂單總覽」heading (e.g. on /order page). */
+  showTitle?: boolean
 }
 
 type ColumnKey =
@@ -84,7 +88,20 @@ interface NormalizedOrder extends Order {
   status_bucket: ChatStatus
 }
 
-export default function OrderTable({ quickFilter, onQuickFilterClear }: OrderTableProps) {
+function filterOrdersByPickupDate(rows: NormalizedOrder[], date: Date): NormalizedOrder[] {
+  const key = toLocalDateKey(date)
+  return rows.filter(r => {
+    if (!r.send_datetime) return false
+    const d = new Date(r.send_datetime)
+    return !Number.isNaN(d.getTime()) && toLocalDateKey(d) === key
+  })
+}
+
+export default function OrderTable({
+  quickFilter,
+  onQuickFilterClear,
+  showTitle = true,
+}: OrderTableProps) {
   const ordersQuery = useOrders()
   const deleteMutation = useDeleteOrder()
 
@@ -94,14 +111,33 @@ export default function OrderTable({ quickFilter, onQuickFilterClear }: OrderTab
   const [currentDate, setCurrentDate] = useState(() => new Date())
   const [searchText, setSearchText] = useState('')
   const [pendingDelete, setPendingDelete] = useState<number | null>(null)
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
 
   const orders = useMemo(() => ordersQuery.data ?? [], [ordersQuery.data])
 
-  // Effective tab accounts for external quickFilter (card clicks)
-  const effectiveTab: FilterTab =
-    quickFilter === 'today' ? 'today' :
-    quickFilter === 'pending' ? 'WAITING_OWNER' :
-    activeTab
+  // Status tab from filter bar or dashboard quick-filter (pending only)
+  const effectiveStatusTab: FilterTab =
+    quickFilter === 'pending' ? 'WAITING_OWNER' : activeTab
+
+  const isTodayFilter =
+    dateFilterActive && toLocalDateKey(currentDate) === toLocalDateKey(new Date())
+
+  useEffect(() => {
+    if (quickFilter === 'today') {
+      setCurrentDate(new Date())
+      setDateFilterActive(true)
+      setActiveTab('')
+    }
+  }, [quickFilter])
+
+  function isTabHighlighted(tab: FilterTab): boolean {
+    if (quickFilter === 'today' && tab === 'today') return true
+    if (quickFilter === 'pending' && tab === 'WAITING_OWNER') return true
+    if (quickFilter) return false
+    if (tab === 'today') return isTodayFilter
+    if (tab === '') return activeTab === '' && !dateFilterActive
+    return activeTab === tab && !dateFilterActive
+  }
 
   const filtered = useMemo<NormalizedOrder[]>(() => {
     let rows: NormalizedOrder[] = orders.map(o => ({
@@ -109,24 +145,13 @@ export default function OrderTable({ quickFilter, onQuickFilterClear }: OrderTab
       status_bucket: normalizeStatus(o.order_status as unknown as string),
     }))
 
-    if (effectiveTab === 'WAITING_OWNER') {
+    if (effectiveStatusTab === 'WAITING_OWNER') {
       rows = rows.filter(r => r.status_bucket === 'WAITING_OWNER')
-    } else if (effectiveTab === 'ORDER_CONFIRM') {
+    } else if (effectiveStatusTab === 'ORDER_CONFIRM') {
       rows = rows.filter(r => r.status_bucket === 'ORDER_CONFIRM')
-    } else if (effectiveTab === 'today') {
-      const key = toLocalDateKey(new Date())
-      rows = rows.filter(r => {
-        if (!r.send_datetime) return false
-        const d = new Date(r.send_datetime)
-        return !Number.isNaN(d.getTime()) && toLocalDateKey(d) === key
-      })
-    } else if (dateFilterActive) {
-      const key = toLocalDateKey(currentDate)
-      rows = rows.filter(r => {
-        if (!r.send_datetime) return false
-        const d = new Date(r.send_datetime)
-        return !Number.isNaN(d.getTime()) && toLocalDateKey(d) === key
-      })
+    } else if (dateFilterActive || quickFilter === 'today') {
+      const filterDate = quickFilter === 'today' ? new Date() : currentDate
+      rows = filterOrdersByPickupDate(rows, filterDate)
     }
 
     const q = searchText.trim().toLowerCase()
@@ -137,9 +162,16 @@ export default function OrderTable({ quickFilter, onQuickFilterClear }: OrderTab
     }
 
     return rows
-  }, [orders, effectiveTab, dateFilterActive, currentDate, searchText])
+  }, [orders, effectiveStatusTab, dateFilterActive, currentDate, searchText, quickFilter])
 
   function selectTab(value: FilterTab) {
+    if (value === 'today') {
+      setCurrentDate(new Date())
+      setDateFilterActive(true)
+      setActiveTab('')
+      onQuickFilterClear?.()
+      return
+    }
     setActiveTab(value)
     setDateFilterActive(false)
     onQuickFilterClear?.()
@@ -154,7 +186,8 @@ export default function OrderTable({ quickFilter, onQuickFilterClear }: OrderTab
     onQuickFilterClear?.()
   }
 
-  function toggleDateFilter() {
+  function selectDate(date: Date) {
+    setCurrentDate(date)
     setDateFilterActive(true)
     setActiveTab('')
     onQuickFilterClear?.()
@@ -207,9 +240,11 @@ export default function OrderTable({ quickFilter, onQuickFilterClear }: OrderTab
     <section className="rounded-lg bg-white px-8 py-6 mt-6 mb-8 border-b-[1.5px] border-[#e9e9e9]">
       {/* Title row */}
       <div className="mb-4 flex flex-wrap items-center gap-4">
-        <span className="text-[22px] font-bold tracking-wider whitespace-nowrap text-[#6168FC]">
-          訂單總覽
-        </span>
+        {showTitle && (
+          <span className="text-[22px] font-bold tracking-wider whitespace-nowrap text-[#6168FC]">
+            訂單總覽
+          </span>
+        )}
 
         {/* List / Calendar toggle */}
         <div className="flex items-center gap-[9px] rounded-[32px] bg-[#F5F5F5] px-4 py-2">
@@ -277,7 +312,7 @@ export default function OrderTable({ quickFilter, onQuickFilterClear }: OrderTab
               className={cn(
                 'flex h-7 items-center whitespace-nowrap rounded-[36px] px-6 py-[11px] text-sm font-bold leading-[112.5%] text-black/60 transition',
                 "font-['Noto_Sans_TC',sans-serif]",
-                effectiveTab === tab.value && 'bg-[#C5C7FF]',
+                isTabHighlighted(tab.value) && 'bg-[#C5C7FF]',
               )}
             >
               {tab.label}
@@ -295,17 +330,11 @@ export default function OrderTable({ quickFilter, onQuickFilterClear }: OrderTab
           >
             <ChevronLeft className="h-3.5 w-3.5" strokeWidth={3} />
           </button>
-          <button
-            type="button"
-            onClick={toggleDateFilter}
-            className={cn(
-              'min-w-[80px] cursor-pointer text-center text-sm leading-[112.5%] whitespace-nowrap',
-              "font-['Noto_Sans_TC',sans-serif] font-bold",
-              dateFilterActive && !quickFilter && activeTab === '' ? 'text-[#6168FC]' : 'text-black/40',
-            )}
-          >
-            {formatHeaderDate(currentDate)}
-          </button>
+          <OrderDatePicker
+            value={currentDate}
+            onChange={selectDate}
+            active={dateFilterActive}
+          />
           <button
             type="button"
             onClick={() => shiftDate(1)}
@@ -326,6 +355,7 @@ export default function OrderTable({ quickFilter, onQuickFilterClear }: OrderTab
             setCurrentDate(d)
             setDateFilterActive(false)
           }}
+          onOrderClick={setSelectedOrder}
         />
       ) : (
         <div className="w-full overflow-hidden">
@@ -363,7 +393,11 @@ export default function OrderTable({ quickFilter, onQuickFilterClear }: OrderTab
                   </thead>
                   <tbody>
                     {filtered.map(row => (
-                      <tr key={row.id} className="group bg-white">
+                      <tr
+                        key={row.id}
+                        className="group cursor-pointer bg-white"
+                        onClick={() => setSelectedOrder(row)}
+                      >
                         {COLUMNS.map((col, idx) => (
                           <td
                             key={col.key}
@@ -394,6 +428,12 @@ export default function OrderTable({ quickFilter, onQuickFilterClear }: OrderTab
           </div>
         </div>
       )}
+
+      <OrderDetailDialog
+        order={selectedOrder}
+        open={selectedOrder !== null}
+        onOpenChange={open => !open && setSelectedOrder(null)}
+      />
 
       <Dialog open={pendingDelete !== null} onOpenChange={open => !open && setPendingDelete(null)}>
         <DialogContent>
@@ -440,7 +480,10 @@ function Cell({ column, row, onExport, onDelete }: CellProps) {
       return (
         <button
           type="button"
-          onClick={() => onExport(row.id)}
+          onClick={e => {
+            e.stopPropagation()
+            onExport(row.id)
+          }}
           className="flex h-7 w-[60px] max-w-[92px] items-center justify-center rounded-lg border-0 bg-[#77B5FF] px-4 py-1.5 text-sm font-bold text-white transition hover:opacity-80 font-['Noto_Sans_TC',sans-serif]"
         >
           列印
@@ -450,7 +493,10 @@ function Cell({ column, row, onExport, onDelete }: CellProps) {
       return (
         <button
           type="button"
-          onClick={() => onDelete(row.id)}
+          onClick={e => {
+            e.stopPropagation()
+            onDelete(row.id)
+          }}
           className="flex h-7 w-[60px] max-w-[92px] items-center justify-center rounded-lg border-0 bg-[#AE1914] px-4 py-1.5 text-sm font-bold text-[#EBCDCC] transition hover:opacity-80 font-['Noto_Sans_TC',sans-serif]"
         >
           刪除
