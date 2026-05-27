@@ -12,7 +12,7 @@ import PageHeader from '@/components/layout/PageHeader'
 import { useOrderDisplayConfig } from '@/context/OrderDisplayConfigContext'
 
 export default function OrderFieldSettingsPage() {
-  const { hasChanges, resetDraft, save } = useOrderDisplayConfig()
+  const { hasChanges, loadError, loading, resetDraft, save, savePending } = useOrderDisplayConfig()
   const [isEditing, setIsEditing] = useState(false)
 
   function handleStartEdit() {
@@ -25,10 +25,15 @@ export default function OrderFieldSettingsPage() {
     setIsEditing(false)
   }
 
-  function handleSave() {
-    save()
-    setIsEditing(false)
-    window.alert('已儲存訂單欄位設定')
+  async function handleSave() {
+    try {
+      await save()
+      setIsEditing(false)
+      window.alert('已儲存訂單欄位設定')
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err)
+      window.alert(`儲存失敗：${message}`)
+    }
   }
 
   return (
@@ -38,6 +43,11 @@ export default function OrderFieldSettingsPage() {
         <div className="flex w-full max-w-[820px] flex-col items-center justify-center gap-6 lg:flex-row lg:items-stretch lg:gap-8">
           <section className={settingsCardClass}>
             <div className="flex flex-1 flex-col px-10 pt-8">
+              {loadError && (
+                <div className="mb-3 rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-700">
+                  {loadError}
+                </div>
+              )}
               <OrderFieldList isEditable={isEditing} />
             </div>
             <div className="flex justify-center gap-4 px-10 pb-8 pt-6">
@@ -54,11 +64,11 @@ export default function OrderFieldSettingsPage() {
                   <button
                     type="button"
                     onClick={handleSave}
-                    disabled={!hasChanges}
-                    className={settingsSaveBtnClass(hasChanges)}
+                    disabled={!hasChanges || loading || savePending}
+                    className={settingsSaveBtnClass(hasChanges && !loading && !savePending)}
                   >
                     <Check className="h-6 w-6 shrink-0" strokeWidth={2.5} />
-                    儲存
+                    {savePending ? '儲存中...' : '儲存'}
                   </button>
                 </>
               ) : (

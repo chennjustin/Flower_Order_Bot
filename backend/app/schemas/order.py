@@ -25,9 +25,6 @@ class OrderDraftBase(BaseModel):
     # 訂購人（customer）資訊
     customer_name: Optional[str] = None
     customer_phone: Optional[str] = None
-    # 舊欄位：僅為相容歷史 payload；目前 schema 不再落地 receiver 實體。
-    receiver_name: Optional[str] = None
-    receiver_phone: Optional[str] = None
 
     # 付款資訊
     total_amount: Optional[float] = None
@@ -59,7 +56,6 @@ class OrderDraftOut(OrderDraftBase):
     id: int
     order_date: datetime
     pay_way: Optional[str] = None
-    weekday: Optional[str] = None
 
 """
 Order:
@@ -68,11 +64,9 @@ Order:
 class OrderBase(BaseModel):
     # TODO: 待補目前付的錢
 
-    # 收件 / 寄件人
+    # 訂購人
     customer_name: str
     customer_phone: str
-    receiver_name: Optional[str] = None
-    receiver_phone: Optional[str] = None
 
     # 付款資訊
     total_amount: float
@@ -104,4 +98,3 @@ class OrderOut(OrderBase):
     order_date: datetime
     order_status: OrderStatus
     pay_way: Optional[str] = None
-    weekday: Optional[str] = None

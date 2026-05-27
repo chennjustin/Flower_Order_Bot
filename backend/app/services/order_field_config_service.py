@@ -68,6 +68,18 @@ def _normalize_organize_required_fields(raw_fields: list[str] | None) -> list[st
     return [f for f in OPTIONAL_ORGANIZE_FIELDS if f in selected]
 
 
+def _resolve_optional_required_fields(
+    visible_fields: list[str], organize_required_fields: list[str] | None
+) -> list[str]:
+    visible_optional_required = [f for f in OPTIONAL_ORGANIZE_FIELDS if f in set(visible_fields)]
+    manual_optional_required = _normalize_organize_required_fields(organize_required_fields)
+    return [
+        f
+        for f in OPTIONAL_ORGANIZE_FIELDS
+        if f in (set(visible_optional_required) | set(manual_optional_required))
+    ]
+
+
 async def _get_store_or_404(db: AsyncSession, store_id: int) -> Store:
     result = await db.execute(select(Store).where(Store.id == store_id))
     store = result.scalar_one_or_none()
@@ -145,7 +157,9 @@ async def get_effective_order_field_config(
     await _get_store_or_404(db, store_id)
     config = await _get_or_create_config(db, store_id)
     visible_fields = _normalize_visible_fields(config.visible_fields)
-    optional_required = _normalize_organize_required_fields(config.organize_required_fields)
+    optional_required = _resolve_optional_required_fields(
+        visible_fields, config.organize_required_fields
+    )
     return EffectiveOrderFieldConfig(
         store_id=store_id,
         visible_fields=visible_fields,

@@ -2,7 +2,11 @@ import json
 from datetime import datetime
 
 from app.schemas.order import OrderDraftOut, OrderDraftUpdate
-from app.usecases.organize_order_draft import _collect_missing_fields, _parse_order_draft_json
+from app.usecases.organize_order_draft import (
+    _collect_missing_fields,
+    _filter_update_by_required_fields,
+    _parse_order_draft_json,
+)
 
 
 def test_parse_order_draft_json_minimal_fields():
@@ -21,8 +25,6 @@ def test_parse_order_draft_json_minimal_fields():
     upd = _parse_order_draft_json(json.dumps(payload))
     assert upd.customer_name == "A"
     assert upd.delivery_address == "addr"
-    assert upd.receiver_name is None
-    assert upd.receiver_phone is None
 
 
 def test_parse_order_draft_json_ignores_legacy_receiver_fields():
@@ -38,8 +40,8 @@ def test_parse_order_draft_json_ignores_legacy_receiver_fields():
 
     upd = _parse_order_draft_json(json.dumps(payload))
     assert upd.customer_name == "A"
-    assert upd.receiver_name is None
-    assert upd.receiver_phone is None
+    assert "receiver_name" not in upd.model_dump()
+    assert "receiver_phone" not in upd.model_dump()
 
 
 def test_collect_missing_fields_respects_optional_required_settings():
@@ -74,4 +76,30 @@ def test_collect_missing_fields_respects_optional_required_settings():
         },
     )
     assert "數量" in missing_with_optional
+
+
+def test_filter_update_by_required_fields_removes_hidden_optional_fields():
+    update = OrderDraftUpdate(
+        customer_name="王小明",
+        customer_phone="0911222333",
+        item="花束",
+        send_datetime=datetime(2026, 5, 2, 10, 0, 0),
+        total_amount=1000,
+        quantity=2,
+        note="不要卡片",
+        delivery_address="台北市信義區",
+    )
+    filtered = _filter_update_by_required_fields(
+        update,
+        required_fields={
+            "customer_name",
+            "customer_phone",
+            "item",
+            "send_datetime",
+            "total_amount",
+        },
+    )
+    assert filtered.quantity is None
+    assert filtered.note is None
+    assert filtered.delivery_address is None
 

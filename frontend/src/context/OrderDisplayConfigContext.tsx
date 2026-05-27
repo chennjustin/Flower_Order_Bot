@@ -1,11 +1,16 @@
 import {
   createContext,
   useCallback,
+  useEffect,
   useContext,
   useMemo,
   useState,
   type ReactNode,
 } from 'react'
+import {
+  fetchDefaultOrderFieldConfig,
+  updateDefaultOrderFieldConfig,
+} from '@/api/orderFieldConfig'
 import { isFieldLockedVisible } from '@/config/orderDisplayFields'
 import { loadConfig, mergeWithRegistry, saveConfig } from '@/lib/orderDisplayStorage'
 import type { OrderDisplayConfig, OrderFieldConfigItem, OrderFieldKey } from '@/types/orderDisplay'
@@ -45,13 +50,16 @@ export interface OrderDisplayConfigContextValue {
   savedConfig: OrderDisplayConfig
   /** In-progress edits on the settings page. */
   draftConfig: OrderDisplayConfig
+  loading: boolean
+  savePending: boolean
+  loadError: string | null
   hasChanges: boolean
   /** Draft fields sorted by `order` (for list / preview). */
   sortedDraftFields: OrderFieldConfigItem[]
   toggleVisible: (key: OrderFieldKey) => void
   reorder: (fromIndex: number, toIndex: number) => void
   resetDraft: () => void
-  save: () => void
+  save: () => Promise<void>
 }
 
 const OrderDisplayConfigContext = createContext<OrderDisplayConfigContextValue | null>(null)
@@ -65,6 +73,68 @@ export function OrderDisplayConfigProvider({ children }: OrderDisplayConfigProvi
     mergeWithRegistry(loadConfig()),
   )
   const [draftConfig, setDraftConfig] = useState<OrderDisplayConfig>(() => cloneConfig(savedConfig))
+  const [loading, setLoading] = useState(true)
+  const [savePending, setSavePending] = useState(false)
+  const [loadError, setLoadError] = useState<string | null>(null)
+
+  const applyVisibleFieldsToConfig = useCallback(
+    (baseConfig: OrderDisplayConfig, visibleFields: OrderFieldKey[]) => {
+      const visibleSet = new Set<OrderFieldKey>(visibleFields)
+      const normalizedBase = mergeWithRegistry(baseConfig)
+      return {
+        version: 1 as const,
+        fields: normalizedBase.fields.map(field => ({
+          ...field,
+          visible: isFieldLockedVisible(field.key) ? true : visibleSet.has(field.key),
+        })),
+      }
+    },
+    [],
+  )
+
+  const buildConfigFromVisibleFields = useCallback((visibleFields: OrderFieldKey[]) => {
+    const visibleSet = new Set<OrderFieldKey>(visibleFields)
+    const merged = mergeWithRegistry(loadConfig())
+    return {
+      version: 1 as const,
+      fields: merged.fields.map(field => ({
+        ...field,
+        visible: isFieldLockedVisible(field.key) ? true : visibleSet.has(field.key),
+      })),
+    }
+  }, [])
+
+  const extractVisibleFieldKeys = useCallback((config: OrderDisplayConfig): OrderFieldKey[] => {
+    return sortFieldsByOrder(config.fields)
+      .filter(field => field.visible)
+      .map(field => field.key)
+  }, [])
+
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      try {
+        const remote = await fetchDefaultOrderFieldConfig()
+        if (cancelled) return
+        const normalized = mergeWithRegistry(
+          buildConfigFromVisibleFields(remote.visible_fields as OrderFieldKey[]),
+        )
+        setSavedConfig(normalized)
+        setDraftConfig(cloneConfig(normalized))
+        saveConfig(normalized)
+        setLoadError(null)
+      } catch (err) {
+        if (cancelled) return
+        const message = err instanceof Error ? err.message : String(err)
+        setLoadError(`讀取後端欄位設定失敗，已改用本機暫存：${message}`)
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [buildConfigFromVisibleFields])
 
   const hasChanges = useMemo(
     () => !configsEqual(savedConfig, draftConfig),
@@ -99,17 +169,30 @@ export function OrderDisplayConfigProvider({ children }: OrderDisplayConfigProvi
     setDraftConfig(cloneConfig(savedConfig))
   }, [savedConfig])
 
-  const save = useCallback(() => {
-    const normalized = mergeWithRegistry(draftConfig)
-    saveConfig(normalized)
-    setSavedConfig(normalized)
-    setDraftConfig(cloneConfig(normalized))
-  }, [draftConfig])
+  const save = useCallback(async () => {
+    setSavePending(true)
+      const normalized = mergeWithRegistry(draftConfig)
+    try {
+      const remote = await updateDefaultOrderFieldConfig(extractVisibleFieldKeys(normalized))
+      const applied = mergeWithRegistry(
+        applyVisibleFieldsToConfig(normalized, remote.visible_fields as OrderFieldKey[]),
+      )
+      saveConfig(applied)
+      setSavedConfig(applied)
+      setDraftConfig(cloneConfig(applied))
+      setLoadError(null)
+    } finally {
+      setSavePending(false)
+    }
+  }, [applyVisibleFieldsToConfig, draftConfig, extractVisibleFieldKeys])
 
   const value = useMemo<OrderDisplayConfigContextValue>(
     () => ({
       savedConfig,
       draftConfig,
+      loading,
+      savePending,
+      loadError,
       hasChanges,
       sortedDraftFields,
       toggleVisible,
@@ -120,6 +203,9 @@ export function OrderDisplayConfigProvider({ children }: OrderDisplayConfigProvi
     [
       savedConfig,
       draftConfig,
+      loading,
+      savePending,
+      loadError,
       hasChanges,
       sortedDraftFields,
       toggleVisible,

@@ -53,8 +53,6 @@ async def _build_order_out(db: AsyncSession, order: Order) -> Optional[OrderOut]
         id=order.id,
         customer_name=customer.name,
         customer_phone=customer.phone or "",
-        receiver_name=customer.name,
-        receiver_phone=customer.phone or "",
         order_date=to_taipei_aware(order.created_at),
         order_status=order.status,
         pay_way=pay_way.display_name if pay_way else None,
@@ -63,7 +61,6 @@ async def _build_order_out(db: AsyncSession, order: Order) -> Optional[OrderOut]
         quantity=quantity,
         note=order.notes,
         shipment_method=shipment,
-        weekday=order.created_at.strftime("%A"),
         send_datetime=(
             to_taipei_aware(order.delivery_datetime) if order.delivery_datetime else None
         ),
@@ -237,8 +234,6 @@ async def get_order_draft_out_by_room(db: AsyncSession, room_id: int) -> Optiona
         id=order_draft.id,
         customer_name=customer.name if customer else "未知",
         customer_phone=customer.phone if customer else "未知",
-        receiver_name=customer.name if customer else None,
-        receiver_phone=customer.phone if customer else None,
         order_date=to_taipei_aware(order_draft.created_at),
         pay_way=None,
         total_amount=order_draft.total_amount,
@@ -246,7 +241,6 @@ async def get_order_draft_out_by_room(db: AsyncSession, room_id: int) -> Optiona
         quantity=order_draft.quantity,
         note=order_draft.notes,
         shipment_method=order_draft.shipment_method,
-        weekday=order_draft.created_at.strftime("%A"),
         send_datetime=(
             to_taipei_aware(order_draft.delivery_datetime)
             if order_draft.delivery_datetime

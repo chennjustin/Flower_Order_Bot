@@ -35,8 +35,6 @@ if __name__ == "__main__":
     draft = {
      "customer_name": "",
      "customer_phone": "",
-     "receiver_name": "",
-     "receiver_phone": "",
      "order_date": "2025-04-20T00:00:00Z",
      "pay_way": "",
      "total_amount": -1,

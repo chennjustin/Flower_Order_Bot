@@ -14,8 +14,6 @@ import type {
 export interface OrderDraftBase {
   customer_name?: string | null
   customer_phone?: string | null
-  receiver_name?: string | null
-  receiver_phone?: string | null
   total_amount?: number | null
   item?: string | null
   quantity?: number | null
@@ -34,14 +32,11 @@ export interface OrderDraft extends OrderDraftBase {
   id: number
   order_date: string
   pay_way?: string | null
-  weekday?: string | null
 }
 
 export interface OrderBase {
   customer_name: string
   customer_phone: string
-  receiver_name?: string | null
-  receiver_phone?: string | null
   total_amount: number
   item: string
   quantity: number
@@ -56,7 +51,6 @@ export interface Order extends OrderBase {
   order_date: string
   order_status: OrderStatus
   pay_way?: string | null
-  weekday?: string | null
 }
 
 export interface LastMessage {

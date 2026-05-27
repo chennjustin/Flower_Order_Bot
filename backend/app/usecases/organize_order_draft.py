@@ -109,6 +109,23 @@ def _collect_missing_fields(
     return missing_labels
 
 
+def _filter_update_by_required_fields(
+    order_draft_update: OrderDraftUpdate, required_fields: set[str]
+) -> OrderDraftUpdate:
+    optional_to_clear = {
+        "quantity": None,
+        "note": None,
+        "shipment_method": None,
+        "delivery_address": None,
+        "pay_way": None,
+    }
+    payload = order_draft_update.model_dump()
+    for field_name, default_value in optional_to_clear.items():
+        if field_name not in required_fields:
+            payload[field_name] = default_value
+    return OrderDraftUpdate(**payload)
+
+
 async def organize_order_draft(db: AsyncSession, chat_room_id: int) -> OrderDraftOut:
     result = await db.execute(select(ChatRoom).where(ChatRoom.id == chat_room_id))
     chat_room = result.scalars().first()
@@ -159,6 +176,7 @@ async def organize_order_draft(db: AsyncSession, chat_room_id: int) -> OrderDraf
     print(order_draft_update)
 
     required_fields = set(field_config.organize_required_fields)
+    order_draft_update = _filter_update_by_required_fields(order_draft_update, required_fields)
     missing_fields = _collect_missing_fields(draft, order_draft_update, required_fields)
 
     if missing_fields:

@@ -44,8 +44,8 @@ async def export_order_docx(order_id: int, db: AsyncSession = Depends(get_db)):
         "note": order.note,
         "weekday": weekday_str,
         "send_datetime": send_datetime_str,
-        "receiver_name": getattr(order, "receiver_name", ""),
-        "receiver_phone": getattr(order, "receiver_phone", ""),
+        "receiver_name": getattr(order, "customer_name", ""),
+        "receiver_phone": getattr(order, "customer_phone", ""),
         "delivery_address": getattr(order, "delivery_address", ""),
         "total_amount": getattr(order, "total_amount", 0),
     }

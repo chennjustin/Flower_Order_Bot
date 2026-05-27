@@ -14,8 +14,6 @@ text = "我想要買一個包包"
 draft = {
      "customer_name": "Benjamin",
      "customer_phone": "",
-     "receiver_name": "",
-     "receiver_phone": "",
      "order_date": "2025-04-20T00:00:00Z",
      "pay_way": "",
      "total_amount": -1,
