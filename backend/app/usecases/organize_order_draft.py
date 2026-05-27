@@ -12,6 +12,7 @@ from app.enums.chat import ChatMessageDirection, ChatMessageStatus
 from app.models.chat import ChatMessage, ChatRoom
 from app.schemas.chat import ChatMessagePayload
 from app.schemas.order import OrderDraftOut, OrderDraftUpdate
+from app.services.order_field_config_service import get_effective_order_field_config
 from app.services.order_service import (
     create_order_draft_by_room_id,
     get_order_draft_out_by_room,
@@ -29,6 +30,13 @@ CORE_REQUIRED_FIELD_LABELS: dict[str, str] = {
     "item": "商品項目",
     "send_datetime": "取貨時間",
     "total_amount": "總金額",
+}
+OPTIONAL_FIELD_LABELS: dict[str, str] = {
+    "quantity": "數量",
+    "note": "備註",
+    "shipment_method": "配送方式",
+    "delivery_address": "配送地址",
+    "pay_way": "付款方式",
 }
 
 
@@ -59,9 +67,10 @@ def _parse_order_draft_json(gpt_reply: str) -> OrderDraftUpdate | None:
     )
 
 
-def _collect_missing_core_fields(
+def _collect_missing_fields(
     draft: OrderDraftOut,
     order_draft_update: OrderDraftUpdate,
+    required_fields: set[str],
 ) -> list[str]:
     effective_values = {
         "customer_name": order_draft_update.customer_name or draft.customer_name,
@@ -73,12 +82,24 @@ def _collect_missing_core_fields(
             if order_draft_update.total_amount is not None
             else draft.total_amount
         ),
+        "quantity": (
+            order_draft_update.quantity
+            if order_draft_update.quantity is not None
+            else draft.quantity
+        ),
+        "note": order_draft_update.note or draft.note,
+        "shipment_method": order_draft_update.shipment_method or draft.shipment_method,
+        "delivery_address": order_draft_update.delivery_address or draft.delivery_address,
+        "pay_way": order_draft_update.pay_way or draft.pay_way,
     }
 
     missing_labels: list[str] = []
-    for field, label in CORE_REQUIRED_FIELD_LABELS.items():
+    label_map = {**CORE_REQUIRED_FIELD_LABELS, **OPTIONAL_FIELD_LABELS}
+    for field, label in label_map.items():
+        if field not in required_fields:
+            continue
         value = effective_values.get(field)
-        if field == "total_amount":
+        if field in {"total_amount", "quantity"}:
             # total_amount <= 0 視同未填（LLM 預設常為 -1）。
             if value is None or value <= 0:
                 missing_labels.append(label)
@@ -93,6 +114,7 @@ async def organize_order_draft(db: AsyncSession, chat_room_id: int) -> OrderDraf
     chat_room = result.scalars().first()
     if not chat_room:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="找不到聊天室")
+    field_config = await get_effective_order_field_config(db, chat_room.store_id)
 
     draft = await get_order_draft_out_by_room(db, chat_room.id)
     if not draft:
@@ -136,7 +158,8 @@ async def organize_order_draft(db: AsyncSession, chat_room_id: int) -> OrderDraf
 
     print(order_draft_update)
 
-    missing_fields = _collect_missing_core_fields(draft, order_draft_update)
+    required_fields = set(field_config.organize_required_fields)
+    missing_fields = _collect_missing_fields(draft, order_draft_update, required_fields)
 
     if missing_fields:
         warning_msg = (

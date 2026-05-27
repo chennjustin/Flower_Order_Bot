@@ -1,6 +1,8 @@
 import json
+from datetime import datetime
 
-from app.usecases.organize_order_draft import _parse_order_draft_json
+from app.schemas.order import OrderDraftOut, OrderDraftUpdate
+from app.usecases.organize_order_draft import _collect_missing_fields, _parse_order_draft_json
 
 
 def test_parse_order_draft_json_minimal_fields():
@@ -38,4 +40,38 @@ def test_parse_order_draft_json_ignores_legacy_receiver_fields():
     assert upd.customer_name == "A"
     assert upd.receiver_name is None
     assert upd.receiver_phone is None
+
+
+def test_collect_missing_fields_respects_optional_required_settings():
+    draft = OrderDraftOut(
+        id=1,
+        customer_name="王小明",
+        customer_phone="0911222333",
+        item="花束",
+        total_amount=1000,
+        order_date=datetime(2026, 5, 1, 10, 0, 0),
+        send_datetime=datetime(2026, 5, 2, 10, 0, 0),
+        quantity=None,
+    )
+    update = OrderDraftUpdate()
+    missing = _collect_missing_fields(
+        draft,
+        update,
+        required_fields={"customer_name", "customer_phone", "item", "send_datetime", "total_amount"},
+    )
+    assert missing == []
+
+    missing_with_optional = _collect_missing_fields(
+        draft,
+        update,
+        required_fields={
+            "customer_name",
+            "customer_phone",
+            "item",
+            "send_datetime",
+            "total_amount",
+            "quantity",
+        },
+    )
+    assert "數量" in missing_with_optional
 

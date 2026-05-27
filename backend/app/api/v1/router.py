@@ -8,6 +8,7 @@ from app.routes.health import router as health_router
 from app.routes.linebot import api_router as linebot_router
 from app.routes.messages import api_router as messages_router
 from app.routes.orders import api_router as orders_router
+from app.routes.order_field_config import api_router as order_field_config_router
 from app.routes.organize_data import api_router as organize_data_router
 from app.routes.payment import api_router as payment_router
 from app.routes.statistics import api_router as stats_router
@@ -15,6 +16,7 @@ api_router = APIRouter()
 
 api_router.include_router(health_router, tags=["Health"])
 api_router.include_router(orders_router, tags=["Orders"])
+api_router.include_router(order_field_config_router, tags=["Order Field Config"])
 api_router.include_router(export_docx_router, tags=["Orders"])
 api_router.include_router(organize_data_router, tags=["Organize Data"])
 api_router.include_router(messages_router, tags=["Chat"])

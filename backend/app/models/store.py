@@ -28,3 +28,9 @@ class Store(Base):
     customers = relationship("Customer", back_populates="store")
     chat_rooms = relationship("ChatRoom", back_populates="store")
     payment_methods = relationship("PaymentMethod", back_populates="store")
+    order_field_config = relationship(
+        "StoreOrderFieldConfig",
+        back_populates="store",
+        uselist=False,
+        cascade="all, delete-orphan",
+    )
