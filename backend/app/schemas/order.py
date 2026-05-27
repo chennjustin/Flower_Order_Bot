@@ -1,11 +1,9 @@
-from typing import Optional, Any
+from typing import Optional
 from datetime import datetime
 from pydantic import BaseModel
 
 from app.enums.order import OrderStatus
 from app.enums.shipment import ShipmentMethod
-from typing import Optional
-from datetime import datetime
 
 """
 OrderDraft:
@@ -24,9 +22,10 @@ Order:
 class OrderDraftBase(BaseModel):
     # TODO: 待補目前付的錢
 
-    # 收件 / 寄件人
+    # 訂購人（customer）資訊
     customer_name: Optional[str] = None
     customer_phone: Optional[str] = None
+    # 舊欄位：僅為相容歷史 payload；目前 schema 不再落地 receiver 實體。
     receiver_name: Optional[str] = None
     receiver_phone: Optional[str] = None
 

@@ -28,12 +28,10 @@ from app.schemas.order import OrderDraftOut, OrderDraftUpdate, OrderOut
 from app.services.message_service import get_chat_room_by_room_id
 from app.services.payment_service import get_pay_way_by_order_id, get_payment_method_by_id
 from app.services.user_service import (
-    create_user,
     get_line_uid_by_chatroom_id,
     get_user_by_id,
     update_user_info,
 )
-from app.schemas.customer import CustomerCreate
 from app.utils.line_send_message import LINE_push_message
 
 
@@ -90,17 +88,23 @@ async def validate_order_draft_required_fields(
         return False, ["order_draft"]
 
     missing_fields: list[str] = []
-    for field in ("customer_id", "item_type", "quantity", "total_amount", "shipment_method"):
-        if not getattr(order_draft, field, None):
+    for field in ("customer_id", "item_type", "total_amount", "delivery_datetime"):
+        value = getattr(order_draft, field, None)
+        if field == "total_amount":
+            if value is None or value <= 0:
+                missing_fields.append(field)
+            continue
+        if value is None:
             missing_fields.append(field)
 
     customer = await get_user_by_id(db, order_draft.customer_id)
     if not customer:
         missing_fields.append("customer")
-    elif not customer.name:
-        missing_fields.append("customer_name")
-    elif not customer.phone:
-        missing_fields.append("customer_phone")
+    else:
+        if not customer.name:
+            missing_fields.append("customer_name")
+        if not customer.phone:
+            missing_fields.append("customer_phone")
 
     return len(missing_fields) == 0, missing_fields
 
@@ -299,18 +303,6 @@ async def update_order_draft_by_room_id(
             customer.id,
             name=draft_in.customer_name or customer.name,
             phone=draft_in.customer_phone or customer.phone,
-        )
-
-    if draft_in.receiver_name or draft_in.receiver_phone:
-        base = await get_user_by_id(db, order_draft.customer_id)
-        store_id = base.store_id if base else room.store_id
-        await create_user(
-            db,
-            CustomerCreate(
-                name=draft_in.receiver_name or "收件人",
-                phone=draft_in.receiver_phone,
-                store_id=store_id,
-            ),
         )
 
     if draft_in.item is not None:

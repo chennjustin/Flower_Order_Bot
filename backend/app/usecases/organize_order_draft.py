@@ -23,6 +23,13 @@ from app.managers.prompt_manager import PromptManager
 
 
 prompt_manager = PromptManager()
+CORE_REQUIRED_FIELD_LABELS: dict[str, str] = {
+    "customer_name": "顧客姓名",
+    "customer_phone": "顧客電話",
+    "item": "商品項目",
+    "send_datetime": "取貨時間",
+    "total_amount": "總金額",
+}
 
 
 def _clean_parsed_reply(parsed_reply: dict) -> dict:
@@ -34,15 +41,13 @@ def _clean_parsed_reply(parsed_reply: dict) -> dict:
     return parsed_reply
 
 
-def _parse_order_draft_json(gpt_reply: str) -> OrderDraftUpdate:
+def _parse_order_draft_json(gpt_reply: str) -> OrderDraftUpdate | None:
     if not gpt_reply or gpt_reply.strip() == "":
         return None
     parsed_reply = _clean_parsed_reply(json.loads(gpt_reply))
     return OrderDraftUpdate(
         customer_name=parsed_reply.get("customer_name"),
         customer_phone=parsed_reply.get("customer_phone"),
-        receiver_name=parsed_reply.get("receiver_name"),
-        receiver_phone=parsed_reply.get("receiver_phone"),
         pay_way=parsed_reply.get("pay_way"),
         total_amount=parsed_reply.get("total_amount"),
         item=parsed_reply.get("item"),
@@ -52,6 +57,35 @@ def _parse_order_draft_json(gpt_reply: str) -> OrderDraftUpdate:
         send_datetime=parsed_reply.get("send_datetime"),
         delivery_address=parsed_reply.get("delivery_address"),
     )
+
+
+def _collect_missing_core_fields(
+    draft: OrderDraftOut,
+    order_draft_update: OrderDraftUpdate,
+) -> list[str]:
+    effective_values = {
+        "customer_name": order_draft_update.customer_name or draft.customer_name,
+        "customer_phone": order_draft_update.customer_phone or draft.customer_phone,
+        "item": order_draft_update.item or draft.item,
+        "send_datetime": order_draft_update.send_datetime or draft.send_datetime,
+        "total_amount": (
+            order_draft_update.total_amount
+            if order_draft_update.total_amount is not None
+            else draft.total_amount
+        ),
+    }
+
+    missing_labels: list[str] = []
+    for field, label in CORE_REQUIRED_FIELD_LABELS.items():
+        value = effective_values.get(field)
+        if field == "total_amount":
+            # total_amount <= 0 視同未填（LLM 預設常為 -1）。
+            if value is None or value <= 0:
+                missing_labels.append(label)
+            continue
+        if value in (None, ""):
+            missing_labels.append(label)
+    return missing_labels
 
 
 async def organize_order_draft(db: AsyncSession, chat_room_id: int) -> OrderDraftOut:
@@ -102,23 +136,7 @@ async def organize_order_draft(db: AsyncSession, chat_room_id: int) -> OrderDraf
 
     print(order_draft_update)
 
-    missing_fields: list[str] = []
-    required_fields = {
-        "customer_name": "顧客姓名",
-        "customer_phone": "顧客電話",
-        "receiver_name": "收件人姓名",
-        "receiver_phone": "收件人電話",
-        "pay_way": "付款方式",
-        "total_amount": "總金額",
-        "item": "商品項目",
-        "quantity": "數量",
-        "shipment_method": "配送方式",
-        "send_datetime": "送達時間",
-        "delivery_address": "收件地址",
-    }
-    for field, label in required_fields.items():
-        if getattr(order_draft_update, field, None) in [None, "", 0]:
-            missing_fields.append(label)
+    missing_fields = _collect_missing_core_fields(draft, order_draft_update)
 
     if missing_fields:
         warning_msg = (
