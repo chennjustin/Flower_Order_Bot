@@ -26,6 +26,7 @@ class OrderDraft(Base):
         SAEnum(ShipmentMethod, name="shipment_method", validate_strings=True),
         nullable=True,
     )
+    pay_way: Mapped[str | None] = mapped_column(String, nullable=True)
     delivery_address: Mapped[str | None] = mapped_column(Text, nullable=True)
     delivery_datetime: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=now_taipei_naive)
@@ -56,6 +57,7 @@ class Order(Base):
         SAEnum(ShipmentMethod, name="shipment_method", validate_strings=True),
         nullable=True,
     )
+    pay_way: Mapped[str | None] = mapped_column(String, nullable=True)
     delivery_address: Mapped[str | None] = mapped_column(Text, nullable=True)
     delivery_datetime: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=now_taipei_naive)

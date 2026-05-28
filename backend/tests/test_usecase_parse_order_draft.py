@@ -23,7 +23,8 @@ def test_parse_order_draft_json_minimal_fields():
         "delivery_address": "addr",
     }
     upd = _parse_order_draft_json(json.dumps(payload))
-    assert upd.customer_name == "A"
+    assert upd.customer_name is None
+    assert upd.customer_phone is None
     assert upd.delivery_address == "addr"
 
 
@@ -39,7 +40,8 @@ def test_parse_order_draft_json_ignores_legacy_receiver_fields():
     }
 
     upd = _parse_order_draft_json(json.dumps(payload))
-    assert upd.customer_name == "A"
+    assert upd.customer_name is None
+    assert upd.customer_phone is None
     assert "receiver_name" not in upd.model_dump()
     assert "receiver_phone" not in upd.model_dump()
 

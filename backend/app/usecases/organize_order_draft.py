@@ -54,8 +54,9 @@ def _parse_order_draft_json(gpt_reply: str) -> OrderDraftUpdate | None:
         return None
     parsed_reply = _clean_parsed_reply(json.loads(gpt_reply))
     return OrderDraftUpdate(
-        customer_name=parsed_reply.get("customer_name"),
-        customer_phone=parsed_reply.get("customer_phone"),
+        # 整理流程不允許 AI 覆蓋 customer 資料；姓名/電話永遠以 customer 表為準。
+        customer_name=None,
+        customer_phone=None,
         pay_way=parsed_reply.get("pay_way"),
         total_amount=parsed_reply.get("total_amount"),
         item=parsed_reply.get("item"),
@@ -210,7 +211,10 @@ async def organize_order_draft(db: AsyncSession, chat_room_id: int) -> OrderDraf
         await db.commit()
 
     order_draft_out = await update_order_draft_by_room_id(
-        db=db, room_id=chat_room.id, draft_in=order_draft_update
+        db=db,
+        room_id=chat_room.id,
+        draft_in=order_draft_update,
+        allow_customer_update=False,
     )
 
     stmt = (

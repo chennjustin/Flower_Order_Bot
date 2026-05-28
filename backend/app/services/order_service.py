@@ -55,7 +55,7 @@ async def _build_order_out(db: AsyncSession, order: Order) -> Optional[OrderOut]
         customer_phone=customer.phone or "",
         order_date=to_taipei_aware(order.created_at),
         order_status=order.status,
-        pay_way=pay_way.display_name if pay_way else None,
+        pay_way=order.pay_way or (pay_way.display_name if pay_way else None),
         total_amount=float(order.total_amount),
         item=order.item_type,
         quantity=quantity,
@@ -131,6 +131,7 @@ async def create_order_by_room(db: AsyncSession, room_id: int) -> list[str]:
         total_amount=order_draft.total_amount,
         notes=order_draft.notes,
         shipment_method=order_draft.shipment_method,
+        pay_way=order_draft.pay_way,
         delivery_address=order_draft.delivery_address,
         delivery_datetime=order_draft.delivery_datetime,
         created_at=now_taipei_naive(),
@@ -196,6 +197,7 @@ async def update_order_by_room_id(db: AsyncSession, room_id: int) -> bool:
     order.total_amount = order_draft.total_amount
     order.notes = order_draft.notes
     order.shipment_method = order_draft.shipment_method
+    order.pay_way = order_draft.pay_way
     order.delivery_address = order_draft.delivery_address
     order.delivery_datetime = order_draft.delivery_datetime
     order.updated_at = now_taipei_naive()
@@ -235,7 +237,7 @@ async def get_order_draft_out_by_room(db: AsyncSession, room_id: int) -> Optiona
         customer_name=customer.name if customer else "未知",
         customer_phone=customer.phone if customer else "未知",
         order_date=to_taipei_aware(order_draft.created_at),
-        pay_way=None,
+        pay_way=order_draft.pay_way,
         total_amount=order_draft.total_amount,
         item=order_draft.item_type,
         quantity=order_draft.quantity,
@@ -272,7 +274,11 @@ async def create_order_draft_by_room_id(db: AsyncSession, room_id: int) -> Order
 
 
 async def update_order_draft_by_room_id(
-    db: AsyncSession, room_id: int, draft_in: OrderDraftUpdate
+    db: AsyncSession,
+    room_id: int,
+    draft_in: OrderDraftUpdate,
+    *,
+    allow_customer_update: bool = True,
 ) -> OrderDraftOut:
     room = await get_chat_room_by_room_id(db, room_id)
     if not room:
@@ -285,7 +291,9 @@ async def update_order_draft_by_room_id(
             detail=f"Order draft with room id {room_id} not found.",
         )
 
-    if draft_in.customer_name is not None or draft_in.customer_phone is not None:
+    if allow_customer_update and (
+        draft_in.customer_name is not None or draft_in.customer_phone is not None
+    ):
         customer = await get_user_by_id(db, order_draft.customer_id)
         if not customer:
             raise HTTPException(
@@ -313,6 +321,8 @@ async def update_order_draft_by_room_id(
         order_draft.delivery_datetime = to_taipei_naive(draft_in.send_datetime)
     if draft_in.delivery_address is not None:
         order_draft.delivery_address = draft_in.delivery_address
+    if draft_in.pay_way is not None:
+        order_draft.pay_way = draft_in.pay_way
     order_draft.updated_at = now_taipei_naive()
 
     if draft_in.pay_way_id:
