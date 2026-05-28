@@ -4,6 +4,7 @@ from dataclasses import dataclass
 
 from fastapi import HTTPException, status
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.time import now_taipei_naive
@@ -108,7 +109,17 @@ async def _get_or_create_config(db: AsyncSession, store_id: int) -> StoreOrderFi
         updated_at=now_taipei_naive(),
     )
     db.add(config)
-    await db.commit()
+    try:
+        await db.commit()
+    except IntegrityError:
+        await db.rollback()
+        result = await db.execute(
+            select(StoreOrderFieldConfig).where(StoreOrderFieldConfig.store_id == store_id)
+        )
+        existing = result.scalar_one_or_none()
+        if existing:
+            return existing
+        raise
     await db.refresh(config)
     return config
 

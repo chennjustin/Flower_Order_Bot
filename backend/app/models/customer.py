@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, String
+from sqlalchemy import Boolean, DateTime, ForeignKey, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
@@ -11,9 +11,12 @@ from app.core.time import now_taipei_naive
 
 class Customer(Base):
     __tablename__ = "customer"
+    __table_args__ = (
+        UniqueConstraint("store_id", "line_uid", name="uq_customer_store_line_uid"),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    line_uid: Mapped[str | None] = mapped_column(String, unique=True, nullable=True)
+    line_uid: Mapped[str | None] = mapped_column(String, nullable=True)
     name: Mapped[str] = mapped_column(String, nullable=False)
     phone: Mapped[str | None] = mapped_column(String, nullable=True)
     avatar_url: Mapped[str | None] = mapped_column(String, nullable=True)

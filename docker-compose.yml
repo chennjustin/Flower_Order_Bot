@@ -19,7 +19,7 @@ services:
       - sh
       - -c
       - |
-        if [ "$$SKIP_ALEMBIC_ON_START" != "1" ]; then alembic upgrade head; fi
+        if [ "$$SKIP_ALEMBIC_ON_START" != "1" ]; then alembic upgrade head || exit 1; fi
         exec python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
   frontend:

@@ -21,6 +21,7 @@ from app.services.order_service import (
     create_order_draft_by_room_id,
     get_order_draft_by_room,
 )
+from app.repositories.store_repository import get_first_store_id
 from app.services.dev_room_reset import wipe_line_customer_for_dev
 from app.services.user_service import create_user, get_user_by_line_uid
 from app.utils.line_get_profile import fetch_user_profile
@@ -33,7 +34,13 @@ async def resolve_line_user_and_room(
 ) -> tuple[User, ChatRoom]:
     user = await get_user_by_line_uid(db, user_line_id)
     if not user:
-        user = await create_user(db, CustomerCreate(line_uid=user_line_id, name="Unknown User"))
+        store_id = await get_first_store_id(db)
+        if store_id is None:
+            raise RuntimeError("No store configured. Create a store in Supabase first.")
+        user = await create_user(
+            db,
+            CustomerCreate(line_uid=user_line_id, name="Unknown User", store_id=store_id),
+        )
 
     if user.name == "Unknown User" or user.avatar_url is None:
         try:

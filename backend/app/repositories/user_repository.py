@@ -9,7 +9,6 @@ from sqlalchemy.orm import selectinload
 
 from app.models.chat import ChatRoom
 from app.models.customer import Customer
-from app.repositories.store_repository import get_first_store_id
 from app.schemas.customer import CustomerCreate
 
 
@@ -37,17 +36,14 @@ async def get_user_by_chat_room_id(db: AsyncSession, chat_room_id: int) -> Optio
     )
     chat_room = chat_room_result.scalar_one_or_none()
     if not chat_room:
-        raise Exception("Chat room not found")
+        return None
     return chat_room.customer
 
 
 async def create_user(db: AsyncSession, user_data: CustomerCreate) -> Customer:
     payload = user_data.model_dump() if hasattr(user_data, "model_dump") else user_data.dict()
     if not payload.get("store_id"):
-        store_id = await get_first_store_id(db)
-        if store_id is None:
-            raise RuntimeError("資料庫中沒有 store，請先在 Supabase 建立店家資料。")
-        payload["store_id"] = store_id
+        raise ValueError("store_id is required when creating a customer")
     if payload.get("has_ordered") is None:
         payload["has_ordered"] = False
     user = Customer(**payload)

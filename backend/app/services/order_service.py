@@ -350,6 +350,7 @@ async def update_order_draft_by_room_id(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"Payment method with id {draft_in.pay_way_id} not found.",
             )
+        order_draft.pay_way = pay_way.display_name
 
     db.add(order_draft)
     await db.commit()
