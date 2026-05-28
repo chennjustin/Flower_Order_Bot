@@ -73,6 +73,7 @@ def upgrade() -> None:
             "ix_payment_order_id_method_id", "payment", ["order_id", "method_id"], unique=False
         )
 
+
 def downgrade() -> None:
     op.drop_index("ix_payment_order_id_method_id", table_name="payment")
     op.drop_index("ix_order_draft_room_id", table_name="order_draft")
