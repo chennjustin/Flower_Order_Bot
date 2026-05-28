@@ -3,6 +3,7 @@ from datetime import datetime
 from pydantic import BaseModel
 
 from app.enums.order import OrderStatus
+from app.enums.payment import PaymentStatus
 from app.enums.shipment import ShipmentMethod
 
 """
@@ -28,6 +29,7 @@ class OrderDraftBase(BaseModel):
 
     # 付款資訊
     total_amount: Optional[float] = None
+    pay_status: Optional[PaymentStatus] = None
 
     # 商品資訊
     item: Optional[str] = None
@@ -70,6 +72,7 @@ class OrderBase(BaseModel):
 
     # 付款資訊
     total_amount: float
+    pay_status: Optional[PaymentStatus] = None
 
     # 商品資訊
     item: str

@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.adapters.llm.openai_chat import complete_system_prompt
 from app.enums.chat import ChatMessageDirection, ChatMessageStatus
+from app.enums.payment import PaymentStatus
 from app.models.chat import ChatMessage, ChatRoom
 from app.schemas.chat import ChatMessagePayload
 from app.schemas.order import OrderDraftOut, OrderDraftUpdate
@@ -37,7 +38,30 @@ OPTIONAL_FIELD_LABELS: dict[str, str] = {
     "shipment_method": "配送方式",
     "delivery_address": "配送地址",
     "pay_way": "付款方式",
+    "pay_status": "付款狀態",
 }
+
+
+def _normalize_payment_status(value: object) -> PaymentStatus | None:
+    if value is None:
+        return None
+    if isinstance(value, PaymentStatus):
+        return value
+    text = str(value).strip().upper()
+    if not text:
+        return None
+    aliases = {
+        "PENDING": PaymentStatus.PENDING,
+        "UNPAID": PaymentStatus.PENDING,
+        "未付款": PaymentStatus.PENDING,
+        "PAID": PaymentStatus.PAID,
+        "已付款": PaymentStatus.PAID,
+        "FAILED": PaymentStatus.FAILED,
+        "付款失敗": PaymentStatus.FAILED,
+        "REFUNDED": PaymentStatus.REFUNDED,
+        "已退款": PaymentStatus.REFUNDED,
+    }
+    return aliases.get(text)
 
 
 def _clean_parsed_reply(parsed_reply: dict) -> dict:
@@ -63,6 +87,7 @@ def _parse_order_draft_json(gpt_reply: str) -> OrderDraftUpdate | None:
         quantity=parsed_reply.get("quantity"),
         note=parsed_reply.get("note"),
         shipment_method=parsed_reply.get("shipment_method"),
+        pay_status=_normalize_payment_status(parsed_reply.get("pay_status")),
         send_datetime=parsed_reply.get("send_datetime"),
         delivery_address=parsed_reply.get("delivery_address"),
     )
@@ -92,6 +117,7 @@ def _collect_missing_fields(
         "shipment_method": order_draft_update.shipment_method or draft.shipment_method,
         "delivery_address": order_draft_update.delivery_address or draft.delivery_address,
         "pay_way": order_draft_update.pay_way or draft.pay_way,
+        "pay_status": order_draft_update.pay_status or draft.pay_status,
     }
 
     missing_labels: list[str] = []
@@ -119,6 +145,7 @@ def _filter_update_by_required_fields(
         "shipment_method": None,
         "delivery_address": None,
         "pay_way": None,
+        "pay_status": None,
     }
     payload = order_draft_update.model_dump()
     for field_name, default_value in optional_to_clear.items():

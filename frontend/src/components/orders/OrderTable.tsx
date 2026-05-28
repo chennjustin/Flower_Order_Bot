@@ -539,7 +539,17 @@ function Cell({ column, row, onExport, onDelete }: CellProps) {
     case 'delivery_address':
       return <>{row.delivery_address ?? ''}</>
     case 'pay_status':
-      return <></>
+      return (
+        <>
+          {row.pay_status === 'PAID'
+            ? '已付款'
+            : row.pay_status === 'FAILED'
+              ? '付款失敗'
+              : row.pay_status === 'REFUNDED'
+                ? '已退款'
+                : '待付款'}
+        </>
+      )
     case 'customer_name':
       return <>{row.customer_name}</>
     case 'customer_phone':
@@ -586,7 +596,15 @@ function getCellValue(column: ColumnKey, row: Order): string | number {
     case 'pay_way':
       return row.pay_way ?? ''
     case 'pay_status':
-      return ''
+      return (
+        row.pay_status === 'PAID'
+          ? '已付款'
+          : row.pay_status === 'FAILED'
+            ? '付款失敗'
+            : row.pay_status === 'REFUNDED'
+              ? '已退款'
+              : '待付款'
+      )
     case 'export':
     case 'cancel':
       return ''

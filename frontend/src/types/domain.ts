@@ -8,6 +8,7 @@ import type {
   ChatMessageStatus,
   ChatRoomStage,
   OrderStatus,
+  PaymentStatus,
   ShipmentMethod,
 } from './enums'
 
@@ -15,6 +16,7 @@ export interface OrderDraftBase {
   customer_name?: string | null
   customer_phone?: string | null
   total_amount?: number | null
+  pay_status?: PaymentStatus | null
   item?: string | null
   quantity?: number | null
   note?: string | null
@@ -38,6 +40,7 @@ export interface OrderBase {
   customer_name: string
   customer_phone: string
   total_amount: number
+  pay_status?: PaymentStatus | null
   item: string
   quantity: number
   note?: string | null

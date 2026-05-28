@@ -8,6 +8,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.core.database import Base
 from app.core.time import now_taipei_naive
 from app.enums.order import OrderStatus
+from app.enums.payment import PaymentStatus
 from app.enums.shipment import ShipmentMethod
 
 
@@ -27,6 +28,10 @@ class OrderDraft(Base):
         nullable=True,
     )
     pay_way: Mapped[str | None] = mapped_column(String, nullable=True)
+    pay_status: Mapped[PaymentStatus | None] = mapped_column(
+        SAEnum(PaymentStatus, name="payment_status", validate_strings=True),
+        nullable=True,
+    )
     delivery_address: Mapped[str | None] = mapped_column(Text, nullable=True)
     delivery_datetime: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=now_taipei_naive)
@@ -49,6 +54,8 @@ class Order(Base):
         SAEnum(OrderStatus, name="order_status", validate_strings=True),
         default=OrderStatus.PENDING,
     )
+    customer_name: Mapped[str | None] = mapped_column(String, nullable=True)
+    customer_phone: Mapped[str | None] = mapped_column(String, nullable=True)
     item_type: Mapped[str] = mapped_column(String, nullable=False)
     quantity: Mapped[int | None] = mapped_column(Integer, nullable=True)
     total_amount: Mapped[float] = mapped_column(Numeric(10, 2), nullable=False)
@@ -58,6 +65,10 @@ class Order(Base):
         nullable=True,
     )
     pay_way: Mapped[str | None] = mapped_column(String, nullable=True)
+    pay_status: Mapped[PaymentStatus | None] = mapped_column(
+        SAEnum(PaymentStatus, name="payment_status", validate_strings=True),
+        nullable=True,
+    )
     delivery_address: Mapped[str | None] = mapped_column(Text, nullable=True)
     delivery_datetime: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=now_taipei_naive)

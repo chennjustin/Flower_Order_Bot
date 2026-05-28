@@ -2,6 +2,7 @@ import json
 from datetime import datetime
 
 from app.schemas.order import OrderDraftOut, OrderDraftUpdate
+from app.enums.payment import PaymentStatus
 from app.usecases.organize_order_draft import (
     _collect_missing_fields,
     _filter_update_by_required_fields,
@@ -14,6 +15,7 @@ def test_parse_order_draft_json_minimal_fields():
         "customer_name": "A",
         "customer_phone": "0912",
         "pay_way": "CASH",
+        "pay_status": "PAID",
         "total_amount": 1000,
         "item": "rose",
         "quantity": 1,
@@ -25,6 +27,7 @@ def test_parse_order_draft_json_minimal_fields():
     upd = _parse_order_draft_json(json.dumps(payload))
     assert upd.customer_name is None
     assert upd.customer_phone is None
+    assert upd.pay_status == PaymentStatus.PAID
     assert upd.delivery_address == "addr"
 
 
@@ -90,6 +93,7 @@ def test_filter_update_by_required_fields_removes_hidden_optional_fields():
         quantity=2,
         note="不要卡片",
         delivery_address="台北市信義區",
+        pay_status=PaymentStatus.PAID,
     )
     filtered = _filter_update_by_required_fields(
         update,
@@ -104,4 +108,5 @@ def test_filter_update_by_required_fields_removes_hidden_optional_fields():
     assert filtered.quantity is None
     assert filtered.note is None
     assert filtered.delivery_address is None
+    assert filtered.pay_status is None
 

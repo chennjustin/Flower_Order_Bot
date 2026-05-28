@@ -7,7 +7,7 @@ import {
   useUpdateOrderDraft,
 } from '@/hooks/useOrderDraft'
 import type { OrderDraft, OrderDraftUpdate } from '@/types/domain'
-import type { ShipmentMethod } from '@/types/enums'
+import type { PaymentStatus, ShipmentMethod } from '@/types/enums'
 import { useOrderDisplayConfig } from '@/context/OrderDisplayConfigContext'
 import type { OrderFieldKey } from '@/types/orderDisplay'
 import { cn } from '@/lib/utils'
@@ -23,8 +23,9 @@ type EditableKey =
   | 'send_datetime'
   | 'delivery_address'
   | 'pay_way'
+  | 'pay_status'
 
-type ReadOnlyKey = 'id' | 'order_date' | 'order_status' | 'pay_status'
+type ReadOnlyKey = 'id' | 'order_date' | 'order_status'
 
 type FieldKey = EditableKey | ReadOnlyKey
 
@@ -72,7 +73,7 @@ const FIELD_META: Record<FieldKey, Omit<FieldDef, 'key'>> = {
   order_date: { label: '訂單日期', editable: false },
   order_status: { label: '狀態', editable: false },
   pay_way: { label: '付款方式', editable: true },
-  pay_status: { label: '付款狀態', editable: false },
+  pay_status: { label: '付款狀態', editable: true, variant: 'select' },
 }
 
 const DRAFT_SUPPORTED_KEYS: OrderFieldKey[] = [
@@ -104,6 +105,7 @@ interface FormState {
   send_datetime_time: string
   delivery_address: string
   pay_way: string
+  pay_status: PaymentStatus
 }
 
 const EMPTY_FORM: FormState = {
@@ -118,6 +120,7 @@ const EMPTY_FORM: FormState = {
   send_datetime_time: '',
   delivery_address: '',
   pay_way: '',
+  pay_status: 'PENDING',
 }
 
 function pad2(n: number) {
@@ -160,6 +163,7 @@ function formStateFromDraft(draft: OrderDraft | null | undefined): FormState {
     send_datetime_time: time,
     delivery_address: draft.delivery_address ?? '',
     pay_way: draft.pay_way ?? '',
+    pay_status: draft.pay_status ?? 'PENDING',
   }
 }
 
@@ -177,6 +181,7 @@ function formStateToUpdate(form: FormState): OrderDraftUpdate {
     send_datetime: combineDateTimeIso(form.send_datetime_date, form.send_datetime_time),
     delivery_address: form.delivery_address || null,
     pay_way: form.pay_way || null,
+    pay_status: form.pay_status,
   }
 }
 
@@ -245,7 +250,14 @@ export default function DetailPanel({ roomId, open, onClose }: DetailPanelProps)
       order_date: formatReadOnly(draft.order_date),
       order_status: '草稿',
       pay_way: draft.pay_way ?? '',
-      pay_status: '—',
+      pay_status:
+        draft.pay_status === 'PAID'
+          ? '已付款'
+          : draft.pay_status === 'FAILED'
+            ? '付款失敗'
+            : draft.pay_status === 'REFUNDED'
+              ? '已退款'
+              : '待付款',
     }
   }, [draft])
 
@@ -502,6 +514,21 @@ function renderEditor(
       >
         <option value="STORE_PICKUP">店取</option>
         <option value="DELIVERY">外送</option>
+      </select>
+    )
+  }
+
+  if (field.variant === 'select' && field.key === 'pay_status') {
+    return (
+      <select
+        value={form.pay_status}
+        onChange={e => setField('pay_status', e.target.value as PaymentStatus)}
+        className={cn(inputClasses, 'cursor-pointer appearance-none')}
+      >
+        <option value="PENDING">待付款</option>
+        <option value="PAID">已付款</option>
+        <option value="FAILED">付款失敗</option>
+        <option value="REFUNDED">已退款</option>
       </select>
     )
   }

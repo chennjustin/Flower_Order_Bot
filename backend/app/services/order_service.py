@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.time import to_taipei_aware, to_taipei_naive
 from app.enums.chat import ChatMessageDirection, ChatMessageStatus, ChatRoomStage
 from app.enums.order import OrderStatus
+from app.enums.payment import PaymentStatus
 from app.enums.shipment import ShipmentMethod
 from app.models.chat import ChatMessage
 from app.models.order import Order, OrderDraft
@@ -40,22 +41,18 @@ async def get_order(db: AsyncSession, order_id: int) -> Order:
 
 
 async def _build_order_out(db: AsyncSession, order: Order) -> Optional[OrderOut]:
-    customer = await get_user_by_id(db, order.customer_id)
-    if not customer:
-        print(f"Customer not found for order {order.id}")
-        return None
-
     pay_way = await get_pay_way_by_order_id(db, order.id)
     shipment = order.shipment_method or ShipmentMethod.STORE_PICKUP
     quantity = order.quantity if order.quantity is not None else 0
 
     return OrderOut(
         id=order.id,
-        customer_name=customer.name,
-        customer_phone=customer.phone or "",
+        customer_name=order.customer_name or "",
+        customer_phone=order.customer_phone or "",
         order_date=to_taipei_aware(order.created_at),
         order_status=order.status,
         pay_way=order.pay_way or (pay_way.display_name if pay_way else None),
+        pay_status=order.pay_status or PaymentStatus.PENDING,
         total_amount=float(order.total_amount),
         item=order.item_type,
         quantity=quantity,
@@ -121,17 +118,26 @@ async def create_order_by_room(db: AsyncSession, room_id: int) -> list[str]:
     is_complete, missing_fields = await validate_order_draft_required_fields(db, order_draft)
     if not is_complete:
         return missing_fields
+    customer = await get_user_by_id(db, order_draft.customer_id)
+    if not customer:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Customer with id {order_draft.customer_id} not found.",
+        )
 
     order = Order(
         room_id=order_draft.room_id,
         customer_id=order_draft.customer_id,
         status=OrderStatus.CONFIRMED,
+        customer_name=customer.name,
+        customer_phone=customer.phone or "",
         item_type=order_draft.item_type,
         quantity=order_draft.quantity,
         total_amount=order_draft.total_amount,
         notes=order_draft.notes,
         shipment_method=order_draft.shipment_method,
         pay_way=order_draft.pay_way,
+        pay_status=order_draft.pay_status or PaymentStatus.PENDING,
         delivery_address=order_draft.delivery_address,
         delivery_datetime=order_draft.delivery_datetime,
         created_at=now_taipei_naive(),
@@ -192,12 +198,21 @@ async def update_order_by_room_id(db: AsyncSession, room_id: int) -> bool:
         )
 
     order.customer_id = order_draft.customer_id
+    customer = await get_user_by_id(db, order_draft.customer_id)
+    if not customer:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Customer with id {order_draft.customer_id} not found.",
+        )
+    order.customer_name = customer.name
+    order.customer_phone = customer.phone or ""
     order.item_type = order_draft.item_type
     order.quantity = order_draft.quantity
     order.total_amount = order_draft.total_amount
     order.notes = order_draft.notes
     order.shipment_method = order_draft.shipment_method
     order.pay_way = order_draft.pay_way
+    order.pay_status = order_draft.pay_status
     order.delivery_address = order_draft.delivery_address
     order.delivery_datetime = order_draft.delivery_datetime
     order.updated_at = now_taipei_naive()
@@ -238,6 +253,7 @@ async def get_order_draft_out_by_room(db: AsyncSession, room_id: int) -> Optiona
         customer_phone=customer.phone if customer else "未知",
         order_date=to_taipei_aware(order_draft.created_at),
         pay_way=order_draft.pay_way,
+        pay_status=order_draft.pay_status or PaymentStatus.PENDING,
         total_amount=order_draft.total_amount,
         item=order_draft.item_type,
         quantity=order_draft.quantity,
@@ -323,6 +339,8 @@ async def update_order_draft_by_room_id(
         order_draft.delivery_address = draft_in.delivery_address
     if draft_in.pay_way is not None:
         order_draft.pay_way = draft_in.pay_way
+    if draft_in.pay_status is not None:
+        order_draft.pay_status = draft_in.pay_status
     order_draft.updated_at = now_taipei_naive()
 
     if draft_in.pay_way_id:

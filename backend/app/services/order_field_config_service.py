@@ -37,6 +37,7 @@ OPTIONAL_ORGANIZE_FIELDS: tuple[str, ...] = (
     "shipment_method",
     "delivery_address",
     "pay_way",
+    "pay_status",
 )
 
 CORE_ORGANIZE_FIELDS: tuple[str, ...] = (
