@@ -100,7 +100,7 @@ async def get_chat_messages(db: AsyncSession, room_id: int, after: Optional[date
     
     messages = await list_chat_messages(db, room_id, after=after)
 
-    user = await get_user_by_id(db, chatroom.user_id)
+    user = await get_user_by_id(db, chatroom.customer_id)
     if user:
         user_avatar_url = user.avatar_url
     else:
@@ -142,11 +142,16 @@ async def create_staff_message(
     payload = ChatMessagePayload.model_validate(body.model_dump())
     room = await get_chat_room_by_room_id(db, room_id)
     if not room:
-        raise ValueError("Chat room not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Chat room not found")
 
-    user = await get_user_by_line_uid(db, room.user.line_uid)
+    if not room.customer or not room.customer.line_uid:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Customer has no LINE UID; cannot push message",
+        )
+    user = await get_user_by_line_uid(db, room.customer.line_uid)
     if not user:
-        raise ValueError("User not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
 
     push_ok = LINE_push_message(user.line_uid, payload)
     message_status = ChatMessageStatus.SENT if push_ok else ChatMessageStatus.FAILED
@@ -155,7 +160,7 @@ async def create_staff_message(
         db=db,
         room_id=room.id,
         data=payload,
-        direction=ChatMessageDirection.OUTGOING_BY_STAFF,
+        direction=ChatMessageDirection.OUTGOING_BY_STORE,
         message_status=message_status,
     )
 

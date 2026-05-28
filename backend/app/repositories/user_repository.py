@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
@@ -6,38 +8,49 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.models.chat import ChatRoom
-from app.models.user import User
-from app.schemas.user import UserCreate
+from app.models.customer import Customer
+from app.repositories.store_repository import get_first_store_id
+from app.schemas.customer import CustomerCreate
 
 
 def now_taipei_naive() -> datetime:
     return datetime.now(timezone(timedelta(hours=8))).replace(tzinfo=None)
 
 
-async def get_user_by_id(db: AsyncSession, user_id: int) -> Optional[User]:
-    stmt = select(User).where(User.id == user_id)
+async def get_user_by_id(db: AsyncSession, user_id: int) -> Optional[Customer]:
+    stmt = select(Customer).where(Customer.id == user_id)
     result = await db.execute(stmt)
     return result.scalar_one_or_none()
 
 
-async def get_user_by_line_uid(db: AsyncSession, line_uid: str) -> Optional[User]:
-    stmt = select(User).where(User.line_uid == line_uid)
+async def get_user_by_line_uid(db: AsyncSession, line_uid: str) -> Optional[Customer]:
+    stmt = select(Customer).where(Customer.line_uid == line_uid)
     result = await db.execute(stmt)
     return result.scalar_one_or_none()
 
 
-async def get_user_by_chat_room_id(db: AsyncSession, chat_room_id: int) -> Optional[User]:
+async def get_user_by_chat_room_id(db: AsyncSession, chat_room_id: int) -> Optional[Customer]:
     chat_room_result = await db.execute(
-        select(ChatRoom).options(selectinload(ChatRoom.user)).where(ChatRoom.id == chat_room_id)
+        select(ChatRoom)
+        .options(selectinload(ChatRoom.customer))
+        .where(ChatRoom.id == chat_room_id)
     )
     chat_room = chat_room_result.scalar_one_or_none()
     if not chat_room:
         raise Exception("Chat room not found")
-    return chat_room.user
+    return chat_room.customer
 
 
-async def create_user(db: AsyncSession, user_data: UserCreate) -> User:
-    user = User(**user_data.dict())
+async def create_user(db: AsyncSession, user_data: CustomerCreate) -> Customer:
+    payload = user_data.model_dump() if hasattr(user_data, "model_dump") else user_data.dict()
+    if not payload.get("store_id"):
+        store_id = await get_first_store_id(db)
+        if store_id is None:
+            raise RuntimeError("資料庫中沒有 store，請先在 Supabase 建立店家資料。")
+        payload["store_id"] = store_id
+    if payload.get("has_ordered") is None:
+        payload["has_ordered"] = False
+    user = Customer(**payload)
     db.add(user)
     await db.commit()
     await db.refresh(user)
@@ -45,8 +58,11 @@ async def create_user(db: AsyncSession, user_data: UserCreate) -> User:
 
 
 async def update_user_info(
-    db: AsyncSession, user_id: int, name: Optional[str] = None, phone: Optional[str] = None
-) -> User:
+    db: AsyncSession,
+    user_id: int,
+    name: Optional[str] = None,
+    phone: Optional[str] = None,
+) -> Customer:
     user = await get_user_by_id(db, user_id)
     if not user:
         raise Exception("User not found")
@@ -58,4 +74,3 @@ async def update_user_info(
     await db.commit()
     await db.refresh(user)
     return user
-

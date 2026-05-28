@@ -54,6 +54,9 @@ def resolve_database_url() -> str:
         database_url = explicit
         if database_url.startswith("postgres://"):
             database_url = database_url.replace("postgres://", "postgresql+asyncpg://", 1)
+        # asyncpg 用 ssl=require；Supabase 文件常寫 sslmode=require（僅 psycopg2）
+        if "postgresql+asyncpg" in database_url:
+            database_url = database_url.replace("sslmode=require", "ssl=require")
         return database_url
     if any(
         os.getenv(k)

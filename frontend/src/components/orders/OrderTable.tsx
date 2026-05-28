@@ -22,7 +22,9 @@ import { formatCellDateTime, toLocalDateKey } from '@/utils/datetime'
 import { rowsToCsvBlob } from '@/utils/csv'
 import { downloadBlob } from '@/utils/download'
 import type { Order } from '@/types/domain'
+import type { OrderFieldKey } from '@/types/orderDisplay'
 import { cn } from '@/lib/utils'
+import { useOrderDisplayConfig } from '@/context/OrderDisplayConfigContext'
 import CalendarView from './CalendarView'
 import OrderDatePicker from './OrderDatePicker'
 import OrderDetailDialog from './OrderDetailDialog'
@@ -41,14 +43,16 @@ interface OrderTableProps {
 type ColumnKey =
   | 'export'
   | 'id'
-  | 'status'
+  | 'order_status'
   | 'send_datetime'
+  | 'order_date'
   | 'customer_name'
   | 'customer_phone'
   | 'item'
   | 'quantity'
   | 'note'
   | 'shipment_method'
+  | 'delivery_address'
   | 'total_amount'
   | 'pay_way'
   | 'pay_status'
@@ -63,19 +67,27 @@ interface ColumnDef {
 const COLUMNS: ColumnDef[] = [
   { key: 'export', label: '列印' },
   { key: 'id', label: '訂單編號', width: '136px' },
-  { key: 'status', label: '狀態', width: '120px' },
+  { key: 'order_status', label: '狀態', width: '120px' },
   { key: 'send_datetime', label: '取貨時間', width: '200px' },
+  { key: 'order_date', label: '訂單日期', width: '200px' },
   { key: 'customer_name', label: '姓名', width: '96px' },
   { key: 'customer_phone', label: '電話', width: '112px' },
   { key: 'item', label: '品項', width: '96px' },
   { key: 'quantity', label: '數量', width: '96px' },
   { key: 'note', label: '備註', width: '128px' },
   { key: 'shipment_method', label: '取貨方式', width: '128px' },
+  { key: 'delivery_address', label: '送貨地址', width: '200px' },
   { key: 'total_amount', label: '金額', width: '96px' },
   { key: 'pay_way', label: '付款方式', width: '128px' },
   { key: 'pay_status', label: '付款狀態', width: '112px' },
   { key: 'cancel', label: '取消訂單', width: '96px' },
 ]
+const COLUMN_BY_KEY: Record<ColumnKey, ColumnDef> = Object.fromEntries(
+  COLUMNS.map(c => [c.key, c]),
+) as Record<ColumnKey, ColumnDef>
+const DATA_COLUMN_KEYS = new Set<ColumnKey>(
+  COLUMNS.filter(c => c.key !== 'export' && c.key !== 'cancel').map(c => c.key),
+)
 
 const FILTER_TABS: ReadonlyArray<{ value: FilterTab; label: string }> = [
   { value: '', label: '所有訂單' },
@@ -104,6 +116,7 @@ export default function OrderTable({
 }: OrderTableProps) {
   const ordersQuery = useOrders()
   const deleteMutation = useDeleteOrder()
+  const { savedConfig } = useOrderDisplayConfig()
 
   const [viewMode, setViewMode] = useState<ViewMode>('list')
   const [activeTab, setActiveTab] = useState<FilterTab>('')
@@ -164,6 +177,19 @@ export default function OrderTable({
     return rows
   }, [orders, effectiveStatusTab, dateFilterActive, currentDate, searchText, quickFilter])
 
+  const visibleColumns = useMemo<ColumnDef[]>(() => {
+    const orderedKeys = [...savedConfig.fields]
+      .sort((a, b) => a.order - b.order)
+      .filter(field => field.visible)
+      .map(field => field.key as OrderFieldKey)
+
+    const dataColumns = orderedKeys
+      .map(key => COLUMN_BY_KEY[key as ColumnKey])
+      .filter((col): col is ColumnDef => Boolean(col))
+      .filter(col => DATA_COLUMN_KEYS.has(col.key))
+    return [COLUMN_BY_KEY.export, ...dataColumns, COLUMN_BY_KEY.cancel]
+  }, [savedConfig.fields])
+
   function selectTab(value: FilterTab) {
     if (value === 'today') {
       setCurrentDate(new Date())
@@ -194,23 +220,9 @@ export default function OrderTable({
   }
 
   function handleDownloadCsv() {
-    const headers = COLUMNS.map(c => c.label)
-    const rows = orders.map(o => [
-      o.order_status,
-      o.id,
-      o.order_status,
-      o.send_datetime,
-      o.customer_name,
-      o.customer_phone,
-      o.item,
-      o.quantity,
-      o.note ?? '',
-      shipmentLabel(o.shipment_method),
-      o.total_amount,
-      o.pay_way ?? '',
-      '',
-      o.id,
-    ])
+    const csvColumns = visibleColumns.filter(c => c.key !== 'export' && c.key !== 'cancel')
+    const headers = csvColumns.map(c => c.label)
+    const rows = orders.map(o => csvColumns.map(col => getCellValue(col.key, o)))
     downloadBlob(rowsToCsvBlob(headers, rows), '訂單資料.csv')
   }
 
@@ -374,7 +386,7 @@ export default function OrderTable({
                 >
                   <thead className="sticky top-0 z-10">
                     <tr>
-                      {COLUMNS.map((col, idx) => (
+                      {visibleColumns.map((col, idx) => (
                         <th
                           key={col.key}
                           style={{ width: col.width }}
@@ -382,8 +394,9 @@ export default function OrderTable({
                             "bg-[#F7F7F7] px-5 py-3 text-left align-middle font-['Noto_Sans_TC',sans-serif] text-base font-bold leading-[140%] text-black/[0.87] whitespace-nowrap relative",
                             'border-y-[0.5px] border-[rgba(175,175,175,0.6)]',
                             idx === 0 && 'rounded-l-xl border-l-[0.5px] border-r-0',
-                            idx === COLUMNS.length - 1 && 'rounded-r-xl border-r-[0.5px] border-l-0',
-                            idx !== 0 && idx !== COLUMNS.length - 1 && 'border-x-0',
+                            idx === visibleColumns.length - 1 &&
+                              'rounded-r-xl border-r-[0.5px] border-l-0',
+                            idx !== 0 && idx !== visibleColumns.length - 1 && 'border-x-0',
                           )}
                         >
                           {col.label}
@@ -398,7 +411,7 @@ export default function OrderTable({
                         className="group cursor-pointer bg-white"
                         onClick={() => setSelectedOrder(row)}
                       >
-                        {COLUMNS.map((col, idx) => (
+                        {visibleColumns.map((col, idx) => (
                           <td
                             key={col.key}
                             style={{ width: col.width, maxWidth: col.width }}
@@ -406,8 +419,9 @@ export default function OrderTable({
                               "bg-white px-5 py-3 align-middle font-['Noto_Sans_TC',sans-serif] text-base font-bold leading-[140%] text-black/60 break-words transition-colors group-hover:bg-[#f0f6ff]",
                               'border-y-[0.5px] border-[rgba(175,175,175,0.6)]',
                               idx === 0 && 'rounded-l-xl border-l-[0.5px] border-r-0',
-                              idx === COLUMNS.length - 1 && 'rounded-r-xl border-r-[0.5px] border-l-0',
-                              idx !== 0 && idx !== COLUMNS.length - 1 && 'border-x-0',
+                              idx === visibleColumns.length - 1 &&
+                                'rounded-r-xl border-r-[0.5px] border-l-0',
+                              idx !== 0 && idx !== visibleColumns.length - 1 && 'border-x-0',
                             )}
                           >
                             <Cell column={col.key} row={row} onExport={handleExportDocx} onDelete={setPendingDelete} />
@@ -504,7 +518,7 @@ function Cell({ column, row, onExport, onDelete }: CellProps) {
       )
     case 'id':
       return <>{row.id}</>
-    case 'status':
+    case 'order_status':
       return (
         <span
           className={cn(
@@ -518,10 +532,24 @@ function Cell({ column, row, onExport, onDelete }: CellProps) {
       )
     case 'send_datetime':
       return <>{formatCellDateTime(row.send_datetime)}</>
+    case 'order_date':
+      return <>{formatCellDateTime(row.order_date)}</>
     case 'shipment_method':
       return <>{shipmentLabel(row.shipment_method)}</>
+    case 'delivery_address':
+      return <>{row.delivery_address ?? ''}</>
     case 'pay_status':
-      return <></>
+      return (
+        <>
+          {row.pay_status === 'PAID'
+            ? '已付款'
+            : row.pay_status === 'FAILED'
+              ? '付款失敗'
+              : row.pay_status === 'REFUNDED'
+                ? '已退款'
+                : '待付款'}
+        </>
+      )
     case 'customer_name':
       return <>{row.customer_name}</>
     case 'customer_phone':
@@ -536,5 +564,49 @@ function Cell({ column, row, onExport, onDelete }: CellProps) {
       return <>{row.total_amount}</>
     case 'pay_way':
       return <>{row.pay_way ?? ''}</>
+  }
+}
+
+function getCellValue(column: ColumnKey, row: Order): string | number {
+  switch (column) {
+    case 'id':
+      return row.id
+    case 'order_status':
+      return statusText(normalizeStatus(row.order_status as unknown as string))
+    case 'send_datetime':
+      return formatCellDateTime(row.send_datetime)
+    case 'order_date':
+      return formatCellDateTime(row.order_date)
+    case 'customer_name':
+      return row.customer_name
+    case 'customer_phone':
+      return row.customer_phone
+    case 'item':
+      return row.item
+    case 'quantity':
+      return row.quantity
+    case 'note':
+      return row.note ?? ''
+    case 'shipment_method':
+      return shipmentLabel(row.shipment_method)
+    case 'delivery_address':
+      return row.delivery_address ?? ''
+    case 'total_amount':
+      return row.total_amount
+    case 'pay_way':
+      return row.pay_way ?? ''
+    case 'pay_status':
+      return (
+        row.pay_status === 'PAID'
+          ? '已付款'
+          : row.pay_status === 'FAILED'
+            ? '付款失敗'
+            : row.pay_status === 'REFUNDED'
+              ? '已退款'
+              : '待付款'
+      )
+    case 'export':
+    case 'cancel':
+      return ''
   }
 }

@@ -1,7 +1,7 @@
 """add chat_message sticker columns
 
 Revision ID: c3b8e1a9d0f2
-Revises: 2f9a0d4c1b7e
+Revises: d42d661dc523
 Create Date: 2026-05-16 12:00:00.000000
 """
 
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 
 revision = "c3b8e1a9d0f2"
-down_revision = "2f9a0d4c1b7e"
+down_revision = "d42d661dc523"
 branch_labels = None
 depends_on = None
 

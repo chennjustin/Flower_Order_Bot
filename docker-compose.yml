@@ -1,40 +1,26 @@
+# 資料庫使用 backend/.env 的 Supabase（DATABASE_URL / DATABASE_ALEM_URL），不含本機 Postgres 容器。
 services:
-  db:
-    image: postgres:16-alpine
-    env_file:
-      - ./backend/.env
-    ports:
-      # 對外改 5434，避免與本機 PostgreSQL(5432) 衝突
-      - "5434:5432"
-    volumes:
-      - db_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
-      interval: 5s
-      timeout: 3s
-      retries: 20
-
   backend:
     build:
       context: ./backend
     env_file:
       - ./backend/.env
     environment:
-      # 與本機差異僅主機名：容器內用 compose 服務名 db（帳密見 backend/.env）
-      POSTGRES_HOST: db
-      POSTGRES_PORT: 5432
       PYTHONDONTWRITEBYTECODE: "1"
       PYTHONUNBUFFERED: "1"
+      SKIP_ALEMBIC_ON_START: "1"
       # LINE 使用者傳圖後下載存档；給前端／LINE ImageSendMessage 用的公開基底網址（ngrok 請改成 https）
       PUBLIC_BASE_URL: http://localhost:8000
-    depends_on:
-      db:
-        condition: service_healthy
     ports:
       - "8000:8000"
     volumes:
       - ./backend:/app
-    command: sh -c "alembic upgrade head && python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
+    command:
+      - sh
+      - -c
+      - |
+        if [ "$$SKIP_ALEMBIC_ON_START" != "1" ]; then alembic upgrade head; fi
+        exec python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
   frontend:
     build:
@@ -42,7 +28,6 @@ services:
       args:
         VITE_API_BASE_URL: http://localhost:8000
     environment:
-      # For `npm run dev` inside container; build arg already bakes it for prod build.
       VITE_API_BASE_URL: http://localhost:8000
       CHOKIDAR_USEPOLLING: "true"
       WATCHPACK_POLLING: "true"
@@ -53,8 +38,4 @@ services:
     volumes:
       - ./frontend:/app
       - /app/node_modules
-    command: npm run dev -- --host 0.0.0.0 --port 5173
-
-volumes:
-  db_data:
-
+    command: sh -c "npm install && npm run dev -- --host 0.0.0.0 --port 5173"

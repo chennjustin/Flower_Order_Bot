@@ -28,7 +28,7 @@ async def create_random_message(session, room):
         direction = random.choice([
             ChatMessageDirection.INCOMING,
             ChatMessageDirection.OUTGOING_BY_BOT,
-            ChatMessageDirection.OUTGOING_BY_STAFF
+            ChatMessageDirection.OUTGOING_BY_STORE
         ])
         
         # 根據訊息方向生成不同的內容
@@ -42,7 +42,7 @@ async def create_random_message(session, room):
                 "請問您需要什麼時候送達呢？",
                 "好的，我已經記錄下來了。"
             ])
-        else:  # OUTGOING_BY_STAFF
+        else:  # OUTGOING_BY_STORE
             text = random.choice([
                 "您好，我是客服人員，很高興為您服務。",
                 "您的訂單已經確認了。",

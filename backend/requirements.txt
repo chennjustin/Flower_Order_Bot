@@ -1,7 +1,7 @@
 python-dotenv==1.1.0
 line-bot-sdk==3.16.3
 gunicorn==23.0.0
-openai==1.75.0
+openai>=1.75.0,<2.0.0
 python-dateutil==2.9.0.post0
 asyncpg==0.30.0
 alembic==1.11.0

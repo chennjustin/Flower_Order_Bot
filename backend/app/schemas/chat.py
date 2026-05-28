@@ -1,7 +1,14 @@
-from pydantic import BaseModel, model_validator
 from datetime import datetime
 from typing import Optional
-from app.enums.chat import ChatRoomStage, ChatMessageStatus, ChatMessageDirection
+
+from pydantic import BaseModel, field_validator, model_validator
+
+from app.enums.chat import (
+    ChatMessageDirection,
+    ChatMessageStatus,
+    ChatRoomStage,
+    normalize_chat_message_direction,
+)
 
 class LastMessage(BaseModel):
     text: str
@@ -55,6 +62,12 @@ class StaffChatImageUploadOut(BaseModel):
     image_url: str
 
 
+class SwitchModeBody(BaseModel):
+    """POST /chat_rooms/{room_id}/switch_mode 請求體。"""
+
+    stage: ChatRoomStage
+
+
 class ChatMessageOut(BaseModel):
     id: int
     user_avatar_url: Optional[str] = None
@@ -62,3 +75,12 @@ class ChatMessageOut(BaseModel):
     message: ChatMessagePayload
     status: ChatMessageStatus
     created_at: datetime
+
+    @field_validator("direction", mode="before")
+    @classmethod
+    def _coerce_direction(cls, value: object) -> ChatMessageDirection:
+        if value is None:
+            raise ValueError("direction is required")
+        return normalize_chat_message_direction(
+            value.value if isinstance(value, ChatMessageDirection) else str(value)
+        )
