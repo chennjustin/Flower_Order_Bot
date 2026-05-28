@@ -12,6 +12,7 @@ class CustomerBase(BaseModel):
 
 
 class CustomerCreate(CustomerBase):
+    name: str
     store_id: Optional[int] = None
     has_ordered: bool = False
 

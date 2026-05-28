@@ -6,6 +6,7 @@ from linebot.models import MessageEvent, TextMessage, ImageMessage, StickerMessa
 
 from app.core.deps import get_line_webhook_handler
 from app.core.database import get_db
+from app.repositories.store_repository import get_first_store_id
 from app.services.user_service import get_user_by_line_uid, create_user
 from app.services.message_service import get_chat_room_by_user_id, create_chat_room
 from app.schemas.customer import CustomerCreate
@@ -76,7 +77,16 @@ async def handle_follow(event: FollowEvent, db: AsyncSession):
     user_line_id = event.source.user_id
     user = await get_user_by_line_uid(db, user_line_id)
     if not user:
-        user = await create_user(db, CustomerCreate(line_uid=user_line_id, name="Profile Name"))
+        store_id = await get_first_store_id(db)
+        if store_id is None:
+            raise HTTPException(
+                status_code=503,
+                detail="No store configured. Create a store in Supabase first.",
+            )
+        user = await create_user(
+            db,
+            CustomerCreate(line_uid=user_line_id, name="Profile Name", store_id=store_id),
+        )
         print(f"新使用者 {user_line_id} 已創建")
     else:
         print(f"使用者 {user_line_id} 已存在")

@@ -197,7 +197,7 @@ ngrok http 8000
 
 於 [LINE Developers Console](https://developers.line.biz/console/) 設定 Webhook URL，例如：
 
-```
+```text
 https://your-domain.example.com/callback
 ```
 

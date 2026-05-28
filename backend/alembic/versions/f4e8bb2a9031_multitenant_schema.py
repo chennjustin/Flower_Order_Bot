@@ -198,7 +198,7 @@ def upgrade() -> None:
         sa.Column("store_id", sa.Integer(), nullable=False),
         sa.ForeignKeyConstraint(["store_id"], ["store.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
-        sa.UniqueConstraint("line_uid"),
+        sa.UniqueConstraint("store_id", "line_uid", name="uq_customer_store_line_uid"),
     )
 
     op.create_table(
