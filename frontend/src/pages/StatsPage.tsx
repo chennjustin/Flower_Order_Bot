@@ -15,7 +15,13 @@ export default function StatsPage() {
       {isLoading && !data && (
         <div className="text-sm text-gray-500">載入中...</div>
       )}
-      <StatisticsCards stats={data} monthlyOrders={0} quickFilter={null} onQuickFilter={() => {}} />
+      <StatisticsCards
+        stats={data}
+        monthlyOrders={0}
+        inProgressOrders={0}
+        quickFilter={null}
+        onQuickFilter={() => {}}
+      />
     </div>
   )
 }

@@ -16,6 +16,15 @@ export async function deleteOrder(orderId: number): Promise<boolean> {
   return data
 }
 
+/** Update order status (store manual override). Requires PATCH /order/{id}/status. */
+export async function updateOrderStatus(
+  orderId: number,
+  status: Order['order_status'],
+): Promise<Order> {
+  const { data } = await api.patch<Order>(`/order/${orderId}/status`, { status })
+  return data
+}
+
 /**
  * Confirm and create an order from the room's latest draft.
  * Backend returns `[]` on success or an array of missing-field keys.
