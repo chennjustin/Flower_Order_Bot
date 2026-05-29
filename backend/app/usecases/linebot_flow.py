@@ -78,6 +78,20 @@ async def resolve_line_user_and_room(
     return user, chat_room
 
 
+async def handoff_to_owner_if_order_confirmed(
+    chat_room: ChatRoom, db: AsyncSession
+) -> None:
+    # A new inbound message while the room is in ORDER_CONFIRM means the
+    # customer reopened the conversation, so hand control back to the store
+    # by switching the stage to WAITING_OWNER (regardless of message type).
+    if chat_room.stage == ChatRoomStage.ORDER_CONFIRM:
+        chat_room.stage = ChatRoomStage.WAITING_OWNER
+        chat_room.bot_step = -1
+        await db.commit()
+        await db.refresh(chat_room)
+        print("ORDER_CONFIRM received a new message; switching to WAITING_OWNER.")
+
+
 async def handle_incoming_text_message(event: MessageEvent, db: AsyncSession) -> None:
     """
     Use case entrypoint for an incoming LINE TextMessage.
@@ -143,12 +157,7 @@ async def handle_incoming_text_message(event: MessageEvent, db: AsyncSession) ->
         await run_bot_flow(chat_room, user_message, event, db)
         return
 
-    if chat_room.stage == ChatRoomStage.ORDER_CONFIRM:
-        chat_room.stage = ChatRoomStage.WAITING_OWNER
-        chat_room.bot_step = -1
-        await db.commit()
-        await db.refresh(chat_room)
-        print("訂單確認後出現訊息，轉交「人工回覆」模式。")
+    await handoff_to_owner_if_order_confirmed(chat_room, db)
 
 
 async def handle_incoming_image_message(event: MessageEvent, db: AsyncSession) -> None:
@@ -179,6 +188,8 @@ async def handle_incoming_image_message(event: MessageEvent, db: AsyncSession) -
     db.add(message)
     await db.commit()
 
+    await handoff_to_owner_if_order_confirmed(chat_room, db)
+
 
 async def handle_incoming_sticker_message(event: MessageEvent, db: AsyncSession) -> None:
     user_line_id = event.source.user_id
@@ -201,6 +212,8 @@ async def handle_incoming_sticker_message(event: MessageEvent, db: AsyncSession)
     )
     db.add(message)
     await db.commit()
+
+    await handoff_to_owner_if_order_confirmed(chat_room, db)
 
 
 async def run_welcome_flow(
