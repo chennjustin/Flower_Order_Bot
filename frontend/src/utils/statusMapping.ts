@@ -1,5 +1,13 @@
 import type { ChatRoomStage } from '@/types/enums'
 
+/** Stages the store can manually select in the messages UI. */
+export const MANUAL_CHAT_STAGES: readonly ChatRoomStage[] = [
+  'WELCOME',
+  'BOT_ACTIVE',
+  'WAITING_OWNER',
+  'ORDER_CONFIRM',
+] as const
+
 const DISPLAY: Record<ChatRoomStage, string> = {
   WELCOME: '歡迎',
   IDLE: '閒置',

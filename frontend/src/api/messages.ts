@@ -1,5 +1,6 @@
 import { api } from './client'
 import type { ChatMessage, ChatMessageBody, ChatRoom } from '@/types/domain'
+import type { ChatRoomStage } from '@/types/enums'
 
 export async function fetchChatRooms(): Promise<ChatRoom[]> {
   const { data } = await api.get<ChatRoom[]>('/chat_rooms')
@@ -26,6 +27,14 @@ export async function sendMessage(
     body,
   )
   return data
+}
+
+/** Switch a chat room stage (store staff manual override). */
+export async function switchChatRoomMode(
+  roomId: number,
+  stage: ChatRoomStage,
+): Promise<void> {
+  await api.post(`/chat_rooms/${roomId}/switch_mode`, { stage })
 }
 
 export async function uploadStaffChatImage(

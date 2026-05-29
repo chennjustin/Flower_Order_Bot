@@ -1,11 +1,21 @@
-import { Archive, ChevronsLeft, Loader2 } from 'lucide-react'
+import { Archive, ChevronDown, ChevronsLeft, Loader2 } from 'lucide-react'
+import { useState } from 'react'
+import { useSwitchChatRoomMode } from '@/hooks/useChatRooms'
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover'
 import {
   getStatusBadgeClasses,
   getStatusDisplay,
+  MANUAL_CHAT_STAGES,
 } from '@/utils/statusMapping'
+import type { ChatRoomStage } from '@/types/enums'
 import { cn } from '@/lib/utils'
 
 interface ChatHeaderProps {
+  roomId: number
   roomName: string
   avatar?: string | null
   status?: string | null
@@ -15,6 +25,7 @@ interface ChatHeaderProps {
 }
 
 export default function ChatHeader({
+  roomId,
   roomName,
   avatar,
   status,
@@ -22,6 +33,22 @@ export default function ChatHeader({
   onOrganizeOrder,
   isOrganizing,
 }: ChatHeaderProps) {
+  const switchMode = useSwitchChatRoomMode(roomId)
+  const [stageMenuOpen, setStageMenuOpen] = useState(false)
+  const currentStage = (status ?? 'IDLE') as ChatRoomStage
+  const isSwitching = switchMode.isPending
+
+  async function handleStageChange(next: ChatRoomStage) {
+    if (next === currentStage || isSwitching) return
+    try {
+      await switchMode.mutateAsync(next)
+      setStageMenuOpen(false)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err)
+      alert(`切換聊天室狀態失敗：${message}`)
+    }
+  }
+
   return (
     <header className="flex h-20 items-center border-b-[1.5px] border-[#e9e9e9] bg-white">
       {avatar ? (
@@ -42,15 +69,46 @@ export default function ChatHeader({
           {roomName}
         </span>
         {status && (
-          <span
-            className={cn(
-              'flex h-5 flex-shrink-0 items-center justify-center rounded-xl px-3 text-xs font-bold whitespace-nowrap',
-              "font-['Noto_Sans_TC',sans-serif]",
-              getStatusBadgeClasses(status),
-            )}
-          >
-            {getStatusDisplay(status)}
-          </span>
+          <Popover open={stageMenuOpen} onOpenChange={setStageMenuOpen}>
+            <PopoverTrigger asChild>
+              <button
+                type="button"
+                disabled={isSwitching}
+                aria-label="切換聊天室狀態"
+                className={cn(
+                  'flex h-5 flex-shrink-0 items-center gap-1 rounded-xl px-3 text-xs font-bold whitespace-nowrap transition',
+                  "font-['Noto_Sans_TC',sans-serif]",
+                  'disabled:cursor-wait disabled:opacity-70',
+                  getStatusBadgeClasses(currentStage),
+                )}
+              >
+                {getStatusDisplay(currentStage)}
+                <ChevronDown className="h-3 w-3 opacity-60" aria-hidden />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent align="start" className="w-36 p-2">
+              <ul className="flex flex-col gap-1">
+                {MANUAL_CHAT_STAGES.map(stage => (
+                  <li key={stage}>
+                    <button
+                      type="button"
+                      disabled={isSwitching}
+                      onClick={() => handleStageChange(stage)}
+                      className={cn(
+                        'flex w-full items-center rounded-lg px-3 py-2 text-left text-sm font-bold transition',
+                        "font-['Noto_Sans_TC',sans-serif]",
+                        stage === currentStage
+                          ? getStatusBadgeClasses(stage)
+                          : 'text-black/70 hover:bg-black/[0.04]',
+                      )}
+                    >
+                      {getStatusDisplay(stage)}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </PopoverContent>
+          </Popover>
         )}
         <button
           type="button"
