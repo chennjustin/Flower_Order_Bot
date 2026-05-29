@@ -11,7 +11,7 @@ import { cn } from '@/lib/utils'
 const FILTER_TABS: ReadonlyArray<{ key: 'ALL' | ChatRoomStage; label: string }> = [
   { key: 'ALL', label: '所有訂單' },
   { key: 'WELCOME', label: '歡迎' },
-  { key: 'ORDER_CONFIRM', label: '等待備貨' },
+  { key: 'ORDER_CONFIRM', label: '討論完成' },
   { key: 'WAITING_OWNER', label: '人工溝通' },
   { key: 'BOT_ACTIVE', label: '自動回覆' },
 ]
