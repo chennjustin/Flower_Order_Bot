@@ -93,7 +93,7 @@ const FILTER_TABS: ReadonlyArray<{ value: FilterTab; label: string }> = [
   { value: '', label: '所有訂單' },
   { value: 'WAITING_OWNER', label: '人工溝通' },
   { value: 'today', label: '今日訂單' },
-  { value: 'ORDER_CONFIRM', label: '等待備貨' },
+  { value: 'ORDER_CONFIRM', label: '討論完成' },
 ]
 
 interface NormalizedOrder extends Order {

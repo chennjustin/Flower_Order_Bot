@@ -2,7 +2,7 @@ export type ChatStatus = 'WELCOME' | 'ORDER_CONFIRM' | 'WAITING_OWNER' | 'BOT_AC
 
 export const CHAT_STATUS_TABS: ReadonlyArray<{ value: ChatStatus; label: string }> = [
   { value: 'WELCOME', label: '歡迎' },
-  { value: 'ORDER_CONFIRM', label: '等待備貨' },
+  { value: 'ORDER_CONFIRM', label: '討論完成' },
   { value: 'WAITING_OWNER', label: '人工溝通' },
   { value: 'BOT_ACTIVE', label: '自動回覆' },
 ]
@@ -33,7 +33,7 @@ export function normalizeStatus(status: string | null | undefined): ChatStatus {
 export function statusText(status: ChatStatus): string {
   switch (status) {
     case 'WELCOME': return '歡迎'
-    case 'ORDER_CONFIRM': return '等待備貨'
+    case 'ORDER_CONFIRM': return '討論完成'
     case 'WAITING_OWNER': return '人工溝通'
     case 'BOT_ACTIVE': return '自動回覆'
   }
