@@ -236,6 +236,31 @@ async def delete_order_by_id(db: AsyncSession, order_id: int) -> bool:
     return True
 
 
+async def update_order_status_by_id(
+    db: AsyncSession, order_id: int, new_status: OrderStatus
+) -> OrderOut:
+    order = await get_order_by_id(db, order_id)
+    if not order:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Order with id {order_id} not found.",
+        )
+
+    order.status = new_status
+    order.updated_at = now_taipei_naive()
+    db.add(order)
+    await db.commit()
+    await db.refresh(order)
+
+    out = await _build_order_out(db, order)
+    if not out:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to build order response for id {order_id}.",
+        )
+    return out
+
+
 async def get_order_draft_by_room(db: AsyncSession, room_id: int) -> Optional[OrderDraft]:
     return await get_latest_order_draft_by_room(db, room_id)
 
