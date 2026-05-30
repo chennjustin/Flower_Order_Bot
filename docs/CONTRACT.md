@@ -52,6 +52,11 @@ pytest backend/tests/test_contract_smoke.py
 - **GET** `/orders`
   - Response model: `Optional[List[OrderOut]]`
 
+- **GET** `/orders/room/{room_id}`
+  - 回傳該 chat room 所屬 customer 的全部訂單（含 CANCELLED；依 `created_at` 新到舊）
+  - Response model: `List[OrderOut]`
+  - **404**：chat room 不存在
+
 - **POST** `/order/{room_id}`
   - 從 `OrderDraft` 建立正式 `Order`
   - Response model: `list[str]`

@@ -20,6 +20,7 @@ from app.repositories.order_repository import (
     get_latest_order_draft_by_room,
     get_order_by_id,
     list_active_orders,
+    list_orders_by_customer_id,
     now_taipei_naive,
     save_order,
     save_order_draft,
@@ -72,6 +73,23 @@ async def get_all_orders(db: AsyncSession) -> Optional[List[OrderOut]]:
         if out:
             results.append(out)
     results.sort(key=lambda x: x.id, reverse=True)
+    return results
+
+
+async def get_orders_by_room_id(db: AsyncSession, room_id: int) -> List[OrderOut]:
+    """Return all orders (including cancelled) for the customer linked to this chat room."""
+    room = await get_chat_room_by_room_id(db, room_id)
+    if not room:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Chat room {room_id} not found.",
+        )
+
+    results: list[OrderOut] = []
+    for order in await list_orders_by_customer_id(db, room.customer_id):
+        out = await _build_order_out(db, order)
+        if out:
+            results.append(out)
     return results
 
 
