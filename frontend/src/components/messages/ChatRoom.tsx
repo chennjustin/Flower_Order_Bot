@@ -24,6 +24,7 @@ export default function ChatRoom({
   return (
     <div className="flex h-full flex-col overflow-hidden bg-white">
       <ChatHeader
+        roomId={room.room_id}
         roomName={room.user_name}
         avatar={room.user_avatar_url ?? null}
         status={room.status}
