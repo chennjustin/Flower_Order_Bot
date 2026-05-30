@@ -101,3 +101,9 @@ class OrderOut(OrderBase):
     order_date: datetime
     order_status: OrderStatus
     pay_way: Optional[str] = None
+
+
+class OrderStatusUpdate(BaseModel):
+    """PATCH /order/{order_id}/status request body."""
+
+    status: OrderStatus
