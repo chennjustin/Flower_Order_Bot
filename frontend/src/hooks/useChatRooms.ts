@@ -16,6 +16,15 @@ export function useChatRooms() {
 
 export function useSwitchChatRoomMode(roomId: number | null) {
   const qc = useQueryClient()
+
+  /** Patch one room's stage inside the shared chatRooms cache. */
+  function patchRoomStage(rooms: ChatRoom[] | undefined, stage: ChatRoomStage) {
+    if (roomId == null || !rooms) return rooms
+    return rooms.map(room =>
+      room.room_id === roomId ? { ...room, status: stage } : room,
+    )
+  }
+
   return useMutation({
     mutationFn: (stage: ChatRoomStage) => {
       if (roomId == null) {
@@ -23,7 +32,30 @@ export function useSwitchChatRoomMode(roomId: number | null) {
       }
       return switchChatRoomMode(roomId, stage)
     },
-    onSuccess: () => {
+    onMutate: async stage => {
+      if (roomId == null) return
+
+      // Pause polling refetches so they do not overwrite the optimistic value.
+      await qc.cancelQueries({ queryKey: CHAT_ROOMS_QUERY_KEY })
+
+      const previousRooms = qc.getQueryData<ChatRoom[]>(CHAT_ROOMS_QUERY_KEY)
+      qc.setQueryData<ChatRoom[]>(CHAT_ROOMS_QUERY_KEY, rooms =>
+        patchRoomStage(rooms, stage) ?? [],
+      )
+
+      return { previousRooms }
+    },
+    onError: (_err, _stage, context) => {
+      if (context?.previousRooms !== undefined) {
+        qc.setQueryData(CHAT_ROOMS_QUERY_KEY, context.previousRooms)
+      }
+    },
+    onSuccess: (_data, stage) => {
+      qc.setQueryData<ChatRoom[]>(CHAT_ROOMS_QUERY_KEY, rooms =>
+        patchRoomStage(rooms, stage) ?? [],
+      )
+    },
+    onSettled: () => {
       qc.invalidateQueries({ queryKey: CHAT_ROOMS_QUERY_KEY })
     },
   })
