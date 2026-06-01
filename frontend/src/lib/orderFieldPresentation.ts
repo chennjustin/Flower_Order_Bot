@@ -1,8 +1,19 @@
-import { getRegistryEntry } from '@/config/orderDisplayFields'
-import type { Order } from '@/types/domain'
+import { getRegistryEntry, isFieldReadOnly } from '@/config/orderDisplayFields'
+import type { Order, OrderDraft } from '@/types/domain'
+import type { PaymentStatus } from '@/types/enums'
 import type { OrderDisplayConfig, OrderFieldKey } from '@/types/orderDisplay'
 import { formatCellDateTime } from '@/utils/datetime'
 import { normalizeStatus, shipmentLabel, statusText } from '@/utils/orderStatus'
+
+/** Draft form control kind (labels come from ORDER_FIELD_REGISTRY). */
+export type DraftFieldVariant = 'text' | 'number' | 'amount' | 'select' | 'datetime'
+
+export interface DraftFieldDef {
+  key: OrderFieldKey
+  label: string
+  editable: boolean
+  variant?: DraftFieldVariant
+}
 
 /** One visible data column for list / CSV (label from ORDER_FIELD_REGISTRY). */
 export interface VisibleFieldItem {
@@ -79,11 +90,100 @@ export function buildOrderTableColumns(config: OrderDisplayConfig): OrderTableCo
   return [EXPORT_COLUMN, ...dataColumns, CANCEL_COLUMN]
 }
 
-function formatPayStatus(order: Order): string {
-  if (order.pay_status === 'PAID') return '已付款'
-  if (order.pay_status === 'FAILED') return '付款失敗'
-  if (order.pay_status === 'REFUNDED') return '已退款'
+function formatPaymentStatusLabel(status: PaymentStatus | null | undefined): string {
+  if (status === 'PAID') return '已付款'
+  if (status === 'FAILED') return '付款失敗'
+  if (status === 'REFUNDED') return '已退款'
   return '待付款'
+}
+
+function formatDraftDateTimeDisplay(value: string | null | undefined): string {
+  if (!value) return '—'
+  const d = new Date(value)
+  if (Number.isNaN(d.getTime())) return value
+  return d.toLocaleString('zh-TW', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+}
+
+const DRAFT_FIELD_VARIANTS: Partial<Record<OrderFieldKey, DraftFieldVariant>> = {
+  quantity: 'number',
+  total_amount: 'amount',
+  shipment_method: 'select',
+  pay_status: 'select',
+  send_datetime: 'datetime',
+}
+
+/**
+ * Input control variant for draft edit mode (no labels).
+ */
+export function getDraftFieldVariant(key: OrderFieldKey): DraftFieldVariant | undefined {
+  return DRAFT_FIELD_VARIANTS[key]
+}
+
+/**
+ * Whether the draft panel allows inline edit for this catalog key.
+ */
+export function isDraftFieldEditable(key: OrderFieldKey): boolean {
+  if (key === 'order_status') return false
+  if (isFieldReadOnly(key)) return false
+  return getRegistryEntry(key).editable
+}
+
+/**
+ * Visible draft rows: registry labels + edit metadata.
+ */
+export function getVisibleDraftFields(config: OrderDisplayConfig): DraftFieldDef[] {
+  return getVisibleFieldItems(config).map(item => ({
+    key: item.key,
+    label: item.label,
+    editable: isDraftFieldEditable(item.key),
+    variant: getDraftFieldVariant(item.key),
+  }))
+}
+
+/**
+ * Read-only display string for a draft field in the side panel.
+ */
+export function formatDraftFieldValue(key: OrderFieldKey, draft: OrderDraft): string {
+  switch (key) {
+    case 'id':
+      return String(draft.id)
+    case 'order_status':
+      return '草稿'
+    case 'total_amount':
+      return draft.total_amount != null ? `NT ${draft.total_amount}` : '—'
+    case 'send_datetime':
+      return formatDraftDateTimeDisplay(draft.send_datetime)
+    case 'order_date':
+      return formatDraftDateTimeDisplay(draft.order_date)
+    case 'shipment_method':
+      return draft.shipment_method ? shipmentLabel(draft.shipment_method) : '—'
+    case 'pay_status':
+      return formatPaymentStatusLabel(draft.pay_status)
+    case 'customer_name':
+      return draft.customer_name ?? '—'
+    case 'customer_phone':
+      return draft.customer_phone ?? '—'
+    case 'item':
+      return draft.item ?? '—'
+    case 'quantity':
+      return draft.quantity != null ? String(draft.quantity) : '—'
+    case 'note':
+      return draft.note ?? '—'
+    case 'delivery_address':
+      return draft.delivery_address ?? '—'
+    case 'pay_way':
+      return draft.pay_way ?? '—'
+    default: {
+      const _exhaustive: never = key
+      return String(_exhaustive)
+    }
+  }
 }
 
 /**
@@ -118,7 +218,7 @@ export function formatOrderFieldValue(key: OrderFieldKey, order: Order): string 
     case 'pay_way':
       return order.pay_way ?? ''
     case 'pay_status':
-      return formatPayStatus(order)
+      return formatPaymentStatusLabel(order.pay_status)
     default: {
       const _exhaustive: never = key
       return String(_exhaustive)

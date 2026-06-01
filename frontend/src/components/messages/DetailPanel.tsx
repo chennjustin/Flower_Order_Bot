@@ -9,39 +9,20 @@ import {
 import type { OrderDraft, OrderDraftUpdate } from '@/types/domain'
 import type { PaymentStatus, ShipmentMethod } from '@/types/enums'
 import { useOrderDisplayConfig } from '@/context/OrderDisplayConfigContext'
+import {
+  formatDraftFieldValue,
+  getVisibleDraftFields,
+  type DraftFieldDef,
+} from '@/lib/orderFieldPresentation'
 import type { OrderFieldKey } from '@/types/orderDisplay'
 import { cn } from '@/lib/utils'
-
-type EditableKey =
-  | 'customer_name'
-  | 'customer_phone'
-  | 'total_amount'
-  | 'item'
-  | 'quantity'
-  | 'note'
-  | 'shipment_method'
-  | 'send_datetime'
-  | 'delivery_address'
-  | 'pay_way'
-  | 'pay_status'
-
-type ReadOnlyKey = 'id' | 'order_date' | 'order_status'
-
-type FieldKey = EditableKey | ReadOnlyKey
-
-interface FieldDef {
-  key: FieldKey
-  label: string
-  editable: boolean
-  variant?: 'text' | 'number' | 'amount' | 'select' | 'datetime'
-}
 
 /**
  * Backend missing-field keys (from POST /order/:roomId) don't always match
  * the frontend column keys. This table folds every backend variant into the
  * relevant editable column so the UI can flag the right row in red.
  */
-const MISSING_KEY_TO_FIELD: Record<string, FieldKey> = {
+const MISSING_KEY_TO_FIELD: Record<string, OrderFieldKey> = {
   user_id: 'customer_name',
   user: 'customer_name',
   user_name: 'customer_name',
@@ -58,40 +39,6 @@ const MISSING_KEY_TO_FIELD: Record<string, FieldKey> = {
   pay_way: 'pay_way',
   note: 'note',
 }
-
-const FIELD_META: Record<FieldKey, Omit<FieldDef, 'key'>> = {
-  id: { label: '訂單編號', editable: false },
-  customer_name: { label: '客戶姓名', editable: true },
-  customer_phone: { label: '客戶電話', editable: true },
-  total_amount: { label: '總金額', editable: true, variant: 'amount' },
-  item: { label: '品項', editable: true },
-  quantity: { label: '數量', editable: true, variant: 'number' },
-  note: { label: '備註', editable: true },
-  shipment_method: { label: '取貨方式', editable: true, variant: 'select' },
-  send_datetime: { label: '送貨日期', editable: true, variant: 'datetime' },
-  delivery_address: { label: '送貨地址', editable: true },
-  order_date: { label: '訂單日期', editable: false },
-  order_status: { label: '狀態', editable: false },
-  pay_way: { label: '付款方式', editable: true },
-  pay_status: { label: '付款狀態', editable: true, variant: 'select' },
-}
-
-const DRAFT_SUPPORTED_KEYS: OrderFieldKey[] = [
-  'id',
-  'customer_name',
-  'customer_phone',
-  'item',
-  'quantity',
-  'note',
-  'shipment_method',
-  'send_datetime',
-  'total_amount',
-  'pay_way',
-  'pay_status',
-  'delivery_address',
-  'order_date',
-  'order_status',
-]
 
 interface FormState {
   customer_name: string
@@ -185,19 +132,6 @@ function formStateToUpdate(form: FormState): OrderDraftUpdate {
   }
 }
 
-function formatReadOnly(value: string | null | undefined): string {
-  if (!value) return '—'
-  const d = new Date(value)
-  if (Number.isNaN(d.getTime())) return value
-  return d.toLocaleString('zh-TW', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
-}
-
 interface DetailPanelProps {
   roomId: number
   open: boolean
@@ -228,46 +162,10 @@ export default function DetailPanel({ roomId, open, onClose }: DetailPanelProps)
     setMissing([])
   }, [roomId])
 
-  const display = useMemo(() => {
-    if (!draft) return null
-    return {
-      id: String(draft.id),
-      customer_name: draft.customer_name ?? '',
-      customer_phone: draft.customer_phone ?? '',
-      total_amount:
-        draft.total_amount != null ? `NT ${draft.total_amount}` : '',
-      item: draft.item ?? '',
-      quantity: draft.quantity != null ? String(draft.quantity) : '',
-      note: draft.note ?? '',
-      shipment_method:
-        draft.shipment_method === 'STORE_PICKUP'
-          ? '店取'
-          : draft.shipment_method === 'DELIVERY'
-            ? '外送'
-            : '',
-      send_datetime: formatReadOnly(draft.send_datetime),
-      delivery_address: draft.delivery_address ?? '',
-      order_date: formatReadOnly(draft.order_date),
-      order_status: '草稿',
-      pay_way: draft.pay_way ?? '',
-      pay_status:
-        draft.pay_status === 'PAID'
-          ? '已付款'
-          : draft.pay_status === 'FAILED'
-            ? '付款失敗'
-            : draft.pay_status === 'REFUNDED'
-              ? '已退款'
-              : '待付款',
-    }
-  }, [draft])
-
-  const visibleFields = useMemo<FieldDef[]>(() => {
-    const supportedSet = new Set<OrderFieldKey>(DRAFT_SUPPORTED_KEYS)
-    return [...savedConfig.fields]
-      .sort((a, b) => a.order - b.order)
-      .filter(field => field.visible && supportedSet.has(field.key))
-      .map(field => ({ key: field.key as FieldKey, ...FIELD_META[field.key as FieldKey] }))
-  }, [savedConfig.fields])
+  const visibleFields = useMemo(
+    () => getVisibleDraftFields(savedConfig),
+    [savedConfig],
+  )
 
   function setField<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm(prev => ({ ...prev, [key]: value }))
@@ -324,7 +222,7 @@ export default function DetailPanel({ roomId, open, onClose }: DetailPanelProps)
   }
 
   const missingFieldSet = useMemo(() => {
-    const set = new Set<FieldKey>()
+    const set = new Set<OrderFieldKey>()
     for (const raw of missing) {
       const mapped = MISSING_KEY_TO_FIELD[raw]
       if (mapped) set.add(mapped)
@@ -332,7 +230,7 @@ export default function DetailPanel({ roomId, open, onClose }: DetailPanelProps)
     return set
   }, [missing])
 
-  function isFieldMissing(key: FieldKey): boolean {
+  function isFieldMissing(key: OrderFieldKey): boolean {
     return missingFieldSet.has(key)
   }
 
@@ -397,7 +295,7 @@ export default function DetailPanel({ roomId, open, onClose }: DetailPanelProps)
                   isEditing={isEditing && field.editable}
                   form={form}
                   setField={setField}
-                  display={display}
+                  draft={draft}
                   missing={isFieldMissing(field.key)}
                 />
               ),
@@ -449,15 +347,17 @@ export default function DetailPanel({ roomId, open, onClose }: DetailPanelProps)
 }
 
 interface FormRowProps {
-  field: FieldDef
+  field: DraftFieldDef
   isEditing: boolean
   form: FormState
   setField: <K extends keyof FormState>(key: K, value: FormState[K]) => void
-  display: Record<FieldKey, string> | null
+  draft: OrderDraft | null
   missing: boolean
 }
 
-function FormRow({ field, isEditing, form, setField, display, missing }: FormRowProps) {
+function FormRow({ field, isEditing, form, setField, draft, missing }: FormRowProps) {
+  const displayValue =
+    draft != null ? formatDraftFieldValue(field.key, draft) : '—'
   const labelClasses = cn(
     'w-[110px] flex-shrink-0 font-bold font-["Noto_Sans_TC",sans-serif] text-base text-black/[0.87]',
     missing && 'text-red-600',
@@ -476,7 +376,7 @@ function FormRow({ field, isEditing, form, setField, display, missing }: FormRow
               "font-['Noto_Sans_TC',sans-serif] text-base",
             )}
           >
-            {display?.[field.key] || '請填寫'}
+            {displayValue === '—' ? '請填寫' : displayValue}
           </span>
         ) : (
           <span
@@ -484,7 +384,7 @@ function FormRow({ field, isEditing, form, setField, display, missing }: FormRow
               "font-bold font-['Noto_Sans_TC',sans-serif] text-base text-black",
             )}
           >
-            {display?.[field.key] || '—'}
+            {displayValue}
           </span>
         )}
       </div>
@@ -493,7 +393,7 @@ function FormRow({ field, isEditing, form, setField, display, missing }: FormRow
 }
 
 function renderEditor(
-  field: FieldDef,
+  field: DraftFieldDef,
   form: FormState,
   setField: <K extends keyof FormState>(key: K, value: FormState[K]) => void,
   missing: boolean,
