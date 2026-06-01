@@ -12,6 +12,7 @@ import {
   ORDER_FILTER_TABS,
   ORDER_STATUS_OPTIONS,
   isInProgressOrder,
+  isCancelledOrder,
   normalizeOrderStatus,
   orderStatusBadgeClasses,
   orderStatusLabel,
@@ -117,6 +118,14 @@ export default function OrderTable({
 
   const orders = useMemo(() => ordersQuery.data ?? [], [ordersQuery.data])
 
+  const calendarOrders = useMemo(
+    () => orders.filter(o => !isCancelledOrder(normalizeOrderStatus(o.order_status))),
+    [orders],
+  )
+
+  const pendingStatusOrderId =
+    updateStatusMutation.isPending ? updateStatusMutation.variables?.orderId ?? null : null
+
   const effectiveStatusTab: OrderFilterTab =
     quickFilter === 'in_progress' ? 'in_progress' : activeTab
 
@@ -155,6 +164,13 @@ export default function OrderTable({
       rows = filterOrdersByPickupDate(rows, filterDate)
     }
 
+    // Cancelled orders only appear under「所有訂單」(not 今日/尚未製作/製作完成).
+    const showCancelledOrders =
+      effectiveStatusTab === '' && quickFilter !== 'today' && !isTabHighlighted('today')
+    if (!showCancelledOrders) {
+      rows = rows.filter(r => !isCancelledOrder(r.display_status))
+    }
+
     const q = searchText.trim().toLowerCase()
     if (q) {
       rows = rows.filter(r =>
@@ -163,7 +179,7 @@ export default function OrderTable({
     }
 
     return rows
-  }, [orders, effectiveStatusTab, dateFilterActive, currentDate, searchText, quickFilter])
+  }, [orders, effectiveStatusTab, dateFilterActive, currentDate, searchText, quickFilter, isTodayFilter, activeTab])
 
   const visibleColumns = useMemo<ColumnDef[]>(() => {
     const orderedKeys = [...savedConfig.fields]
@@ -225,6 +241,10 @@ export default function OrderTable({
   }
 
   async function handleStatusChange(orderId: number, status: OrderStatus) {
+    const order = orders.find(o => o.id === orderId)
+    if (order && normalizeOrderStatus(order.order_status) === normalizeOrderStatus(status)) {
+      return
+    }
     try {
       await updateStatusMutation.mutateAsync({ orderId, status })
     } catch (err) {
@@ -346,7 +366,7 @@ export default function OrderTable({
       {/* Content */}
       {viewMode === 'calendar' ? (
         <CalendarView
-          orders={orders}
+          orders={calendarOrders}
           currentDate={currentDate}
           onDateChange={d => {
             setCurrentDate(d)
@@ -414,7 +434,7 @@ export default function OrderTable({
                               row={row}
                               onExport={handleExportDocx}
                               onStatusChange={handleStatusChange}
-                              isStatusUpdating={updateStatusMutation.isPending}
+                              isStatusUpdating={pendingStatusOrderId === row.id}
                             />
                           </td>
                         ))}

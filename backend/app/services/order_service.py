@@ -19,7 +19,7 @@ from app.repositories.order_repository import (
     get_latest_confirmed_order_by_room,
     get_latest_order_draft_by_room,
     get_order_by_id,
-    list_active_orders,
+    list_all_orders,
     now_taipei_naive,
     save_order,
     save_order_draft,
@@ -67,7 +67,7 @@ async def _build_order_out(db: AsyncSession, order: Order) -> Optional[OrderOut]
 
 async def get_all_orders(db: AsyncSession) -> Optional[List[OrderOut]]:
     results: list[OrderOut] = []
-    for order in await list_active_orders(db):
+    for order in await list_all_orders(db):
         out = await _build_order_out(db, order)
         if out:
             results.append(out)

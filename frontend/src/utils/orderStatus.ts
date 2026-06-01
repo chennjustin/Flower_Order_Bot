@@ -68,6 +68,10 @@ export function isInProgressOrder(status: OrderStatus): boolean {
   return status === 'CONFIRMED' || status === 'PENDING'
 }
 
+export function isCancelledOrder(status: OrderStatus): boolean {
+  return status === 'CANCELLED'
+}
+
 export function shipmentLabel(method: string | null | undefined): string {
   if (method === 'STORE_PICKUP' || method === 'store_pickup') return '店取'
   if (method === 'DELIVERY' || method === 'delivery') return '外送'
