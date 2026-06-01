@@ -1,55 +1,75 @@
-export type ChatStatus = 'WELCOME' | 'ORDER_CONFIRM' | 'WAITING_OWNER' | 'BOT_ACTIVE'
+import type { OrderStatus } from '@/types/enums'
 
-export const CHAT_STATUS_TABS: ReadonlyArray<{ value: ChatStatus; label: string }> = [
-  { value: 'WELCOME', label: '歡迎' },
-  { value: 'ORDER_CONFIRM', label: '討論完成' },
-  { value: 'WAITING_OWNER', label: '人工溝通' },
-  { value: 'BOT_ACTIVE', label: '自動回覆' },
+/** Store-facing labels for the three actionable order states. */
+export const ORDER_STATUS_OPTIONS: ReadonlyArray<{
+  value: OrderStatus
+  label: string
+}> = [
+  { value: 'CONFIRMED', label: '尚未製作' },
+  { value: 'COMPLETED', label: '製作完成' },
+  { value: 'CANCELLED', label: '取消' },
+] as const
+
+/** Filter bucket for the order table tabs (not the same as raw enum). */
+export type OrderFilterTab = '' | 'in_progress' | 'completed' | 'today'
+
+export const ORDER_FILTER_TABS: ReadonlyArray<{
+  value: OrderFilterTab
+  label: string
+}> = [
+  { value: '', label: '所有訂單' },
+  { value: 'in_progress', label: '尚未製作' },
+  { value: 'completed', label: '製作完成' },
+  { value: 'today', label: '今日訂單' },
 ]
 
-/**
- * Map any backend status string into one of the four UI buckets.
- * Mirrors the legacy Vue mapping; unknown / order-only values fall through to
- * `WAITING_OWNER` so they show up under the 人工溝通 tab.
- */
-export function normalizeStatus(status: string | null | undefined): ChatStatus {
+/** Normalize backend status into one of the three display buckets. */
+export function normalizeOrderStatus(
+  status: string | null | undefined,
+): OrderStatus {
   switch (status) {
-    case 'WELCOME':
-    case 'ORDER_CONFIRM':
-    case 'WAITING_OWNER':
-    case 'BOT_ACTIVE':
-      return status
-    case 'MANUAL':
-      return 'WAITING_OWNER'
     case 'CONFIRMED':
-      return 'ORDER_CONFIRM'
-    case 'AUTO':
-      return 'BOT_ACTIVE'
+    case 'COMPLETED':
+    case 'CANCELLED':
+      return status
+    case 'PENDING':
+      return 'CONFIRMED'
     default:
-      return 'WAITING_OWNER'
+      return 'CONFIRMED'
   }
 }
 
-export function statusText(status: ChatStatus): string {
+export function orderStatusLabel(status: OrderStatus): string {
   switch (status) {
-    case 'WELCOME': return '歡迎'
-    case 'ORDER_CONFIRM': return '討論完成'
-    case 'WAITING_OWNER': return '人工溝通'
-    case 'BOT_ACTIVE': return '自動回覆'
+    case 'CONFIRMED':
+      return '尚未製作'
+    case 'COMPLETED':
+      return '製作完成'
+    case 'CANCELLED':
+      return '取消'
+    case 'PENDING':
+      return '尚未製作'
   }
 }
 
-/**
- * Tailwind classes for the status badge bg/text colors. Direct color values
- * keep parity with the Vue palette without introducing more theme tokens.
- */
-export function statusBadgeClasses(status: ChatStatus): string {
+export function orderStatusBadgeClasses(status: OrderStatus): string {
   switch (status) {
-    case 'WELCOME': return 'bg-[#FFCEE7] text-[#FF349A]'
-    case 'ORDER_CONFIRM': return 'bg-[#C5C7FF] text-[#6168FC]'
-    case 'WAITING_OWNER': return 'bg-[#EBCDCC] text-[#81386A]'
-    case 'BOT_ACTIVE': return 'bg-[#D8EAFF] text-[#6168FC]'
+    case 'CONFIRMED':
+    case 'PENDING':
+      return 'bg-[#C5C7FF] text-[#6168FC]'
+    case 'COMPLETED':
+      return 'bg-[#D8EAFF] text-[#528DD2]'
+    case 'CANCELLED':
+      return 'bg-[#EBCDCC] text-[#81386A]'
   }
+}
+
+export function isInProgressOrder(status: OrderStatus): boolean {
+  return status === 'CONFIRMED' || status === 'PENDING'
+}
+
+export function isCancelledOrder(status: OrderStatus): boolean {
+  return status === 'CANCELLED'
 }
 
 export function shipmentLabel(method: string | null | undefined): string {

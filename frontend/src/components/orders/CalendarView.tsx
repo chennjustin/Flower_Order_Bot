@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import type { Order } from '@/types/domain'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { normalizeStatus, statusBadgeClasses, statusText } from '@/utils/orderStatus'
+import { normalizeOrderStatus, orderStatusBadgeClasses, orderStatusLabel } from '@/utils/orderStatus'
 import { formatHeaderDate, toLocalDateKey } from '@/utils/datetime'
 import { cn } from '@/lib/utils'
 
@@ -23,7 +23,7 @@ interface OrderPillProps {
 }
 
 function OrderPill({ order, onSelect, stopTrigger = false }: OrderPillProps) {
-  const bucket = normalizeStatus(order.order_status as unknown as string)
+  const bucket = normalizeOrderStatus(order.order_status)
   return (
     <button
       type="button"
@@ -33,9 +33,9 @@ function OrderPill({ order, onSelect, stopTrigger = false }: OrderPillProps) {
       }}
       className={cn(
         'mb-0.5 box-border block w-full min-w-0 max-w-full shrink-0 self-stretch truncate rounded px-1.5 py-0.5 text-left text-xs font-bold transition hover:opacity-80',
-        statusBadgeClasses(bucket),
+        orderStatusBadgeClasses(bucket),
       )}
-      title={`${order.customer_name} - ${statusText(bucket)}`}
+      title={`${order.customer_name} - ${orderStatusLabel(bucket)}`}
     >
       {order.customer_name}
     </button>
