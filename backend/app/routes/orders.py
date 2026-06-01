@@ -2,12 +2,10 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List, Optional
 
-from app.services.order_service import get_all_orders, get_order_draft_out_by_room, update_order_draft_by_room_id, delete_order_by_id, create_order_by_room, update_order_by_room_id
+from app.services.order_service import get_all_orders, get_order_draft_out_by_room, update_order_draft_by_room_id, delete_order_by_id, create_order_by_room, update_order_by_room_id, update_order_status_by_id
 from app.core.database import get_db
-from app.core.deps import get_current_user
-from app.schemas.order import OrderOut, OrderDraftOut, OrderDraftUpdate, OrderDraftCreate
-
-api_router = APIRouter(dependencies=[Depends(get_current_user)])
+from app.schemas.order import OrderOut, OrderDraftOut, OrderDraftUpdate, OrderDraftCreate, OrderStatusUpdate
+api_router = APIRouter()
 
 @api_router.get("/orders", response_model=Optional[List[OrderOut]])
 async def get_orders(db: AsyncSession = Depends(get_db)):
@@ -17,6 +15,15 @@ async def get_orders(db: AsyncSession = Depends(get_db)):
 @api_router.delete("/order/{order_id}", response_model=bool)
 async def delete_order(order_id: int, db: AsyncSession = Depends(get_db)):
     return await delete_order_by_id(db, order_id)
+
+# 更新 order 狀態（店家手動標示）
+@api_router.patch("/order/{order_id}/status", response_model=OrderOut)
+async def update_order_status(
+    order_id: int,
+    body: OrderStatusUpdate,
+    db: AsyncSession = Depends(get_db),
+):
+    return await update_order_status_by_id(db, order_id, body.status)
 
 # 新增 order
 @api_router.post("/order/{room_id}", response_model=list[str])

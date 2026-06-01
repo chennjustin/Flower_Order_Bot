@@ -9,9 +9,8 @@ class PaymentMethodBase(BaseModel):
     code: str
     display_name: str
     display_image_url: Optional[str] = None
-    instructions: str
+    instructions: Optional[str] = None
     requires_manual_confirm: bool = True
-
     
 class PaymentBase(BaseModel):
     order_id: int

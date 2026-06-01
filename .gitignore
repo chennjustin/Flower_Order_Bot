@@ -54,3 +54,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Local uploads from LINE inbound images (keep structure via .gitkeep if needed)
+backend/uploads/

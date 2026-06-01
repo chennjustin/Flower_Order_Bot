@@ -1,18 +1,20 @@
 # ChiMei Floral
 
-本專案為一個花店商家後台，透過 LINE Bot 將顧客訊息利用 OpenAI API 整理成格式化的訂單資訊（例如顧客姓名、聯絡電話、花材種類、數量、取貨時間及特殊需求）回傳給使用者。商家確認無誤後，資料將會被寫入訂單資料庫中，並可透過 `/orders` 頁面查詢所有訂單；目前 **CSV 匯出由前端在瀏覽器端直接產生下載**、DOCX 工單則由後端提供下載，協助商家省下人工抄寫與反覆確認的時間成本。
+本專案為花店商家後台：透過 LINE Bot 接收顧客訊息，以 OpenAI 將對話整理成結構化訂單草稿；商家確認後寫入訂單資料庫，並在 `/orders` 查詢。CSV 由前端在瀏覽器產生下載，DOCX 工單由後端提供。
+
+**目前分支（`refactor/db`）** 已改為 **多租戶 schema**（`store` → `customer` → `chat_room` / `order`），主資料庫建議使用 **Supabase PostgreSQL**；Docker Compose **不再**內建本機 Postgres 容器。
 
 ---
 
 ## ✅ 已實作功能
 
-- ✅ 支援 LINE Bot 接收訊息、自動儲存使用者對話內容
-- ✅ 使用 GPT 模型將對話轉換為結構化訂單（透過關鍵字觸發）
-- ✅ 以 **PostgreSQL** 為主資料庫（本機開發常用 Docker 提供；部署環境自備或雲端託管）
-- ✅ 管理訂單、顧客資料與歷史訊息
-- ✅ 提供 `/orders` 頁面查詢訂單，並支援 CSV 匯出（前端產生下載）與 DOCX 工單匯出（後端下載）
-- ✅ 前端以 **React** 搭配 **TypeScript** 與 **Vite** 實作，可即時查看與操作訂單系統
-- ✅ 使用 Alembic 作資料庫版本控制
+- ✅ LINE Bot 接收訊息、儲存對話與貼圖
+- ✅ GPT 將對話轉為結構化訂單草稿（關鍵字觸發）
+- ✅ **PostgreSQL**（開發／部署以 Supabase 或自備 Postgres 為主）
+- ✅ 管理訂單、顧客（`customer`）與聊天紀錄
+- ✅ `/orders` 查詢、CSV（前端）、DOCX 工單（後端）
+- ✅ 前端 **React + TypeScript + Vite**
+- ✅ **Alembic** 資料庫版本控制
 
 ---
 
@@ -20,21 +22,23 @@
 
 - [系統需求](#系統需求)
 - [安裝與設定](#安裝與設定)
-- [環境變數設定](#環境變數設定)
-- [資料庫與連線](#資料庫與連線)
+- [環境變數](#環境變數)
+- [資料庫與店家（store）](#資料庫與店家store)
 - [執行應用程式](#執行應用程式)
 - [Webhook 配置](#webhook-配置)
-- [程式架構說明](#程式架構說明)
+- [API 契約守門](#api-契約守門)
+- [程式架構](#程式架構)
 - [授權](#授權)
 
 ---
 
 ## ⚙️ 系統需求
 
-- 作業系統：MacOS / Linux / Windows
-- Python：3.8 以上（建議 3.12）
-- Node.js：22+（前端 Vite 8 要求 Node 20.19+ 或 22.12+，建議直接用 22 LTS）
-- **Docker Desktop**（建議）：用於本機 PostgreSQL 容器；亦可用於一鍵啟動前後端
+- 作業系統：macOS / Linux / Windows
+- Python：3.12+（建議與 `backend/Dockerfile` 一致）
+- Node.js：22+（Vite 8 需 20.19+ 或 22.12+）
+- **Docker Desktop**（選用）：一鍵跑前後端容器；資料庫仍連 Supabase
+- **Supabase**（或相容的 PostgreSQL）：專案連線字串寫在 `backend/.env`
 
 ---
 
@@ -43,215 +47,174 @@
 ### 1. 複製專案
 
 ```bash
-
 git clone <repository-url>
-
 cd <repository-folder>
-
 ```
 
-### 2. 建立虛擬環境（後端）
+### 2. 後端虛擬環境
 
 ```bash
-
 cd backend
-
 python3 -m venv venv
-
-source venv/bin/activate  # Windows 用 venv\Scripts\activate
-
+source venv/bin/activate   # Windows: venv\Scripts\activate
 pip install -r requirements.txt
-
 ```
 
-### 3. 安裝前端依賴（React / TypeScript）
+### 3. 前端依賴
 
 ```bash
-
 cd frontend
-
 npm install
-
 ```
 
----
-
-## 🔐 環境變數設定
-
-在 `backend` 目錄建立 `.env`，可複製並修改 `backend/.env.example`。
-
-若需 LINE Bot 與 OpenAI 功能，金鑰來源如下：
-
-- [OpenAI Platform](https://platform.openai.com/account/api-keys)
-- [LINE Developers Console](https://developers.line.biz/console/)
-
-### 資料庫相關（`POSTGRES_*`）
-
-後端會依 `POSTGRES_USER`、`POSTGRES_PASSWORD`、`POSTGRES_DB`、`POSTGRES_HOST`、`POSTGRES_PORT` 組出連線字串；若直接在 `.env` 設定 `DATABASE_URL` / `DATABASE_ALEM_URL`，則以該值為優先（見 `app/core/settings.py`）。
-
-- **本機只跑 uvicorn**：通常 `POSTGRES_HOST=localhost`，`POSTGRES_PORT` 對應到 Docker 對外映射的埠（預設為 `5434`，見下方 [資料庫與連線](#資料庫與連線)）。
-- `**docker compose` 跑 backend 容器**：Compose 會覆寫 `POSTGRES_HOST=db`，容器內固定連 compose 服務名，埠為容器內 `5432`。
-
----
-
-## 資料庫與連線
-
-本機若另外安裝了 **Windows 版 PostgreSQL**，常見服務名為 `postgresql-x64-17`，預設會聽 **5432**。本專案預設將 Docker db 對外映射改為 **5434**，用來避免衝突並降低連錯實例的風險。
-
-建議擇一：
-
-1. **開發時只用 Docker 的 db**：以**系統管理員**開啟 PowerShell，停止本機服務並可改為手動啟動，避免下次開機又佔埠：
-  ```powershell
-
-   Stop-Service -Name "postgresql-x64-17" -Force
-
-   Set-Service -Name "postgresql-x64-17" -StartupType Manual
-
-  ```
-2. **必須保留本機 PostgreSQL**：請自行調整本機服務埠號，或改 Docker `db` 的 `ports` 映射與 `backend/.env` 的 `POSTGRES_PORT`，使後端只連到目標那一顆。
-
-### 資料存在哪裡？
-
-`docker compose` 的 Postgres 資料在 **volume `db_data`**（專案內由 Compose 管理），與本機安裝的 PostgreSQL 資料目錄是兩套；只要連線 host／port 固定，就不會寫進兩個地方。
-
-### 遷移／重設開發庫
+### 4. 環境變數
 
 ```bash
-
-docker compose down -v   # 會刪除 volume，資料清空，請謹慎使用
-
-docker compose up -d db
-
+cp backend/.env.example backend/.env
 ```
+
+編輯 `backend/.env`，至少設定：
+
+| 變數 | 說明 |
+|------|------|
+| `DATABASE_URL` | 非同步連線（`postgresql+asyncpg://...`，Supabase 請用 `ssl=require`） |
+| `DATABASE_ALEM_URL` | Alembic 用（`postgresql+psycopg2://...`，常用 `sslmode=require`） |
+| `OPENAI_API_KEY` | OpenAI |
+| `LINE_CHANNEL_ACCESS_TOKEN` / `LINE_CHANNEL_SECRET` | LINE Bot |
+| `PUBLIC_BASE_URL` | 對外可連的後端基底網址（本機 `http://localhost:8000`；ngrok 請改 https） |
+
+連線組裝邏輯見 `backend/app/core/settings.py`（若已設 `DATABASE_URL` 則優先於舊版 `POSTGRES_*`）。
+
+金鑰來源：[OpenAI](https://platform.openai.com/account/api-keys)、[LINE Developers](https://developers.line.biz/console/)。
+
+---
+
+## 資料庫與店家（store）
+
+### Schema 與遷移
+
+- 多租戶表：`store`、`customer`、`chat_room`、`chat_message`、`order`、`order_draft`、`payment`、`payment_method`、`notification` 等。
+- 破壞性遷移 **`f4e8bb2a9031`** 會 DROP 舊表後重建，**僅適合新庫或願意清空資料時**執行。
+- 套用遷移（在 `backend`、已啟用 venv）：
+
+```bash
+cd backend
+alembic upgrade head
+```
+
+- Docker 啟動時預設 **`SKIP_ALEMBIC_ON_START=1`**（不自動跑 Alembic），請在 Supabase 上自行確認 revision 或手動執行上述指令。
+
+### 是否有「預設店家」？
+
+程式**沒有** `default_store` 欄位或設定檔。新 LINE 顧客會掛到 **`store` 表中 `id` 最小的一筆**（`get_first_store_id()`）。
+
+因此開發／測試前，資料庫裡**至少要有一筆 `store`**。若沒有，種子資料與 LINE 建立顧客會失敗（例如：`資料庫中沒有 store，請先在 Supabase 建立店家資料。`）。
+
+在 Supabase SQL Editor 可手動插入（`owner_auth_user_id` 請改成你的 Supabase Auth UUID，或開發用固定 UUID）：
+
+```sql
+INSERT INTO public.store (name, slug, timezone, active, created_at, updated_at, owner_auth_user_id)
+VALUES (
+  '開發用店家',
+  'dev-local',
+  'Asia/Taipei',
+  true,
+  NOW(),
+  NOW(),
+  '00000000-0000-4000-8000-000000000001'::uuid
+);
+```
+
+**你目前的 Supabase（已連線驗證）**：Alembic `f4e8bb2a9031`，已有 **1 筆 store**（`id=1`，`slug=dev-local`），以及測試用 customer / chat_room / order 等資料；LINE 新用戶會歸到這家店。
+
+### 測試資料
+
+```bash
+cd backend
+PYTHONPATH=. python app/seeds/seed_all.py
+```
+
+或後端啟動後：`GET http://localhost:8000/generate-fake-data?count=10`（需 DB 內已有 store）。
+
+### 舊版本機 Docker Postgres
+
+若仍要連過去 compose 裡的 `db` 容器，請在 `.env` 取消註解 `POSTGRES_*` 並自行調整 `docker-compose`；**目前預設流程以 Supabase 為準**，根目錄 `docker-compose.yml` 已不含 `db` 服務。
 
 ---
 
 ## 🚀 執行應用程式
 
-專案支援兩種常見用法：**本機分開跑（適合日常改程式）** 與 **Docker 一鍵跑（適合整包驗收或交作業展示）**。
+### 模式 A：本機跑前後端（連 Supabase）
 
-### 模式 A：開發用（資料庫用 Docker，前後端本機跑）
-
-1. 在專案根目錄啟動資料庫（對外預設使用 5434，避免與本機 Postgres 的 5432 衝突）：
-  ```bash
-
-   docker compose up -d db
-
-  ```
-2. 套用 schema（在 `backend` 目錄、已啟用虛擬環境）：
-  ```bash
-
-   cd backend
-
-   alembic upgrade head
-
-  ```
-3. 啟動後端（**務必在 `backend` 目錄**，否則找不到 `app` 模組）：
-  ```bash
-
-   python -m uvicorn app.main:app --reload --port 8000
-
-  ```
-4. 啟動前端：
-  ```bash
-
-   cd frontend
-
-   npm run dev
-
-  ```
-5. 網址：
-  - 前端：`http://localhost:5173`
-  - 後端：`http://localhost:8000`（Swagger UI 在根路徑 `/`）
-  - Postgres（由主機連進容器）：`localhost:5434`（預設帳號／密碼／資料庫名見 `backend/.env` 與 `docker-compose.yml` 的 `db` 服務）
-
-修改過 `backend/.env` 後，請**重啟 uvicorn**，否則可能仍沿用舊連線設定。
-
-#### 選用：寫入測試資料
+1. 確認 `backend/.env` 的 `DATABASE_URL` / `DATABASE_ALEM_URL` 正確，且 Supabase 上 schema 與 Alembic head 一致。
+2. 後端（**工作目錄必須是 `backend`**）：
 
 ```bash
-
 cd backend
-
-PYTHONPATH=. python app/seeds/seed_all.py
-
+python -m uvicorn app.main:app --reload --port 8000
 ```
 
----
-
-### 模式 B：Docker Compose 一鍵（db + backend + frontend）
-
-> 需先安裝 [Docker Desktop](https://www.docker.com/products/docker-desktop/)（Windows／Mac）。
-
-1. 備妥 `backend/.env`（可參考 `backend/.env.example`）。
-2. 在專案根目錄：
-  ```bash
-
-   # 第一次或有套件/映像異動時使用
-   docker compose up --build
-
-   # 日常開發（不需每次重建）
-   docker compose up
-
-  ```
-3. 開發模式說明（Compose Dev）：
-  - `backend` 與 `frontend` 都有掛載 volume，修改程式碼會即時反映
-  - backend 使用 `uvicorn --reload`
-  - frontend 使用 `npm run dev`（Vite HMR）
-  - 不需要每次改 code 都 `--build`
-4. 服務位址：
-  - 前端：`http://localhost:5173`
-  - 後端：`http://localhost:8000`（Swagger UI 在 `/`）
-  - Postgres：`localhost:5434`（對外埠；容器內 backend 使用服務名 `db` 與埠 `5432`）
-5. 關閉：
-  ```bash
-
-   docker compose down
-
-  ```
-6. 連資料一併刪除（volume）：
-  ```bash
-
-   docker compose down -v
-
-  ```
-
----
-
-### 本機對外暴露 Webhook（LINE）
-
-可使用 [ngrok](https://ngrok.com) 將本機後端提供給 LINE Webhook：
+3. 前端：
 
 ```bash
-
-ngrok http 8000
-
+cd frontend
+npm run dev
 ```
+
+4. 網址：
+   - 前端：`http://localhost:5173`
+   - 後端 API / Swagger：`http://localhost:8000`
+
+修改 `.env` 後請重啟 uvicorn。
+
+### 模式 B：Docker Compose（backend + frontend）
+
+```bash
+# 專案根目錄；第一次或 Dockerfile 有變更
+docker compose up --build
+
+# 日常
+docker compose up
+```
+
+- 資料庫：讀取 `backend/.env` 的 Supabase，**不會**啟動本機 Postgres。
+- `backend`、`frontend` 掛載 volume，支援 `--reload` / Vite HMR。
+- 關閉：`docker compose down`
+
+服務位址與模式 A 相同（5173 / 8000）。
+
+### 本機對外 Webhook（LINE）
+
+```bash
+ngrok http 8000
+```
+
+將 LINE Webhook 指到 `https://<ngrok-id>.ngrok.io/callback`，並把 `PUBLIC_BASE_URL` 改成對應的 https 基底（圖片 URL 用）。
 
 ---
 
 ## 🔗 Webhook 配置
 
-請至 [LINE Developers Console](https://developers.line.biz/console/) 設定 Webhook URL。本機除錯時請配合 ngrok 或同等隧道；正式環境則改為你的網域，例如：
+於 [LINE Developers Console](https://developers.line.biz/console/) 設定 Webhook URL，例如：
 
-```
-
+```text
 https://your-domain.example.com/callback
-
 ```
+
+本機除錯請配合 ngrok；開發用重置指令可設 `LINE_TEST_RESET_PHRASE`（傳入完全相同文字會刪除該聊天室與顧客相關資料）。
 
 ---
 
-## ✅ API 契約守門（重構必跑）
+## ✅ API 契約守門
 
-重構期間請以 `docs/CONTRACT.md` 作為 API 行為基線，並在每次改動後執行：
+重構期間以 `docs/CONTRACT.md` 為基線：
 
 ```bash
 cd backend
 make contract-check
 ```
 
-若環境可連到測試資料庫，建議再補跑：
+可連測試庫時建議：
 
 ```bash
 cd backend
@@ -260,37 +223,36 @@ pytest tests/test_contract_smoke.py
 
 ---
 
-## 🧠 程式架構說明
+## 🧠 程式架構
 
-### `backend/app/` 後端（FastAPI）
+### `backend/app/`（FastAPI）
 
-- `main.py`：主應用與路由掛載
-- `api/v1/`：新版 API 路由入口（目前逐步轉接既有 `routes/`）
-- `models/`：資料表定義（User、Order、Message、Shipment 等）
-- `routes/`：API 路由模組（linebot、orders、health 等）
-- `services`：實作各種資料庫 CRUD 功能
-- `repositories/`：資料存取層（重構中，將逐步由 service 下沉查詢邏輯）
-- `schemas/`：定義資料 Input 與 Output 格式
-- `core/`：設定（含資料庫連線字串組裝）與共用依賴
-- `seeds/`：測試／假資料產生程式
+| 目錄 | 說明 |
+|------|------|
+| `main.py` | 應用入口、CORS、靜態 uploads |
+| `api/v1/` | API 路由聚合 |
+| `models/` | ORM：`Store`、`Customer`、`ChatRoom`、`Order` 等 |
+| `routes/` | HTTP 路由（linebot、orders、chat、payment…） |
+| `services/` | 業務邏輯 |
+| `repositories/` | 資料存取（含 `get_first_store_id`） |
+| `schemas/` | Pydantic 請求／回應；`User` 為 `Customer` 的相容別名 |
+| `core/` | 設定、DB session |
+| `seeds/` | 假資料產生 |
 
-### `frontend/` 前端（React + TypeScript）
+### `frontend/`（React + TypeScript）
 
-- **Vite**：開發伺服器與編譯；**TanStack Query** 管理列表輪詢與資料快取；**React Router** 對應 `/`、`/orders`、`/messages`、`/stats`。
-- `.env.example`：可設定 `**VITE_API_BASE_URL`** 指向後端來源（本機開發預設常為 `http://localhost:8000`）。
-- 路由與版面：側邊欄導覽、`Dashboard`/`Orders`、`Messages`（三欄含訂單草稿面板）、統計卡片與 DOCX 匯出等行為自舊版 Vue 對齊。
+- Vite、TanStack Query、React Router（`/`、`/orders`、`/messages`、`/stats`）
+- `frontend/.env`：`VITE_API_BASE_URL`（預設 `http://localhost:8000`）
+
+### 重構後手動 smoke
+
+- 首頁訂單表與統計可載入；刪除訂單後列表刷新。
+- `Messages`：切換聊天室、送訊、右側草稿面板、「更新／建立工單」。
+- DOCX 下載、CSV 瀏覽器下載。
+- `docker compose up` 下 5173 / 8000 行為與本機模式一致。
 
 ---
 
-### 前端手動 smoke（重構後建議跑一次）
+## 📄 授權
 
-- 後端已啟動時，確認首頁可載入訂單表與統計卡，刪除訂單後列表與統計數字會刷新。
-- `Messages`：`/messages` 可切換聊天室、送出新訊息、頭像側「整理資料」與返回箭頭能開啟／關閉右側草稿；「更新工單」「建立新工單」成功或缺欄位提示與舊版一致。
-- 「工單」DOCX：下載 `order_<id>.docx`；「下載 CSV」可於瀏覽器取得檔案。
-- `**docker compose up**`：`frontend` 服務對外 `5173`、`VITE_API_BASE_URL` 行為與先前相同。
-
----
-
-## 📄 授權 License
-
-本專案採用 [MIT License](LICENSE)，歡迎自由使用、修改與商業應用。
+[MIT License](LICENSE)

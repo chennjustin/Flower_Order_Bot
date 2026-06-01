@@ -3,6 +3,7 @@ import MessageInput from './MessageInput'
 import MessageList from './MessageList'
 import { useRoomMessages, useSendMessage } from '@/hooks/useRoomMessages'
 import type { ChatRoom as ChatRoomType } from '@/types/domain'
+import { ChatMessageStatus } from '@/types/enums'
 
 interface ChatRoomProps {
   room: ChatRoomType
@@ -23,6 +24,7 @@ export default function ChatRoom({
   return (
     <div className="flex h-full flex-col overflow-hidden bg-white">
       <ChatHeader
+        roomId={room.room_id}
         roomName={room.user_name}
         avatar={room.user_avatar_url ?? null}
         status={room.status}
@@ -38,10 +40,14 @@ export default function ChatRoom({
         <MessageList messages={messagesQuery.data ?? []} />
       )}
       <MessageInput
+        roomId={room.room_id}
         disabled={sendMutation.isPending}
-        onSend={async text => {
+        onSend={async body => {
           try {
-            await sendMutation.mutateAsync({ text, image_url: null })
+            const sent = await sendMutation.mutateAsync(body)
+            if (sent.status === ChatMessageStatus.FAILED) {
+              alert('訊息已建立，但 LINE 傳送失敗，請確認貼圖 ID 或圖片連結可用後重試。')
+            }
           } catch (err) {
             const msg = err instanceof Error ? err.message : String(err)
             alert(`送出訊息失敗：${msg}`)

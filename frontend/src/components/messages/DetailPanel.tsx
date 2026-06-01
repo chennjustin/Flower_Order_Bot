@@ -7,26 +7,25 @@ import {
   useUpdateOrderDraft,
 } from '@/hooks/useOrderDraft'
 import type { OrderDraft, OrderDraftUpdate } from '@/types/domain'
-import type { ShipmentMethod } from '@/types/enums'
+import type { PaymentStatus, ShipmentMethod } from '@/types/enums'
+import { useOrderDisplayConfig } from '@/context/OrderDisplayConfigContext'
+import type { OrderFieldKey } from '@/types/orderDisplay'
 import { cn } from '@/lib/utils'
 
 type EditableKey =
   | 'customer_name'
   | 'customer_phone'
-  | 'receiver_name'
-  | 'receiver_phone'
   | 'total_amount'
   | 'item'
   | 'quantity'
   | 'note'
-  | 'card_message'
   | 'shipment_method'
   | 'send_datetime'
-  | 'receipt_address'
   | 'delivery_address'
   | 'pay_way'
+  | 'pay_status'
 
-type ReadOnlyKey = 'order_date' | 'weekday'
+type ReadOnlyKey = 'id' | 'order_date' | 'order_status'
 
 type FieldKey = EditableKey | ReadOnlyKey
 
@@ -49,76 +48,79 @@ const MISSING_KEY_TO_FIELD: Record<string, FieldKey> = {
   customer_name: 'customer_name',
   user_phone: 'customer_phone',
   customer_phone: 'customer_phone',
-  receiver_user_id: 'receiver_name',
-  receiver: 'receiver_name',
-  receiver_name: 'receiver_name',
-  receiver_phone: 'receiver_phone',
   item_type: 'item',
   item: 'item',
   quantity: 'quantity',
   total_amount: 'total_amount',
   shipment_method: 'shipment_method',
   send_datetime: 'send_datetime',
-  receipt_address: 'receipt_address',
   delivery_address: 'delivery_address',
   pay_way: 'pay_way',
-  card_message: 'card_message',
   note: 'note',
 }
 
-const FIELDS: FieldDef[] = [
-  { key: 'customer_name', label: '客戶姓名', editable: true },
-  { key: 'customer_phone', label: '客戶電話', editable: true },
-  { key: 'receiver_name', label: '收件人姓名', editable: true },
-  { key: 'receiver_phone', label: '收件人電話', editable: true },
-  { key: 'total_amount', label: '總金額', editable: true, variant: 'amount' },
-  { key: 'item', label: '品項', editable: true },
-  { key: 'quantity', label: '數量', editable: true, variant: 'number' },
-  { key: 'note', label: '備註', editable: true },
-  { key: 'card_message', label: '卡片訊息', editable: true },
-  { key: 'shipment_method', label: '取貨方式', editable: true, variant: 'select' },
-  { key: 'send_datetime', label: '送貨日期', editable: true, variant: 'datetime' },
-  { key: 'receipt_address', label: '收件地址', editable: true },
-  { key: 'delivery_address', label: '送貨地址', editable: true },
-  { key: 'order_date', label: '訂單日期', editable: false },
-  { key: 'pay_way', label: '付款方式', editable: true },
-  { key: 'weekday', label: '星期', editable: false },
+const FIELD_META: Record<FieldKey, Omit<FieldDef, 'key'>> = {
+  id: { label: '訂單編號', editable: false },
+  customer_name: { label: '客戶姓名', editable: true },
+  customer_phone: { label: '客戶電話', editable: true },
+  total_amount: { label: '總金額', editable: true, variant: 'amount' },
+  item: { label: '品項', editable: true },
+  quantity: { label: '數量', editable: true, variant: 'number' },
+  note: { label: '備註', editable: true },
+  shipment_method: { label: '取貨方式', editable: true, variant: 'select' },
+  send_datetime: { label: '送貨日期', editable: true, variant: 'datetime' },
+  delivery_address: { label: '送貨地址', editable: true },
+  order_date: { label: '訂單日期', editable: false },
+  order_status: { label: '狀態', editable: false },
+  pay_way: { label: '付款方式', editable: true },
+  pay_status: { label: '付款狀態', editable: true, variant: 'select' },
+}
+
+const DRAFT_SUPPORTED_KEYS: OrderFieldKey[] = [
+  'id',
+  'customer_name',
+  'customer_phone',
+  'item',
+  'quantity',
+  'note',
+  'shipment_method',
+  'send_datetime',
+  'total_amount',
+  'pay_way',
+  'pay_status',
+  'delivery_address',
+  'order_date',
+  'order_status',
 ]
 
 interface FormState {
   customer_name: string
   customer_phone: string
-  receiver_name: string
-  receiver_phone: string
   total_amount: string
   item: string
   quantity: string
   note: string
-  card_message: string
   shipment_method: ShipmentMethod
   send_datetime_date: string
   send_datetime_time: string
-  receipt_address: string
   delivery_address: string
   pay_way: string
+  pay_status: PaymentStatus
 }
 
 const EMPTY_FORM: FormState = {
   customer_name: '',
   customer_phone: '',
-  receiver_name: '',
-  receiver_phone: '',
   total_amount: '',
   item: '',
   quantity: '',
   note: '',
-  card_message: '',
   shipment_method: 'STORE_PICKUP',
   send_datetime_date: '',
   send_datetime_time: '',
-  receipt_address: '',
   delivery_address: '',
   pay_way: '',
+  pay_status: 'PENDING',
 }
 
 function pad2(n: number) {
@@ -152,19 +154,16 @@ function formStateFromDraft(draft: OrderDraft | null | undefined): FormState {
   return {
     customer_name: draft.customer_name ?? '',
     customer_phone: draft.customer_phone ?? '',
-    receiver_name: draft.receiver_name ?? '',
-    receiver_phone: draft.receiver_phone ?? '',
     total_amount: draft.total_amount != null ? String(draft.total_amount) : '',
     item: draft.item ?? '',
     quantity: draft.quantity != null ? String(draft.quantity) : '',
     note: draft.note ?? '',
-    card_message: draft.card_message ?? '',
     shipment_method: (draft.shipment_method as ShipmentMethod) ?? 'STORE_PICKUP',
     send_datetime_date: date,
     send_datetime_time: time,
-    receipt_address: draft.receipt_address ?? '',
     delivery_address: draft.delivery_address ?? '',
     pay_way: draft.pay_way ?? '',
+    pay_status: draft.pay_status ?? 'PENDING',
   }
 }
 
@@ -174,19 +173,15 @@ function formStateToUpdate(form: FormState): OrderDraftUpdate {
   return {
     customer_name: form.customer_name || null,
     customer_phone: form.customer_phone || null,
-    receiver_name: form.receiver_name || null,
-    receiver_phone: form.receiver_phone || null,
     total_amount: Number.isFinite(total) ? total : null,
     item: form.item || null,
     quantity: Number.isFinite(qty) ? qty : null,
     note: form.note || null,
-    card_message: form.card_message || null,
     shipment_method: form.shipment_method,
     send_datetime: combineDateTimeIso(form.send_datetime_date, form.send_datetime_time),
-    receipt_address: form.receipt_address || null,
     delivery_address: form.delivery_address || null,
     pay_way: form.pay_way || null,
-    pay_way_id: 0,
+    pay_status: form.pay_status,
   }
 }
 
@@ -214,6 +209,7 @@ export default function DetailPanel({ roomId, open, onClose }: DetailPanelProps)
   const updateDraft = useUpdateOrderDraft(roomId)
   const updateOrder = useUpdateOrder(roomId)
   const createOrder = useCreateOrder(roomId)
+  const { savedConfig } = useOrderDisplayConfig()
 
   const [isEditing, setIsEditing] = useState(false)
   const [form, setForm] = useState<FormState>(EMPTY_FORM)
@@ -235,16 +231,14 @@ export default function DetailPanel({ roomId, open, onClose }: DetailPanelProps)
   const display = useMemo(() => {
     if (!draft) return null
     return {
+      id: String(draft.id),
       customer_name: draft.customer_name ?? '',
       customer_phone: draft.customer_phone ?? '',
-      receiver_name: draft.receiver_name ?? '',
-      receiver_phone: draft.receiver_phone ?? '',
       total_amount:
         draft.total_amount != null ? `NT ${draft.total_amount}` : '',
       item: draft.item ?? '',
       quantity: draft.quantity != null ? String(draft.quantity) : '',
       note: draft.note ?? '',
-      card_message: draft.card_message ?? '',
       shipment_method:
         draft.shipment_method === 'STORE_PICKUP'
           ? '店取'
@@ -252,13 +246,28 @@ export default function DetailPanel({ roomId, open, onClose }: DetailPanelProps)
             ? '外送'
             : '',
       send_datetime: formatReadOnly(draft.send_datetime),
-      receipt_address: draft.receipt_address ?? '',
       delivery_address: draft.delivery_address ?? '',
       order_date: formatReadOnly(draft.order_date),
+      order_status: '草稿',
       pay_way: draft.pay_way ?? '',
-      weekday: draft.weekday ?? '',
+      pay_status:
+        draft.pay_status === 'PAID'
+          ? '已付款'
+          : draft.pay_status === 'FAILED'
+            ? '付款失敗'
+            : draft.pay_status === 'REFUNDED'
+              ? '已退款'
+              : '待付款',
     }
   }, [draft])
+
+  const visibleFields = useMemo<FieldDef[]>(() => {
+    const supportedSet = new Set<OrderFieldKey>(DRAFT_SUPPORTED_KEYS)
+    return [...savedConfig.fields]
+      .sort((a, b) => a.order - b.order)
+      .filter(field => field.visible && supportedSet.has(field.key))
+      .map(field => ({ key: field.key as FieldKey, ...FIELD_META[field.key as FieldKey] }))
+  }, [savedConfig.fields])
 
   function setField<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm(prev => ({ ...prev, [key]: value }))
@@ -370,7 +379,7 @@ export default function DetailPanel({ roomId, open, onClose }: DetailPanelProps)
           </div>
         ) : (
           <div className="flex flex-col gap-4">
-            {FIELDS.map(field =>
+            {visibleFields.map(field =>
               field.key === 'send_datetime' && isEditing ? (
                 <DateTimeRow
                   key={field.key}
@@ -505,6 +514,21 @@ function renderEditor(
       >
         <option value="STORE_PICKUP">店取</option>
         <option value="DELIVERY">外送</option>
+      </select>
+    )
+  }
+
+  if (field.variant === 'select' && field.key === 'pay_status') {
+    return (
+      <select
+        value={form.pay_status}
+        onChange={e => setField('pay_status', e.target.value as PaymentStatus)}
+        className={cn(inputClasses, 'cursor-pointer appearance-none')}
+      >
+        <option value="PENDING">待付款</option>
+        <option value="PAID">已付款</option>
+        <option value="FAILED">付款失敗</option>
+        <option value="REFUNDED">已退款</option>
       </select>
     )
   }

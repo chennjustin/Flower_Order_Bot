@@ -1,14 +1,36 @@
 import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
+import { isSupabaseConfigured } from '@/lib/supabase'
 
 export default function LoginPage() {
   const { session, loading, signInWithGoogle } = useAuth()
   const navigate = useNavigate()
 
   useEffect(() => {
-    if (!loading && session) navigate('/', { replace: true })
+    if (!loading && session?.access_token) navigate('/', { replace: true })
   }, [session, loading, navigate])
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center text-sm text-gray-400">
+        載入中...
+      </div>
+    )
+  }
+
+  if (!isSupabaseConfigured) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4">
+        <div className="max-w-md rounded-2xl bg-white px-8 py-10 text-center shadow-lg">
+          <h1 className="text-lg font-bold text-gray-800">無法登入</h1>
+          <p className="mt-2 text-sm text-gray-500">
+            請在 frontend/.env.local 設定 VITE_SUPABASE_URL 與 VITE_SUPABASE_ANON_KEY，然後重啟前端。
+          </p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-gray-50">

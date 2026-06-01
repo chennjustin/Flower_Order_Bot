@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from datetime import datetime, timedelta, timezone
 
 from linebot.exceptions import LineBotApiError
@@ -9,7 +10,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.deps import get_line_bot_api, get_settings
 from app.enums.chat import ChatMessageDirection, ChatMessageStatus, ChatRoomStage
 from app.models.chat import ChatMessage, ChatRoom
-from app.schemas.user import UserCreate
+from app.models.user import User
+from app.schemas.customer import CustomerCreate
 from app.services.message_service import (
     create_chat_room,
     get_chat_room_by_user_id,
@@ -19,24 +21,26 @@ from app.services.order_service import (
     create_order_draft_by_room_id,
     get_order_draft_by_room,
 )
+from app.repositories.store_repository import get_first_store_id
 from app.services.dev_room_reset import wipe_line_customer_for_dev
 from app.services.user_service import create_user, get_user_by_line_uid
 from app.utils.line_get_profile import fetch_user_profile
+from app.utils.line_inbound_media import fetch_line_message_binary, save_inbound_line_image
 from app.utils.line_send_message import send_confirm, send_quick_reply_message
 
 
-async def handle_incoming_text_message(event: MessageEvent, db: AsyncSession) -> None:
-    """
-    Use case entrypoint for an incoming LINE TextMessage.
-
-    Keep behavior identical to the previous inline implementation in routes.
-    """
-    user_line_id = event.source.user_id
-    user_message = event.message.text
-
+async def resolve_line_user_and_room(
+    db: AsyncSession, user_line_id: str
+) -> tuple[User, ChatRoom]:
     user = await get_user_by_line_uid(db, user_line_id)
     if not user:
-        user = await create_user(db, UserCreate(line_uid=user_line_id, name="Unknown User"))
+        store_id = await get_first_store_id(db)
+        if store_id is None:
+            raise RuntimeError("No store configured. Create a store in Supabase first.")
+        user = await create_user(
+            db,
+            CustomerCreate(line_uid=user_line_id, name="Unknown User", store_id=store_id),
+        )
 
     if user.name == "Unknown User" or user.avatar_url is None:
         try:
@@ -71,6 +75,34 @@ async def handle_incoming_text_message(event: MessageEvent, db: AsyncSession) ->
     if await get_order_draft_by_room(db, chat_room.id) is None:
         await create_order_draft_by_room_id(db, chat_room.id)
 
+    return user, chat_room
+
+
+async def handoff_to_owner_if_order_confirmed(
+    chat_room: ChatRoom, db: AsyncSession
+) -> None:
+    # A new inbound message while the room is in ORDER_CONFIRM means the
+    # customer reopened the conversation, so hand control back to the store
+    # by switching the stage to WAITING_OWNER (regardless of message type).
+    if chat_room.stage == ChatRoomStage.ORDER_CONFIRM:
+        chat_room.stage = ChatRoomStage.WAITING_OWNER
+        chat_room.bot_step = -1
+        await db.commit()
+        await db.refresh(chat_room)
+        print("ORDER_CONFIRM received a new message; switching to WAITING_OWNER.")
+
+
+async def handle_incoming_text_message(event: MessageEvent, db: AsyncSession) -> None:
+    """
+    Use case entrypoint for an incoming LINE TextMessage.
+
+    Keep behavior identical to the previous inline implementation in routes.
+    """
+    user_line_id = event.source.user_id
+    user_message = event.message.text
+
+    user, chat_room = await resolve_line_user_and_room(db, user_line_id)
+
     settings = get_settings()
     if settings.line_test_reset_phrase and user_message.strip() == settings.line_test_reset_phrase:
         await wipe_line_customer_for_dev(db, chat_room.id, user.id)
@@ -90,7 +122,10 @@ async def handle_incoming_text_message(event: MessageEvent, db: AsyncSession) ->
         room_id=chat_room.id,
         direction=ChatMessageDirection.INCOMING,
         text=user_message,
-        image_url="",
+        image_url=None,
+        sticker_package_id=None,
+        sticker_id=None,
+        line_msg_id=str(event.message.id) if event.message.id else None,
         status=ChatMessageStatus.PENDING,
         processed=False,
         created_at=datetime.now(timezone(timedelta(hours=8))).replace(tzinfo=None),
@@ -122,12 +157,63 @@ async def handle_incoming_text_message(event: MessageEvent, db: AsyncSession) ->
         await run_bot_flow(chat_room, user_message, event, db)
         return
 
-    if chat_room.stage == ChatRoomStage.ORDER_CONFIRM:
-        chat_room.stage = ChatRoomStage.WAITING_OWNER
-        chat_room.bot_step = -1
-        await db.commit()
-        await db.refresh(chat_room)
-        print("訂單確認後出現訊息，轉交「人工回覆」模式。")
+    await handoff_to_owner_if_order_confirmed(chat_room, db)
+
+
+async def handle_incoming_image_message(event: MessageEvent, db: AsyncSession) -> None:
+    user_line_id = event.source.user_id
+    _, chat_room = await resolve_line_user_and_room(db, user_line_id)
+    mid = event.message.id
+    settings = get_settings()
+    try:
+        raw, ct = await asyncio.to_thread(fetch_line_message_binary, mid)
+        public_url = save_inbound_line_image(settings.public_base_url, raw, ct)
+    except Exception as e:
+        print(f"[LINE] 無法下載使用者圖片 message_id={mid}: {e}")
+        raise
+
+    message = ChatMessage(
+        room_id=chat_room.id,
+        direction=ChatMessageDirection.INCOMING,
+        text="[圖片]",
+        image_url=public_url,
+        sticker_package_id=None,
+        sticker_id=None,
+        line_msg_id=str(mid) if mid else None,
+        status=ChatMessageStatus.PENDING,
+        processed=False,
+        created_at=datetime.now(timezone(timedelta(hours=8))).replace(tzinfo=None),
+        updated_at=datetime.now(timezone(timedelta(hours=8))).replace(tzinfo=None),
+    )
+    db.add(message)
+    await db.commit()
+
+    await handoff_to_owner_if_order_confirmed(chat_room, db)
+
+
+async def handle_incoming_sticker_message(event: MessageEvent, db: AsyncSession) -> None:
+    user_line_id = event.source.user_id
+    _, chat_room = await resolve_line_user_and_room(db, user_line_id)
+    pkg = str(event.message.package_id)
+    stk = str(event.message.sticker_id)
+    mid = event.message.id
+    message = ChatMessage(
+        room_id=chat_room.id,
+        direction=ChatMessageDirection.INCOMING,
+        text="[貼圖]",
+        image_url=None,
+        sticker_package_id=pkg,
+        sticker_id=stk,
+        line_msg_id=str(mid) if mid else None,
+        status=ChatMessageStatus.PENDING,
+        processed=False,
+        created_at=datetime.now(timezone(timedelta(hours=8))).replace(tzinfo=None),
+        updated_at=datetime.now(timezone(timedelta(hours=8))).replace(tzinfo=None),
+    )
+    db.add(message)
+    await db.commit()
+
+    await handoff_to_owner_if_order_confirmed(chat_room, db)
 
 
 async def run_welcome_flow(

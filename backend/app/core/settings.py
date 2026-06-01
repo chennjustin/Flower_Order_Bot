@@ -15,8 +15,8 @@ class Settings:
     database_url: str
     # 與此字串完全相符的 LINE 文字訊息會觸發開發用清除（見 linebot_flow）
     line_test_reset_phrase: str | None
-    supabase_url: str
-    supabase_anon_key: str
+    # 建置圖片給對外 URL（LINE 推圖、後台顯示本機上傳圖）；ngrok／正式網域請改此值
+    public_base_url: str
 
 
 def _postgres_connection_params() -> tuple[str, str, str, str, str]:
@@ -54,6 +54,9 @@ def resolve_database_url() -> str:
         database_url = explicit
         if database_url.startswith("postgres://"):
             database_url = database_url.replace("postgres://", "postgresql+asyncpg://", 1)
+        # asyncpg 用 ssl=require；Supabase 文件常寫 sslmode=require（僅 psycopg2）
+        if "postgresql+asyncpg" in database_url:
+            database_url = database_url.replace("sslmode=require", "ssl=require")
         return database_url
     if any(
         os.getenv(k)
@@ -94,13 +97,14 @@ def load_settings() -> Settings:
     database_url = resolve_database_url()
 
     phrase = os.getenv("LINE_TEST_RESET_PHRASE", "").strip()
+    pub = os.getenv("PUBLIC_BASE_URL", "").strip().rstrip("/")
+    public_base_url = pub if pub else "http://localhost:8000"
     return Settings(
         openai_api_key=os.getenv("OPENAI_API_KEY"),
         line_channel_access_token=os.getenv("LINE_CHANNEL_ACCESS_TOKEN"),
         line_channel_secret=os.getenv("LINE_CHANNEL_SECRET"),
         database_url=database_url,
         line_test_reset_phrase=phrase or None,
-        supabase_url=os.getenv("SUPABASE_URL", ""),
-        supabase_anon_key=os.getenv("SUPABASE_ANON_KEY", ""),
+        public_base_url=public_base_url,
     )
 

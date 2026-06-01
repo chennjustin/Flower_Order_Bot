@@ -1,11 +1,10 @@
-from typing import Optional, Any
+from typing import Optional
 from datetime import datetime
 from pydantic import BaseModel
 
 from app.enums.order import OrderStatus
+from app.enums.payment import PaymentStatus
 from app.enums.shipment import ShipmentMethod
-from typing import Optional
-from datetime import datetime
 
 """
 OrderDraft:
@@ -24,25 +23,22 @@ Order:
 class OrderDraftBase(BaseModel):
     # TODO: 待補目前付的錢
 
-    # 收件 / 寄件人
+    # 訂購人（customer）資訊
     customer_name: Optional[str] = None
     customer_phone: Optional[str] = None
-    receiver_name: Optional[str] = None
-    receiver_phone: Optional[str] = None
 
     # 付款資訊
     total_amount: Optional[float] = None
+    pay_status: Optional[PaymentStatus] = None
 
     # 商品資訊
     item: Optional[str] = None
     quantity: Optional[int] = None
     note: Optional[str] = None
-    card_message: Optional[str] = None
 
     # 運送資訊
     shipment_method: Optional[ShipmentMethod] = None
     send_datetime: Optional[datetime] = None
-    receipt_address: Optional[str] = None
     delivery_address: Optional[str] = None
 
     class Config:
@@ -61,8 +57,7 @@ class OrderDraftCreate(OrderDraftBase):
 class OrderDraftOut(OrderDraftBase):
     id: int
     order_date: datetime
-    pay_way: Optional[str]
-    weekday: Optional[str]
+    pay_way: Optional[str] = None
 
 """
 Order:
@@ -71,26 +66,23 @@ Order:
 class OrderBase(BaseModel):
     # TODO: 待補目前付的錢
 
-    # 收件 / 寄件人
+    # 訂購人
     customer_name: str
     customer_phone: str
-    receiver_name: Optional[str] = None
-    receiver_phone: Optional[str] = None
 
     # 付款資訊
     total_amount: float
+    pay_status: Optional[PaymentStatus] = None
 
     # 商品資訊
     item: str
     quantity: int
     note: Optional[str] = None
-    card_message: Optional[str] = None
 
     # 運送資訊
-    shipment_method: ShipmentMethod
+    shipment_method: Optional[ShipmentMethod] = None
     # 取貨/送達時間：某些訂單（如店取未填時間）可能為空；列表/草稿需允許為 None
     send_datetime: Optional[datetime] = None
-    receipt_address: Optional[str] = None
     delivery_address: Optional[str] = None
 
     class Config:
@@ -108,5 +100,10 @@ class OrderOut(OrderBase):
     id: int
     order_date: datetime
     order_status: OrderStatus
-    pay_way: Optional[str]
-    weekday: Optional[str]
+    pay_way: Optional[str] = None
+
+
+class OrderStatusUpdate(BaseModel):
+    """PATCH /order/{order_id}/status request body."""
+
+    status: OrderStatus
