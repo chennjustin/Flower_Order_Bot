@@ -1,0 +1,115 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="petalGrad" cx="45%" cy="35%" r="75%">
+      <stop offset="0%" stop-color="#fff7ef"/>
+      <stop offset="48%" stop-color="#f8d6c9"/>
+      <stop offset="100%" stop-color="#e9a693"/>
+    </radialGradient>
+    <linearGradient id="petalShadow" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#f9d8cb" stop-opacity="0.25"/>
+      <stop offset="100%" stop-color="#c76e61" stop-opacity="0.45"/>
+    </linearGradient>
+    <linearGradient id="stemGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#6c7654"/>
+      <stop offset="100%" stop-color="#273622"/>
+    </linearGradient>
+    <linearGradient id="leafGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#8c9272"/>
+      <stop offset="100%" stop-color="#2d3d2c"/>
+    </linearGradient>
+    <linearGradient id="leafLight" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#b4b28b"/>
+      <stop offset="100%" stop-color="#737c59"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#f0c55f"/>
+      <stop offset="100%" stop-color="#bd7d28"/>
+    </linearGradient>
+    <filter id="soft" x="-25%" y="-25%" width="150%" height="150%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="3"/>
+      <feOffset dx="0" dy="4" result="off"/>
+      <feComponentTransfer><feFuncA type="linear" slope="0.13"/></feComponentTransfer>
+      <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <rect width="1024" height="1024" fill="#fffdf9"/>
+
+  <!-- stems -->
+  <path d="M382 965 C438 836 483 707 512 580 C535 482 558 388 624 246" fill="none" stroke="url(#stemGrad)" stroke-width="14" stroke-linecap="round"/>
+  <path d="M500 796 C566 703 627 620 685 515 C718 453 738 370 762 265" fill="none" stroke="url(#stemGrad)" stroke-width="10" stroke-linecap="round"/>
+  <path d="M529 708 C620 640 712 600 822 585" fill="none" stroke="url(#stemGrad)" stroke-width="8" stroke-linecap="round"/>
+  <path d="M436 812 C353 710 259 675 115 683" fill="none" stroke="url(#stemGrad)" stroke-width="8" stroke-linecap="round"/>
+
+  <!-- leaves -->
+  <path d="M115 683 C218 589 343 617 438 723 C316 750 208 744 115 683Z" fill="url(#leafGrad)"/>
+  <path d="M228 920 C242 790 329 732 439 812 C367 908 298 932 228 920Z" fill="url(#leafGrad)"/>
+  <path d="M402 613 C468 638 501 708 484 788 C425 750 392 692 402 613Z" fill="url(#leafGrad)"/>
+  <path d="M496 800 C591 735 684 737 759 787 C660 819 577 820 496 800Z" fill="url(#leafLight)" opacity="0.95"/>
+  <path d="M724 355 C817 315 907 323 985 360 C908 448 816 487 724 355Z" fill="url(#leafGrad)" opacity="0.96"/>
+  <path d="M642 630 C688 604 737 603 777 622 C727 652 683 660 642 630Z" fill="url(#leafGrad)" opacity="0.72"/>
+  <path d="M700 257 C726 225 748 223 765 251 C745 280 722 288 700 257Z" fill="url(#leafGrad)"/>
+  <path d="M673 111 C727 154 733 208 702 265 C658 221 651 166 673 111Z" fill="url(#leafLight)" opacity="0.9"/>
+
+  <!-- leaf veins -->
+  <g fill="none" stroke="#d8d6b6" stroke-width="2" opacity="0.34" stroke-linecap="round">
+    <path d="M125 682 C240 675 335 689 432 722"/>
+    <path d="M241 907 C301 845 358 821 433 812"/>
+    <path d="M512 797 C598 775 677 776 749 787"/>
+    <path d="M738 356 C823 365 897 362 970 361"/>
+    <path d="M683 119 C694 168 697 215 699 260"/>
+  </g>
+
+  <!-- flower -->
+  <g filter="url(#soft)">
+    <path d="M467 470 C395 490 307 478 241 437 C194 407 196 360 244 329 C317 281 428 302 470 382 C489 416 495 450 467 470Z" fill="url(#petalGrad)"/>
+    <path d="M489 418 C416 364 384 280 421 212 C450 159 510 166 552 212 C606 271 604 380 539 430 C522 443 504 435 489 418Z" fill="url(#petalGrad)"/>
+    <path d="M526 428 C538 340 592 245 668 215 C726 192 762 229 744 288 C722 364 631 430 550 451 C537 454 528 446 526 428Z" fill="url(#petalGrad)"/>
+    <path d="M521 478 C595 432 680 429 730 472 C771 507 756 560 703 584 C622 619 533 586 503 519 C493 497 499 488 521 478Z" fill="url(#petalGrad)"/>
+    <path d="M483 505 C435 574 347 600 290 565 C249 540 258 496 305 470 C377 431 458 441 498 486 C506 495 499 506 483 505Z" fill="url(#petalGrad)"/>
+    <path d="M449 487 C393 537 318 547 261 512 C221 488 223 448 266 428 C338 394 433 414 477 462 C488 474 473 492 449 487Z" fill="url(#petalShadow)" opacity="0.62"/>
+    <path d="M507 506 C487 588 433 633 359 622 C380 559 423 510 485 485 C504 478 516 488 507 506Z" fill="url(#petalGrad)" opacity="0.94"/>
+
+    <!-- petal texture -->
+    <g fill="none" stroke="#df9f91" stroke-width="1.2" opacity="0.18" stroke-linecap="round">
+      <path d="M300 360 C360 370 415 402 468 456"/>
+      <path d="M332 320 C381 349 427 391 475 458"/>
+      <path d="M451 224 C482 294 502 363 505 433"/>
+      <path d="M525 236 C530 308 528 369 519 430"/>
+      <path d="M661 267 C615 319 576 371 539 438"/>
+      <path d="M695 506 C630 495 574 498 520 492"/>
+      <path d="M343 560 C392 531 432 506 479 492"/>
+    </g>
+  </g>
+
+  <!-- flower base and stamens -->
+  <path d="M503 482 C527 465 547 460 565 475 C548 504 522 514 493 499 C493 492 496 486 503 482Z" fill="#405236"/>
+  <g stroke="url(#gold)" stroke-width="3" stroke-linecap="round" fill="none">
+    <path d="M514 478 C490 438 465 408 435 384"/>
+    <path d="M519 478 C500 431 487 394 486 352"/>
+    <path d="M523 478 C520 431 528 396 548 355"/>
+    <path d="M525 480 C544 442 566 410 599 382"/>
+    <path d="M512 484 C476 461 446 447 405 441"/>
+    <path d="M518 483 C490 453 468 430 451 397"/>
+    <path d="M529 482 C548 452 565 423 574 386"/>
+    <path d="M531 486 C561 467 593 452 626 444"/>
+  </g>
+  <g fill="url(#gold)" opacity="0.95">
+    <circle cx="435" cy="384" r="7"/><circle cx="486" cy="352" r="7"/><circle cx="548" cy="355" r="7"/>
+    <circle cx="599" cy="382" r="7"/><circle cx="405" cy="441" r="7"/><circle cx="451" cy="397" r="6"/>
+    <circle cx="574" cy="386" r="6"/><circle cx="626" cy="444" r="6"/>
+    <circle cx="468" cy="430" r="5"/><circle cx="528" cy="396" r="5"/>
+  </g>
+
+  <!-- buds -->
+  <g>
+    <path d="M745 82 C815 78 863 116 855 180 C810 208 754 199 721 154 C716 122 724 98 745 82Z" fill="url(#petalGrad)"/>
+    <path d="M716 154 C760 175 811 181 856 179 C830 223 754 226 710 184Z" fill="url(#leafGrad)"/>
+    <path d="M720 153 C742 172 751 200 744 226 C708 209 693 181 720 153Z" fill="url(#leafGrad)"/>
+    <path d="M854 103 C869 123 874 154 856 179" fill="none" stroke="#dc8f81" stroke-width="3" opacity="0.25"/>
+  </g>
+  <g>
+    <path d="M643 649 C685 622 723 633 734 665 C700 701 657 696 632 663Z" fill="url(#petalGrad)"/>
+    <path d="M623 651 C648 666 677 673 708 665 C694 702 647 705 619 673Z" fill="url(#leafGrad)"/>
+  </g>
+</svg>
