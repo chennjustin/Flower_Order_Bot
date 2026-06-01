@@ -17,6 +17,11 @@ class Settings:
     line_test_reset_phrase: str | None
     # 建置圖片給對外 URL（LINE 推圖、後台顯示本機上傳圖）；ngrok／正式網域請改此值
     public_base_url: str
+    # Supabase Auth：驗證前端帶來的 Bearer token（見 deps.get_current_user）
+    supabase_url: str | None
+    supabase_anon_key: str | None
+    # 預留：未來本機驗證 JWT（HS256）時使用，目前未用到
+    supabase_jwt_secret: str | None
 
 
 def _postgres_connection_params() -> tuple[str, str, str, str, str]:
@@ -99,6 +104,8 @@ def load_settings() -> Settings:
     phrase = os.getenv("LINE_TEST_RESET_PHRASE", "").strip()
     pub = os.getenv("PUBLIC_BASE_URL", "").strip().rstrip("/")
     public_base_url = pub if pub else "http://localhost:8000"
+    # deps 會組 f"{supabase_url}/auth/v1/user"，故去掉尾端斜線避免雙斜線
+    supabase_url = (os.getenv("SUPABASE_URL") or "").strip().rstrip("/") or None
     return Settings(
         openai_api_key=os.getenv("OPENAI_API_KEY"),
         line_channel_access_token=os.getenv("LINE_CHANNEL_ACCESS_TOKEN"),
@@ -106,5 +113,8 @@ def load_settings() -> Settings:
         database_url=database_url,
         line_test_reset_phrase=phrase or None,
         public_base_url=public_base_url,
+        supabase_url=supabase_url,
+        supabase_anon_key=os.getenv("SUPABASE_ANON_KEY") or None,
+        supabase_jwt_secret=os.getenv("SUPABASE_JWT_SECRET") or None,
     )
 
