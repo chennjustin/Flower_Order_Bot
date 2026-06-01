@@ -118,25 +118,22 @@ export default function OrderTable({
 
   const orders = useMemo(() => ordersQuery.data ?? [], [ordersQuery.data])
 
-  const calendarOrders = useMemo(
-    () => orders.filter(o => !isCancelledOrder(normalizeOrderStatus(o.order_status))),
-    [orders],
-  )
-
   const pendingStatusOrderId =
     updateStatusMutation.isPending ? updateStatusMutation.variables?.orderId ?? null : null
 
-  const effectiveStatusTab: OrderFilterTab =
-    quickFilter === 'in_progress' ? 'in_progress' : activeTab
-
-  const isTodayFilter =
-    dateFilterActive && toLocalDateKey(currentDate) === toLocalDateKey(new Date())
+  // Status-only tabs; "today" is handled separately via activeTab / date picker.
+  const effectiveStatusTab: '' | 'in_progress' | 'completed' =
+    quickFilter === 'in_progress' || activeTab === 'in_progress'
+      ? 'in_progress'
+      : activeTab === 'completed'
+        ? 'completed'
+        : ''
 
   useEffect(() => {
     if (quickFilter === 'today') {
       setCurrentDate(new Date())
       setDateFilterActive(true)
-      setActiveTab('')
+      setActiveTab('today')
     }
   }, [quickFilter])
 
@@ -144,9 +141,8 @@ export default function OrderTable({
     if (quickFilter === 'today' && tab === 'today') return true
     if (quickFilter === 'in_progress' && tab === 'in_progress') return true
     if (quickFilter) return false
-    if (tab === 'today') return isTodayFilter
-    if (tab === '') return activeTab === '' && !dateFilterActive
-    return activeTab === tab && !dateFilterActive
+    if (tab === 'today') return activeTab === 'today'
+    return activeTab === tab
   }
 
   const filtered = useMemo<NormalizedOrder[]>(() => {
@@ -164,9 +160,8 @@ export default function OrderTable({
       rows = filterOrdersByPickupDate(rows, filterDate)
     }
 
-    // Cancelled orders only appear under「所有訂單」(not 今日/尚未製作/製作完成).
-    const showCancelledOrders =
-      effectiveStatusTab === '' && quickFilter !== 'today' && !isTabHighlighted('today')
+    // Cancelled orders only appear under「所有訂單」.
+    const showCancelledOrders = activeTab === '' && effectiveStatusTab === ''
     if (!showCancelledOrders) {
       rows = rows.filter(r => !isCancelledOrder(r.display_status))
     }
@@ -179,7 +174,7 @@ export default function OrderTable({
     }
 
     return rows
-  }, [orders, effectiveStatusTab, dateFilterActive, currentDate, searchText, quickFilter, isTodayFilter, activeTab])
+  }, [orders, effectiveStatusTab, dateFilterActive, currentDate, searchText, activeTab, quickFilter])
 
   const visibleColumns = useMemo<ColumnDef[]>(() => {
     const orderedKeys = [...savedConfig.fields]
@@ -198,7 +193,7 @@ export default function OrderTable({
     if (value === 'today') {
       setCurrentDate(new Date())
       setDateFilterActive(true)
-      setActiveTab('')
+      setActiveTab('today')
       onQuickFilterClear?.()
       return
     }
@@ -366,7 +361,7 @@ export default function OrderTable({
       {/* Content */}
       {viewMode === 'calendar' ? (
         <CalendarView
-          orders={calendarOrders}
+          orders={filtered}
           currentDate={currentDate}
           onDateChange={d => {
             setCurrentDate(d)
