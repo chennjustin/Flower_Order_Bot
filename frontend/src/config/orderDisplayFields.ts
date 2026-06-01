@@ -59,19 +59,6 @@ export const REMOVED_FIELD_KEYS = [
   'receipt_address',
 ] as const
 
-/**
- * Phase 2 surface hints — not enforced in Phase 1.
- */
-export const SURFACE_NOTES: Partial<
-  Record<
-    OrderFieldKey,
-    { list?: boolean; draft?: boolean; csv?: boolean; docx?: boolean; line?: boolean }
-  >
-> = {
-  delivery_address: { list: false, csv: false },
-  pay_status: { draft: false, csv: false, docx: false },
-}
-
 const REGISTRY_BY_KEY: Map<OrderFieldKey, OrderFieldRegistryEntry> = new Map(
   ORDER_FIELD_REGISTRY.map(entry => [entry.key, entry]),
 )

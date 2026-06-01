@@ -12,13 +12,18 @@ import {
 import { exportDocx } from '@/api/orders'
 import { useDeleteOrder, useOrders } from '@/hooks/useOrders'
 import {
+  buildOrderTableColumns,
+  formatOrderFieldValue,
+  getVisibleFieldItems,
+  type OrderTableColumnKey,
+} from '@/lib/orderFieldPresentation'
+import {
   type ChatStatus,
   normalizeStatus,
-  shipmentLabel,
   statusBadgeClasses,
   statusText,
 } from '@/utils/orderStatus'
-import { formatCellDateTime, toLocalDateKey } from '@/utils/datetime'
+import { toLocalDateKey } from '@/utils/datetime'
 import { rowsToCsvBlob } from '@/utils/csv'
 import { downloadBlob } from '@/utils/download'
 import type { Order } from '@/types/domain'
@@ -39,55 +44,6 @@ interface OrderTableProps {
   /** Hide the「訂單總覽」heading (e.g. on /order page). */
   showTitle?: boolean
 }
-
-type ColumnKey =
-  | 'export'
-  | 'id'
-  | 'order_status'
-  | 'send_datetime'
-  | 'order_date'
-  | 'customer_name'
-  | 'customer_phone'
-  | 'item'
-  | 'quantity'
-  | 'note'
-  | 'shipment_method'
-  | 'delivery_address'
-  | 'total_amount'
-  | 'pay_way'
-  | 'pay_status'
-  | 'cancel'
-
-interface ColumnDef {
-  key: ColumnKey
-  label: string
-  width?: string
-}
-
-const COLUMNS: ColumnDef[] = [
-  { key: 'export', label: '列印' },
-  { key: 'id', label: '訂單編號', width: '136px' },
-  { key: 'order_status', label: '狀態', width: '120px' },
-  { key: 'send_datetime', label: '取貨時間', width: '200px' },
-  { key: 'order_date', label: '訂單日期', width: '200px' },
-  { key: 'customer_name', label: '姓名', width: '96px' },
-  { key: 'customer_phone', label: '電話', width: '112px' },
-  { key: 'item', label: '品項', width: '96px' },
-  { key: 'quantity', label: '數量', width: '96px' },
-  { key: 'note', label: '備註', width: '128px' },
-  { key: 'shipment_method', label: '取貨方式', width: '128px' },
-  { key: 'delivery_address', label: '送貨地址', width: '200px' },
-  { key: 'total_amount', label: '金額', width: '96px' },
-  { key: 'pay_way', label: '付款方式', width: '128px' },
-  { key: 'pay_status', label: '付款狀態', width: '112px' },
-  { key: 'cancel', label: '取消訂單', width: '96px' },
-]
-const COLUMN_BY_KEY: Record<ColumnKey, ColumnDef> = Object.fromEntries(
-  COLUMNS.map(c => [c.key, c]),
-) as Record<ColumnKey, ColumnDef>
-const DATA_COLUMN_KEYS = new Set<ColumnKey>(
-  COLUMNS.filter(c => c.key !== 'export' && c.key !== 'cancel').map(c => c.key),
-)
 
 const FILTER_TABS: ReadonlyArray<{ value: FilterTab; label: string }> = [
   { value: '', label: '所有訂單' },
@@ -128,7 +84,6 @@ export default function OrderTable({
 
   const orders = useMemo(() => ordersQuery.data ?? [], [ordersQuery.data])
 
-  // Status tab from filter bar or dashboard quick-filter (pending only)
   const effectiveStatusTab: FilterTab =
     quickFilter === 'pending' ? 'WAITING_OWNER' : activeTab
 
@@ -177,18 +132,10 @@ export default function OrderTable({
     return rows
   }, [orders, effectiveStatusTab, dateFilterActive, currentDate, searchText, quickFilter])
 
-  const visibleColumns = useMemo<ColumnDef[]>(() => {
-    const orderedKeys = [...savedConfig.fields]
-      .sort((a, b) => a.order - b.order)
-      .filter(field => field.visible)
-      .map(field => field.key as OrderFieldKey)
-
-    const dataColumns = orderedKeys
-      .map(key => COLUMN_BY_KEY[key as ColumnKey])
-      .filter((col): col is ColumnDef => Boolean(col))
-      .filter(col => DATA_COLUMN_KEYS.has(col.key))
-    return [COLUMN_BY_KEY.export, ...dataColumns, COLUMN_BY_KEY.cancel]
-  }, [savedConfig.fields])
+  const visibleColumns = useMemo(
+    () => buildOrderTableColumns(savedConfig),
+    [savedConfig],
+  )
 
   function selectTab(value: FilterTab) {
     if (value === 'today') {
@@ -220,9 +167,11 @@ export default function OrderTable({
   }
 
   function handleDownloadCsv() {
-    const csvColumns = visibleColumns.filter(c => c.key !== 'export' && c.key !== 'cancel')
-    const headers = csvColumns.map(c => c.label)
-    const rows = orders.map(o => csvColumns.map(col => getCellValue(col.key, o)))
+    const csvFields = getVisibleFieldItems(savedConfig)
+    const headers = csvFields.map(field => field.label)
+    const rows = orders.map(order =>
+      csvFields.map(field => formatOrderFieldValue(field.key, order)),
+    )
     downloadBlob(rowsToCsvBlob(headers, rows), '訂單資料.csv')
   }
 
@@ -250,7 +199,6 @@ export default function OrderTable({
 
   return (
     <section className="rounded-lg bg-white px-8 py-6 mt-6 mb-8 border-b-[1.5px] border-[#e9e9e9]">
-      {/* Title row */}
       <div className="mb-4 flex flex-wrap items-center gap-4">
         {showTitle && (
           <span className="text-[22px] font-bold tracking-wider whitespace-nowrap text-[#6168FC]">
@@ -258,7 +206,6 @@ export default function OrderTable({
           </span>
         )}
 
-        {/* List / Calendar toggle */}
         <div className="flex items-center gap-[9px] rounded-[32px] bg-[#F5F5F5] px-4 py-2">
           <button
             type="button"
@@ -287,7 +234,6 @@ export default function OrderTable({
         </div>
 
         <div className="ml-auto flex flex-wrap items-center gap-4">
-          {/* Search */}
           <div className="relative flex h-[46px] w-[360px] min-w-[200px] items-center rounded-[36px] bg-[#D8EAFF] px-6 py-[11px]">
             <input
               type="text"
@@ -299,7 +245,6 @@ export default function OrderTable({
             <Search className="absolute right-6 top-1/2 h-5 w-5 -translate-y-1/2 text-black/[0.38]" />
           </div>
 
-          {/* Download CSV */}
           <button
             type="button"
             onClick={handleDownloadCsv}
@@ -313,7 +258,6 @@ export default function OrderTable({
         </div>
       </div>
 
-      {/* Filter bar */}
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <div className="inline-flex h-10 items-center gap-1 rounded-[36px] bg-[#F7F7F7] px-3 py-1.5">
           {FILTER_TABS.map(tab => (
@@ -332,7 +276,6 @@ export default function OrderTable({
           ))}
         </div>
 
-        {/* Date navigator */}
         <div className="flex h-10 items-center gap-3 rounded-[36px] bg-[#F7F7F7] px-4">
           <button
             type="button"
@@ -358,7 +301,6 @@ export default function OrderTable({
         </div>
       </div>
 
-      {/* Content */}
       {viewMode === 'calendar' ? (
         <CalendarView
           orders={orders}
@@ -424,7 +366,12 @@ export default function OrderTable({
                               idx !== 0 && idx !== visibleColumns.length - 1 && 'border-x-0',
                             )}
                           >
-                            <Cell column={col.key} row={row} onExport={handleExportDocx} onDelete={setPendingDelete} />
+                            <Cell
+                              column={col.key}
+                              row={row}
+                              onExport={handleExportDocx}
+                              onDelete={setPendingDelete}
+                            />
                           </td>
                         ))}
                       </tr>
@@ -482,131 +429,56 @@ export default function OrderTable({
 }
 
 interface CellProps {
-  column: ColumnKey
+  column: OrderTableColumnKey
   row: NormalizedOrder
   onExport: (orderId: number) => void
   onDelete: (orderId: number) => void
 }
 
 function Cell({ column, row, onExport, onDelete }: CellProps) {
-  switch (column) {
-    case 'export':
-      return (
-        <button
-          type="button"
-          onClick={e => {
-            e.stopPropagation()
-            onExport(row.id)
-          }}
-          className="flex h-7 w-[60px] max-w-[92px] items-center justify-center rounded-lg border-0 bg-[#77B5FF] px-4 py-1.5 text-sm font-bold text-white transition hover:opacity-80 font-['Noto_Sans_TC',sans-serif]"
-        >
-          列印
-        </button>
-      )
-    case 'cancel':
-      return (
-        <button
-          type="button"
-          onClick={e => {
-            e.stopPropagation()
-            onDelete(row.id)
-          }}
-          className="flex h-7 w-[60px] max-w-[92px] items-center justify-center rounded-lg border-0 bg-[#AE1914] px-4 py-1.5 text-sm font-bold text-[#EBCDCC] transition hover:opacity-80 font-['Noto_Sans_TC',sans-serif]"
-        >
-          刪除
-        </button>
-      )
-    case 'id':
-      return <>{row.id}</>
-    case 'order_status':
-      return (
-        <span
-          className={cn(
-            'inline-flex h-7 items-center justify-center gap-2.5 whitespace-nowrap rounded-lg px-4 py-1.5 text-center text-sm font-bold leading-[112.5%]',
-            "font-['Noto_Sans_TC',sans-serif]",
-            statusBadgeClasses(row.status_bucket),
-          )}
-        >
-          {statusText(row.status_bucket)}
-        </span>
-      )
-    case 'send_datetime':
-      return <>{formatCellDateTime(row.send_datetime)}</>
-    case 'order_date':
-      return <>{formatCellDateTime(row.order_date)}</>
-    case 'shipment_method':
-      return <>{shipmentLabel(row.shipment_method)}</>
-    case 'delivery_address':
-      return <>{row.delivery_address ?? ''}</>
-    case 'pay_status':
-      return (
-        <>
-          {row.pay_status === 'PAID'
-            ? '已付款'
-            : row.pay_status === 'FAILED'
-              ? '付款失敗'
-              : row.pay_status === 'REFUNDED'
-                ? '已退款'
-                : '待付款'}
-        </>
-      )
-    case 'customer_name':
-      return <>{row.customer_name}</>
-    case 'customer_phone':
-      return <>{row.customer_phone}</>
-    case 'item':
-      return <>{row.item}</>
-    case 'quantity':
-      return <>{row.quantity}</>
-    case 'note':
-      return <>{row.note ?? ''}</>
-    case 'total_amount':
-      return <>{row.total_amount}</>
-    case 'pay_way':
-      return <>{row.pay_way ?? ''}</>
+  if (column === 'export') {
+    return (
+      <button
+        type="button"
+        onClick={e => {
+          e.stopPropagation()
+          onExport(row.id)
+        }}
+        className="flex h-7 w-[60px] max-w-[92px] items-center justify-center rounded-lg border-0 bg-[#77B5FF] px-4 py-1.5 text-sm font-bold text-white transition hover:opacity-80 font-['Noto_Sans_TC',sans-serif]"
+      >
+        列印
+      </button>
+    )
   }
-}
 
-function getCellValue(column: ColumnKey, row: Order): string | number {
-  switch (column) {
-    case 'id':
-      return row.id
-    case 'order_status':
-      return statusText(normalizeStatus(row.order_status as unknown as string))
-    case 'send_datetime':
-      return formatCellDateTime(row.send_datetime)
-    case 'order_date':
-      return formatCellDateTime(row.order_date)
-    case 'customer_name':
-      return row.customer_name
-    case 'customer_phone':
-      return row.customer_phone
-    case 'item':
-      return row.item
-    case 'quantity':
-      return row.quantity
-    case 'note':
-      return row.note ?? ''
-    case 'shipment_method':
-      return shipmentLabel(row.shipment_method)
-    case 'delivery_address':
-      return row.delivery_address ?? ''
-    case 'total_amount':
-      return row.total_amount
-    case 'pay_way':
-      return row.pay_way ?? ''
-    case 'pay_status':
-      return (
-        row.pay_status === 'PAID'
-          ? '已付款'
-          : row.pay_status === 'FAILED'
-            ? '付款失敗'
-            : row.pay_status === 'REFUNDED'
-              ? '已退款'
-              : '待付款'
-      )
-    case 'export':
-    case 'cancel':
-      return ''
+  if (column === 'cancel') {
+    return (
+      <button
+        type="button"
+        onClick={e => {
+          e.stopPropagation()
+          onDelete(row.id)
+        }}
+        className="flex h-7 w-[60px] max-w-[92px] items-center justify-center rounded-lg border-0 bg-[#AE1914] px-4 py-1.5 text-sm font-bold text-[#EBCDCC] transition hover:opacity-80 font-['Noto_Sans_TC',sans-serif]"
+      >
+        刪除
+      </button>
+    )
   }
+
+  if (column === 'order_status') {
+    return (
+      <span
+        className={cn(
+          'inline-flex h-7 items-center justify-center gap-2.5 whitespace-nowrap rounded-lg px-4 py-1.5 text-center text-sm font-bold leading-[112.5%]',
+          "font-['Noto_Sans_TC',sans-serif]",
+          statusBadgeClasses(row.status_bucket),
+        )}
+      >
+        {statusText(row.status_bucket)}
+      </span>
+    )
+  }
+
+  return <>{formatOrderFieldValue(column as OrderFieldKey, row)}</>
 }
