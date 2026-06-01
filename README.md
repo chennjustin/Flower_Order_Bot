@@ -1,4 +1,4 @@
-# ChiMei Floral
+# **Flourish**
 
 本專案為花店商家後台：透過 LINE Bot 接收顧客訊息，以 OpenAI 將對話整理成結構化訂單草稿；商家確認後寫入訂單資料庫，並在 `/orders` 查詢。CSV 由前端在瀏覽器產生下載，DOCX 工單由後端提供。
 
@@ -75,13 +75,15 @@ cp backend/.env.example backend/.env
 
 編輯 `backend/.env`，至少設定：
 
-| 變數 | 說明 |
-|------|------|
-| `DATABASE_URL` | 非同步連線（`postgresql+asyncpg://...`，Supabase 請用 `ssl=require`） |
-| `DATABASE_ALEM_URL` | Alembic 用（`postgresql+psycopg2://...`，常用 `sslmode=require`） |
-| `OPENAI_API_KEY` | OpenAI |
-| `LINE_CHANNEL_ACCESS_TOKEN` / `LINE_CHANNEL_SECRET` | LINE Bot |
-| `PUBLIC_BASE_URL` | 對外可連的後端基底網址（本機 `http://localhost:8000`；ngrok 請改 https） |
+
+| 變數                                                  | 說明                                                          |
+| --------------------------------------------------- | ----------------------------------------------------------- |
+| `DATABASE_URL`                                      | 非同步連線（`postgresql+asyncpg://...`，Supabase 請用 `ssl=require`） |
+| `DATABASE_ALEM_URL`                                 | Alembic 用（`postgresql+psycopg2://...`，常用 `sslmode=require`） |
+| `OPENAI_API_KEY`                                    | OpenAI                                                      |
+| `LINE_CHANNEL_ACCESS_TOKEN` / `LINE_CHANNEL_SECRET` | LINE Bot                                                    |
+| `PUBLIC_BASE_URL`                                   | 對外可連的後端基底網址（本機 `http://localhost:8000`；ngrok 請改 https）      |
+
 
 連線組裝邏輯見 `backend/app/core/settings.py`（若已設 `DATABASE_URL` 則優先於舊版 `POSTGRES_*`）。
 
@@ -94,7 +96,7 @@ cp backend/.env.example backend/.env
 ### Schema 與遷移
 
 - 多租戶表：`store`、`customer`、`chat_room`、`chat_message`、`order`、`order_draft`、`payment`、`payment_method`、`notification` 等。
-- 破壞性遷移 **`f4e8bb2a9031`** 會 DROP 舊表後重建，**僅適合新庫或願意清空資料時**執行。
+- 破壞性遷移 `**f4e8bb2a9031**` 會 DROP 舊表後重建，**僅適合新庫或願意清空資料時**執行。
 - 套用遷移（在 `backend`、已啟用 venv）：
 
 ```bash
@@ -102,11 +104,11 @@ cd backend
 alembic upgrade head
 ```
 
-- Docker 啟動時預設 **`SKIP_ALEMBIC_ON_START=1`**（不自動跑 Alembic），請在 Supabase 上自行確認 revision 或手動執行上述指令。
+- Docker 啟動時預設 `**SKIP_ALEMBIC_ON_START=1**`（不自動跑 Alembic），請在 Supabase 上自行確認 revision 或手動執行上述指令。
 
 ### 是否有「預設店家」？
 
-程式**沒有** `default_store` 欄位或設定檔。新 LINE 顧客會掛到 **`store` 表中 `id` 最小的一筆**（`get_first_store_id()`）。
+程式**沒有** `default_store` 欄位或設定檔。新 LINE 顧客會掛到 `**store` 表中 `id` 最小的一筆**（`get_first_store_id()`）。
 
 因此開發／測試前，資料庫裡**至少要有一筆 `store`**。若沒有，種子資料與 LINE 建立顧客會失敗（例如：`資料庫中沒有 store，請先在 Supabase 建立店家資料。`）。
 
@@ -154,16 +156,16 @@ cd backend
 python -m uvicorn app.main:app --reload --port 8000
 ```
 
-3. 前端：
+1. 前端：
 
 ```bash
 cd frontend
 npm run dev
 ```
 
-4. 網址：
-   - 前端：`http://localhost:5173`
-   - 後端 API / Swagger：`http://localhost:8000`
+1. 網址：
+  - 前端：`http://localhost:5173`
+  - 後端 API / Swagger：`http://localhost:8000`
 
 修改 `.env` 後請重啟 uvicorn。
 
@@ -227,17 +229,19 @@ pytest tests/test_contract_smoke.py
 
 ### `backend/app/`（FastAPI）
 
-| 目錄 | 說明 |
-|------|------|
-| `main.py` | 應用入口、CORS、靜態 uploads |
-| `api/v1/` | API 路由聚合 |
-| `models/` | ORM：`Store`、`Customer`、`ChatRoom`、`Order` 等 |
-| `routes/` | HTTP 路由（linebot、orders、chat、payment…） |
-| `services/` | 業務邏輯 |
-| `repositories/` | 資料存取（含 `get_first_store_id`） |
-| `schemas/` | Pydantic 請求／回應；`User` 為 `Customer` 的相容別名 |
-| `core/` | 設定、DB session |
-| `seeds/` | 假資料產生 |
+
+| 目錄              | 說明                                          |
+| --------------- | ------------------------------------------- |
+| `main.py`       | 應用入口、CORS、靜態 uploads                        |
+| `api/v1/`       | API 路由聚合                                    |
+| `models/`       | ORM：`Store`、`Customer`、`ChatRoom`、`Order` 等 |
+| `routes/`       | HTTP 路由（linebot、orders、chat、payment…）       |
+| `services/`     | 業務邏輯                                        |
+| `repositories/` | 資料存取（含 `get_first_store_id`）                |
+| `schemas/`      | Pydantic 請求／回應；`User` 為 `Customer` 的相容別名    |
+| `core/`         | 設定、DB session                               |
+| `seeds/`        | 假資料產生                                       |
+
 
 ### `frontend/`（React + TypeScript）
 
