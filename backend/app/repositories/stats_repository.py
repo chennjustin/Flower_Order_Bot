@@ -40,6 +40,18 @@ async def sum_monthly_income(
     return float(value or 0)
 
 
+async def count_monthly_orders(
+    session: AsyncSession, store_id: int, month_start: datetime
+) -> int:
+    stmt = (
+        select(func.count())
+        .select_from(Order)
+        .join(Customer, Order.customer_id == Customer.id)
+        .where(Order.created_at >= month_start, Customer.store_id == store_id)
+    )
+    return (await session.execute(stmt)).scalar() or 0
+
+
 async def count_pending_orders(session: AsyncSession, store_id: int) -> int:
     stmt = (
         select(func.count())

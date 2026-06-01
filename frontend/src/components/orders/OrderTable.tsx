@@ -38,6 +38,8 @@ interface OrderTableProps {
   onQuickFilterClear?: () => void
   /** Hide the「訂單總覽」heading (e.g. on /order page). */
   showTitle?: boolean
+  /** Number of rows per page. Default 20. Dashboard uses 10. */
+  pageSize?: number
 }
 
 type ColumnKey =
@@ -104,6 +106,7 @@ export default function OrderTable({
   quickFilter,
   onQuickFilterClear,
   showTitle = true,
+  pageSize = 20,
 }: OrderTableProps) {
   const ordersQuery = useOrders()
   const updateStatusMutation = useUpdateOrderStatus()
@@ -115,6 +118,7 @@ export default function OrderTable({
   const [currentDate, setCurrentDate] = useState(() => new Date())
   const [searchText, setSearchText] = useState('')
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
+  const [currentPage, setCurrentPage] = useState(1)
 
   const orders = useMemo(() => ordersQuery.data ?? [], [ordersQuery.data])
 
@@ -180,6 +184,17 @@ export default function OrderTable({
 
     return rows
   }, [orders, effectiveStatusTab, dateFilterActive, currentDate, searchText, quickFilter, isTodayFilter, activeTab])
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize))
+
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [effectiveStatusTab, dateFilterActive, currentDate, searchText, quickFilter])
+
+  const pagedRows = useMemo(
+    () => filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize),
+    [filtered, currentPage, pageSize],
+  )
 
   const visibleColumns = useMemo<ColumnDef[]>(() => {
     const orderedKeys = [...savedConfig.fields]
@@ -361,6 +376,33 @@ export default function OrderTable({
             <ChevronRight className="h-3.5 w-3.5" strokeWidth={3} />
           </button>
         </div>
+
+        {/* Pagination — top, right-aligned */}
+        {totalPages > 1 && (
+          <div className="ml-auto flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+              className="flex h-8 w-8 items-center justify-center rounded-full bg-[#D9D9D9] text-white transition hover:enabled:bg-[#C5C7FF] disabled:opacity-40 disabled:cursor-not-allowed"
+              aria-label="上一頁"
+            >
+              <ChevronLeft className="h-4 w-4" strokeWidth={3} />
+            </button>
+            <span className="text-sm font-bold text-black/60 font-['Noto_Sans_TC',sans-serif]">
+              {currentPage} / {totalPages}
+            </span>
+            <button
+              type="button"
+              onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+              disabled={currentPage === totalPages}
+              className="flex h-8 w-8 items-center justify-center rounded-full bg-[#D9D9D9] text-white transition hover:enabled:bg-[#C5C7FF] disabled:opacity-40 disabled:cursor-not-allowed"
+              aria-label="下一頁"
+            >
+              <ChevronRight className="h-4 w-4" strokeWidth={3} />
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Content */}
@@ -410,7 +452,7 @@ export default function OrderTable({
                     </tr>
                   </thead>
                   <tbody>
-                    {filtered.map(row => (
+                    {pagedRows.map(row => (
                       <tr
                         key={row.id}
                         className="group cursor-pointer bg-white"
@@ -446,6 +488,31 @@ export default function OrderTable({
                   <div className="py-10 text-center text-[#aaa]">
                     <Search className="mx-auto mb-3 h-8 w-8" strokeWidth={1.5} />
                     <p>找不到符合條件的訂單</p>
+                  </div>
+                )}
+                {totalPages > 1 && (
+                  <div className="mt-4 flex items-center justify-end gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                      disabled={currentPage === 1}
+                      className="flex h-8 w-8 items-center justify-center rounded-full bg-[#D9D9D9] text-white transition hover:enabled:bg-[#C5C7FF] disabled:opacity-40 disabled:cursor-not-allowed"
+                      aria-label="上一頁"
+                    >
+                      <ChevronLeft className="h-4 w-4" strokeWidth={3} />
+                    </button>
+                    <span className="text-sm font-bold text-black/60 font-['Noto_Sans_TC',sans-serif]">
+                      {currentPage} / {totalPages}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                      disabled={currentPage === totalPages}
+                      className="flex h-8 w-8 items-center justify-center rounded-full bg-[#D9D9D9] text-white transition hover:enabled:bg-[#C5C7FF] disabled:opacity-40 disabled:cursor-not-allowed"
+                      aria-label="下一頁"
+                    >
+                      <ChevronRight className="h-4 w-4" strokeWidth={3} />
+                    </button>
                   </div>
                 )}
               </>

@@ -6,7 +6,6 @@ type QuickFilter = 'today' | 'in_progress' | null
 
 interface StatisticsCardsProps {
   stats: Stats | undefined
-  monthlyOrders: number
   inProgressOrders: number
   quickFilter: QuickFilter
   onQuickFilter: (f: QuickFilter) => void
@@ -14,7 +13,6 @@ interface StatisticsCardsProps {
 
 export default function StatisticsCards({
   stats,
-  monthlyOrders,
   inProgressOrders,
   quickFilter,
   onQuickFilter,
@@ -76,7 +74,7 @@ export default function StatisticsCards({
         </div>
         <div className="absolute left-1/2 top-[69px] -translate-x-1/2">
           <span className="text-[40px] font-bold leading-[50px] text-brand-primary">
-            {monthlyOrders}
+            {stats ? stats.monthly_orders : '—'}
           </span>
         </div>
       </div>

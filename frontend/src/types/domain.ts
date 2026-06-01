@@ -90,6 +90,7 @@ export interface Stats {
   today_orders: number
   pending_orders: number
   monthly_income: number
+  monthly_orders: number
   total_customers: number
 }
 
