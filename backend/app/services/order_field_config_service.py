@@ -8,46 +8,27 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.time import now_taipei_naive
+from app.domain.order_fields import (
+    CORE_ORGANIZE_FIELDS,
+    FIXED_VISIBLE_FIELDS,
+    OPTIONAL_ORGANIZE_FIELDS,
+    OPTIONAL_VISIBLE_FIELDS,
+)
 from app.models.order_field_config import StoreOrderFieldConfig
 from app.models.store import Store
 from app.schemas.order_field_config import OrderFieldConfigOut, OrderFieldConfigUpdate
 
-FIXED_VISIBLE_FIELDS: tuple[str, ...] = (
-    "id",
-    "customer_name",
-    "customer_phone",
-    "item",
-    "order_status",
-    "send_datetime",
-    "total_amount",
-)
-
-OPTIONAL_VISIBLE_FIELDS: tuple[str, ...] = (
-    "quantity",
-    "note",
-    "shipment_method",
-    "delivery_address",
-    "pay_way",
-    "pay_status",
-    "order_date",
-)
-
-OPTIONAL_ORGANIZE_FIELDS: tuple[str, ...] = (
-    "quantity",
-    "note",
-    "shipment_method",
-    "delivery_address",
-    "pay_way",
-    "pay_status",
-)
-
-CORE_ORGANIZE_FIELDS: tuple[str, ...] = (
-    "customer_name",
-    "customer_phone",
-    "item",
-    "send_datetime",
-    "total_amount",
-)
+# Re-export catalog constants for callers/tests that import from this module.
+__all__ = [
+    "EffectiveOrderFieldConfig",
+    "CORE_ORGANIZE_FIELDS",
+    "FIXED_VISIBLE_FIELDS",
+    "OPTIONAL_ORGANIZE_FIELDS",
+    "OPTIONAL_VISIBLE_FIELDS",
+    "get_effective_order_field_config",
+    "get_order_field_config",
+    "update_order_field_config",
+]
 
 
 @dataclass

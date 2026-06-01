@@ -1,9 +1,17 @@
+from app.domain.order_fields import FIELD_LABELS, FIXED_VISIBLE_FIELDS
 from app.services.order_field_config_service import (
-    FIXED_VISIBLE_FIELDS,
     _normalize_organize_required_fields,
     _normalize_visible_fields,
     _resolve_optional_required_fields,
 )
+
+
+def test_field_labels_cover_all_catalog_keys() -> None:
+    from app.domain.order_fields import ALL_CATALOG_KEYS
+
+    for key in ALL_CATALOG_KEYS:
+        assert key in FIELD_LABELS
+        assert FIELD_LABELS[key]
 
 
 def test_normalize_visible_fields_keeps_fixed_and_filters_invalid() -> None:
