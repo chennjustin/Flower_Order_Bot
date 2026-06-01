@@ -229,3 +229,17 @@ export function formatOrderFieldValue(key: OrderFieldKey, order: Order): string 
 export function isOrderTableActionKey(key: OrderTableColumnKey): key is OrderTableActionKey {
   return key === 'export' || key === 'cancel'
 }
+
+/**
+ * Display string for order detail form (view mode); extends list/CSV formatting.
+ */
+export function formatOrderFormFieldValue(key: OrderFieldKey, order: Order): string {
+  if (key === 'total_amount') {
+    return order.total_amount != null
+      ? `NT ${order.total_amount.toLocaleString('zh-TW')}`
+      : '—'
+  }
+  const value = formatOrderFieldValue(key, order)
+  if (value === '' || value == null) return '—'
+  return String(value)
+}
