@@ -66,7 +66,7 @@ interface ColumnDef {
 }
 
 const COLUMNS: ColumnDef[] = [
-  { key: 'export', label: '列印' },
+  { key: 'export', label: '列印', width: '92px' },
   { key: 'id', label: '訂單編號', width: '136px' },
   { key: 'order_status', label: '狀態', width: '120px' },
   { key: 'send_datetime', label: '取貨時間', width: '200px' },
@@ -269,7 +269,7 @@ export default function OrderTable({
   }
 
   return (
-    <section className="rounded-lg bg-white px-8 py-6 mt-6 mb-8 border-b-[1.5px] border-[#e9e9e9]">
+    <section className="w-full rounded-lg bg-white px-8 py-6 mt-6 mb-8 border-b-[1.5px] border-[#e9e9e9]">
       {/* Title row */}
       <div className="mb-4 flex flex-wrap items-center gap-4">
         {showTitle && (
@@ -428,7 +428,7 @@ export default function OrderTable({
             ) : (
               <>
                 <table
-                  className="border-separate w-max min-w-full"
+                  className="border-separate w-full table-fixed"
                   style={{ borderSpacing: '0 8px' }}
                 >
                   <thead className="sticky top-0 z-10">
@@ -441,14 +441,13 @@ export default function OrderTable({
                             "bg-[#F7F7F7] px-5 py-3 text-left align-middle font-['Noto_Sans_TC',sans-serif] text-base font-bold leading-[140%] text-black/[0.87] whitespace-nowrap relative",
                             'border-y-[0.5px] border-[rgba(175,175,175,0.6)]',
                             idx === 0 && 'rounded-l-xl border-l-[0.5px] border-r-0',
-                            idx === visibleColumns.length - 1 &&
-                              'rounded-r-xl border-r-[0.5px] border-l-0',
-                            idx !== 0 && idx !== visibleColumns.length - 1 && 'border-x-0',
+                            idx !== 0 && 'border-x-0',
                           )}
                         >
                           {col.label}
                         </th>
                       ))}
+                      <th className="bg-[#F7F7F7] rounded-r-xl border-y-[0.5px] border-r-[0.5px] border-[rgba(175,175,175,0.6)]" />
                     </tr>
                   </thead>
                   <tbody>
@@ -466,9 +465,7 @@ export default function OrderTable({
                               "bg-white px-5 py-3 align-middle font-['Noto_Sans_TC',sans-serif] text-base font-bold leading-[140%] text-black/60 break-words transition-colors group-hover:bg-[#f0f6ff]",
                               'border-y-[0.5px] border-[rgba(175,175,175,0.6)]',
                               idx === 0 && 'rounded-l-xl border-l-[0.5px] border-r-0',
-                              idx === visibleColumns.length - 1 &&
-                                'rounded-r-xl border-r-[0.5px] border-l-0',
-                              idx !== 0 && idx !== visibleColumns.length - 1 && 'border-x-0',
+                              idx !== 0 && 'border-x-0',
                             )}
                           >
                             <Cell
@@ -480,6 +477,7 @@ export default function OrderTable({
                             />
                           </td>
                         ))}
+                        <td className="bg-white rounded-r-xl border-y-[0.5px] border-r-[0.5px] border-[rgba(175,175,175,0.6)] transition-colors group-hover:bg-[#f0f6ff]" />
                       </tr>
                     ))}
                   </tbody>

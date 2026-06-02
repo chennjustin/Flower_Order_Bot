@@ -29,12 +29,14 @@ export default function StatsPage() {
           <div className="text-sm text-gray-500">載入中...</div>
         )}
         <div className="flex justify-center">
-          <StatisticsCards
-            stats={data}
-            inProgressOrders={inProgressOrders}
-            quickFilter={null}
-            onQuickFilter={() => {}}
-          />
+          <div className="w-full max-w-[948px]">
+            <StatisticsCards
+              stats={data}
+              inProgressOrders={inProgressOrders}
+              quickFilter={null}
+              onQuickFilter={() => {}}
+            />
+          </div>
         </div>
       </div>
     </>
