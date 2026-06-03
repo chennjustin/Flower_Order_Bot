@@ -56,6 +56,22 @@ export interface Order extends OrderBase {
   pay_way?: string | null
 }
 
+/** Partial update body for PATCH /orders/{order_id}. */
+export interface OrderPatchUpdate {
+  customer_name?: string | null
+  customer_phone?: string | null
+  total_amount?: number | null
+  pay_status?: PaymentStatus | null
+  item?: string | null
+  quantity?: number | null
+  note?: string | null
+  shipment_method?: ShipmentMethod | null
+  send_datetime?: string | null
+  delivery_address?: string | null
+  pay_way?: string | null
+  order_status?: OrderStatus | null
+}
+
 export interface LastMessage {
   text: string
   timestamp: string

@@ -4,6 +4,7 @@ import type {
   Order,
   OrderDraft,
   OrderDraftUpdate,
+  OrderPatchUpdate,
 } from '@/types/domain'
 
 export async function fetchOrders(): Promise<Order[]> {
@@ -11,8 +12,23 @@ export async function fetchOrders(): Promise<Order[]> {
   return data ?? []
 }
 
+/** All orders for the chat room's customer (includes cancelled). */
+export async function fetchOrdersByRoom(roomId: number): Promise<Order[]> {
+  const { data } = await api.get<Order[]>(`/orders/room/${roomId}`)
+  return data ?? []
+}
+
 export async function deleteOrder(orderId: number): Promise<boolean> {
   const { data } = await api.delete<boolean>(`/order/${orderId}`)
+  return data
+}
+
+/** Partial update of a formal order (messages panel edit flow). */
+export async function updateOrderById(
+  orderId: number,
+  patch: OrderPatchUpdate,
+): Promise<Order> {
+  const { data } = await api.patch<Order>(`/orders/${orderId}`, patch)
   return data
 }
 

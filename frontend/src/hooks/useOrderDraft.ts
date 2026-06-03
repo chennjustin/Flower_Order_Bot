@@ -6,6 +6,7 @@ import {
   updateOrder,
   updateOrderDraft,
 } from '@/api/orders'
+import { roomOrdersQueryKey } from '@/hooks/useRoomOrders'
 import type { CreateOrderResult, OrderDraft, OrderDraftUpdate } from '@/types/domain'
 
 export const orderDraftQueryKey = (roomId: number) =>
@@ -64,7 +65,8 @@ export function useCreateOrder(roomId: number | null) {
       return createOrderFromDraft(roomId)
     },
     onSuccess: result => {
-      if (result.ok) {
+      if (result.ok && roomId != null) {
+        qc.invalidateQueries({ queryKey: roomOrdersQueryKey(roomId) })
         qc.invalidateQueries({ queryKey: ['orders'] })
         qc.invalidateQueries({ queryKey: ['stats'] })
       }
