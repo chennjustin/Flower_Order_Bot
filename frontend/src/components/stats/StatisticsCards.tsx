@@ -37,9 +37,12 @@ export default function StatisticsCards({
             今日製作
           </span>
         </div>
-        <div className="absolute left-1/2 top-[69px] -translate-x-1/2 -translate-y-0">
+        <div className="absolute left-1/2 top-[69px] -translate-x-1/2 -translate-y-0 flex items-baseline gap-1">
           <span className="text-[40px] font-bold leading-[50px] text-brand-primary">
-            {stats ? stats.today_orders : '—'}
+            {stats ? stats.today_completed : '—'}
+          </span>
+          <span className="text-xl font-bold text-brand-primary/40">
+            / {stats ? stats.today_orders : '—'}
           </span>
         </div>
       </button>

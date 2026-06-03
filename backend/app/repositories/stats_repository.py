@@ -11,13 +11,17 @@ from app.models.order import Order
 
 
 async def count_today_orders(
-    session: AsyncSession, store_id: int, today_start: datetime
+    session: AsyncSession, store_id: int, today_start: datetime, today_end: datetime
 ) -> int:
     stmt = (
         select(func.count())
         .select_from(Order)
         .join(Customer, Order.customer_id == Customer.id)
-        .where(Order.created_at >= today_start, Customer.store_id == store_id)
+        .where(
+            Order.delivery_datetime >= today_start,
+            Order.delivery_datetime < today_end,
+            Customer.store_id == store_id,
+        )
     )
     return (await session.execute(stmt)).scalar() or 0
 
@@ -48,6 +52,23 @@ async def count_monthly_orders(
         .select_from(Order)
         .join(Customer, Order.customer_id == Customer.id)
         .where(Order.created_at >= month_start, Customer.store_id == store_id)
+    )
+    return (await session.execute(stmt)).scalar() or 0
+
+
+async def count_today_completed(
+    session: AsyncSession, store_id: int, today_start: datetime, today_end: datetime
+) -> int:
+    stmt = (
+        select(func.count())
+        .select_from(Order)
+        .join(Customer, Order.customer_id == Customer.id)
+        .where(
+            Order.delivery_datetime >= today_start,
+            Order.delivery_datetime < today_end,
+            Order.status == OrderStatus.COMPLETED,
+            Customer.store_id == store_id,
+        )
     )
     return (await session.execute(stmt)).scalar() or 0
 

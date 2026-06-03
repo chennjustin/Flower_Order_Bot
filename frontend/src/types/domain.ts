@@ -88,6 +88,7 @@ export interface ChatMessage {
 
 export interface Stats {
   today_orders: number
+  today_completed: number
   pending_orders: number
   monthly_income: number
   monthly_orders: number
