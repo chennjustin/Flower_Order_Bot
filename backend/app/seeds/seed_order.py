@@ -31,6 +31,9 @@ async def create_random_order(session: AsyncSession, user: Customer, serial_numb
         room_id=chat_room.id,
         customer_id=user.id,
         status=OrderStatus.CONFIRMED,
+        # Snapshot customer info at order time (same as create_order_by_room).
+        customer_name=user.name,
+        customer_phone=user.phone or "",
         item_type=item_type,
         quantity=quantity,
         notes=note,

@@ -1,28 +1,40 @@
-import { useEffect, useMemo, useState } from 'react'
-import { Check, ChevronsRight, Pencil, Plus, Upload } from 'lucide-react'
-import {
-  useCreateOrder,
-  useOrderDraft,
-  useUpdateOrder,
-  useUpdateOrderDraft,
-} from '@/hooks/useOrderDraft'
-import type { OrderDraft, OrderDraftUpdate } from '@/types/domain'
-import type { PaymentStatus, ShipmentMethod } from '@/types/enums'
-import { useOrderDisplayConfig } from '@/context/OrderDisplayConfigContext'
-import {
-  formatDraftFieldValue,
-  getVisibleDraftFields,
-  type DraftFieldDef,
-} from '@/lib/orderFieldPresentation'
+import type { Order, OrderDraft, OrderDraftUpdate } from '@/types/domain'
+import type { OrderStatus, PaymentStatus, ShipmentMethod } from '@/types/enums'
 import type { OrderFieldKey } from '@/types/orderDisplay'
+import {
+  ORDER_STATUS_OPTIONS,
+  normalizeOrderStatus,
+  orderStatusBadgeClasses,
+  orderStatusLabel,
+} from '@/utils/orderStatus'
 import { cn } from '@/lib/utils'
 
-/**
- * Backend missing-field keys (from POST /order/:roomId) don't always match
- * the frontend column keys. This table folds every backend variant into the
- * relevant editable column so the UI can flag the right row in red.
- */
-const MISSING_KEY_TO_FIELD: Record<string, OrderFieldKey> = {
+export type EditableKey =
+  | 'customer_name'
+  | 'customer_phone'
+  | 'total_amount'
+  | 'item'
+  | 'quantity'
+  | 'note'
+  | 'shipment_method'
+  | 'send_datetime'
+  | 'delivery_address'
+  | 'pay_way'
+  | 'pay_status'
+
+export type ReadOnlyKey = 'id' | 'order_date' | 'order_status'
+
+export type FieldKey = EditableKey | ReadOnlyKey
+
+export interface FieldDef {
+  key: FieldKey
+  label: string
+  editable: boolean
+  variant?: 'text' | 'number' | 'amount' | 'select' | 'datetime' | 'order_status'
+}
+
+/** Maps backend missing-field keys to editable draft columns. */
+export const MISSING_KEY_TO_FIELD: Record<string, FieldKey> = {
   user_id: 'customer_name',
   user: 'customer_name',
   user_name: 'customer_name',
@@ -40,7 +52,41 @@ const MISSING_KEY_TO_FIELD: Record<string, OrderFieldKey> = {
   note: 'note',
 }
 
-interface FormState {
+export const FIELD_META: Record<FieldKey, Omit<FieldDef, 'key'>> = {
+  id: { label: '訂單編號', editable: false },
+  customer_name: { label: '客戶姓名', editable: true },
+  customer_phone: { label: '客戶電話', editable: true },
+  total_amount: { label: '總金額', editable: true, variant: 'amount' },
+  item: { label: '品項', editable: true },
+  quantity: { label: '數量', editable: true, variant: 'number' },
+  note: { label: '備註', editable: true },
+  shipment_method: { label: '取貨方式', editable: true, variant: 'select' },
+  send_datetime: { label: '送貨日期', editable: true, variant: 'datetime' },
+  delivery_address: { label: '送貨地址', editable: true },
+  order_date: { label: '訂單日期', editable: false },
+  order_status: { label: '狀態', editable: false, variant: 'order_status' },
+  pay_way: { label: '付款方式', editable: true },
+  pay_status: { label: '付款狀態', editable: true, variant: 'select' },
+}
+
+export const DRAFT_SUPPORTED_KEYS: OrderFieldKey[] = [
+  'id',
+  'customer_name',
+  'customer_phone',
+  'item',
+  'quantity',
+  'note',
+  'shipment_method',
+  'send_datetime',
+  'total_amount',
+  'pay_way',
+  'pay_status',
+  'delivery_address',
+  'order_date',
+  'order_status',
+]
+
+export interface FormState {
   customer_name: string
   customer_phone: string
   total_amount: string
@@ -53,9 +99,10 @@ interface FormState {
   delivery_address: string
   pay_way: string
   pay_status: PaymentStatus
+  order_status: OrderStatus
 }
 
-const EMPTY_FORM: FormState = {
+export const EMPTY_FORM: FormState = {
   customer_name: '',
   customer_phone: '',
   total_amount: '',
@@ -68,16 +115,14 @@ const EMPTY_FORM: FormState = {
   delivery_address: '',
   pay_way: '',
   pay_status: 'PENDING',
+  order_status: 'CONFIRMED',
 }
 
 function pad2(n: number) {
   return n.toString().padStart(2, '0')
 }
 
-function splitDateTime(iso: string | null | undefined): {
-  date: string
-  time: string
-} {
+function splitDateTime(iso: string | null | undefined): { date: string; time: string } {
   if (!iso) return { date: '', time: '' }
   const d = new Date(iso)
   if (Number.isNaN(d.getTime())) return { date: '', time: '' }
@@ -95,7 +140,7 @@ function combineDateTimeIso(date: string, time: string): string | null {
   return d.toISOString()
 }
 
-function formStateFromDraft(draft: OrderDraft | null | undefined): FormState {
+export function formStateFromDraft(draft: OrderDraft | null | undefined): FormState {
   if (!draft) return EMPTY_FORM
   const { date, time } = splitDateTime(draft.send_datetime)
   return {
@@ -111,10 +156,50 @@ function formStateFromDraft(draft: OrderDraft | null | undefined): FormState {
     delivery_address: draft.delivery_address ?? '',
     pay_way: draft.pay_way ?? '',
     pay_status: draft.pay_status ?? 'PENDING',
+    order_status: 'CONFIRMED',
   }
 }
 
-function formStateToUpdate(form: FormState): OrderDraftUpdate {
+export function formStateFromOrder(order: Order): FormState {
+  const { date, time } = splitDateTime(order.send_datetime)
+  return {
+    customer_name: order.customer_name ?? '',
+    customer_phone: order.customer_phone ?? '',
+    total_amount: order.total_amount != null ? String(order.total_amount) : '',
+    item: order.item ?? '',
+    quantity: order.quantity != null ? String(order.quantity) : '',
+    note: order.note ?? '',
+    shipment_method: order.shipment_method ?? 'STORE_PICKUP',
+    send_datetime_date: date,
+    send_datetime_time: time,
+    delivery_address: order.delivery_address ?? '',
+    pay_way: order.pay_way ?? '',
+    pay_status: order.pay_status ?? 'PENDING',
+    order_status: order.order_status ?? 'CONFIRMED',
+  }
+}
+
+/** Payload for PATCH /orders/{order_id}. */
+export function formStateToOrderPatch(form: FormState) {
+  const total = Number.parseFloat(form.total_amount)
+  const qty = Number.parseInt(form.quantity, 10)
+  return {
+    customer_name: form.customer_name || null,
+    customer_phone: form.customer_phone || null,
+    total_amount: Number.isFinite(total) ? total : null,
+    item: form.item || null,
+    quantity: Number.isFinite(qty) ? qty : null,
+    note: form.note || null,
+    shipment_method: form.shipment_method,
+    send_datetime: combineDateTimeIso(form.send_datetime_date, form.send_datetime_time),
+    delivery_address: form.delivery_address || null,
+    pay_way: form.pay_way || null,
+    pay_status: form.pay_status,
+    order_status: form.order_status,
+  }
+}
+
+export function formStateToUpdate(form: FormState): OrderDraftUpdate {
   const total = Number.parseFloat(form.total_amount)
   const qty = Number.parseInt(form.quantity, 10)
   return {
@@ -132,186 +217,58 @@ function formStateToUpdate(form: FormState): OrderDraftUpdate {
   }
 }
 
-interface DetailPanelProps {
-  roomId: number
-  open: boolean
-  onClose: () => void
-  /** Open the draft sub-view when the panel mounts (e.g. after organize data). */
-  openDraftInitially?: boolean
-  onDraftViewOpened?: () => void
+const EMPTY_DISPLAY_DASH = '—'
+
+/** Placeholder display row when no draft record exists yet. */
+export function emptyDraftDisplay(): Record<FieldKey, string> {
+  return {
+    id: EMPTY_DISPLAY_DASH,
+    customer_name: EMPTY_DISPLAY_DASH,
+    customer_phone: EMPTY_DISPLAY_DASH,
+    total_amount: EMPTY_DISPLAY_DASH,
+    item: EMPTY_DISPLAY_DASH,
+    quantity: EMPTY_DISPLAY_DASH,
+    note: EMPTY_DISPLAY_DASH,
+    shipment_method: EMPTY_DISPLAY_DASH,
+    send_datetime: EMPTY_DISPLAY_DASH,
+    delivery_address: EMPTY_DISPLAY_DASH,
+    order_date: EMPTY_DISPLAY_DASH,
+    order_status: EMPTY_DISPLAY_DASH,
+    pay_way: EMPTY_DISPLAY_DASH,
+    pay_status: EMPTY_DISPLAY_DASH,
+  }
 }
 
-export default function DetailPanel({
-  roomId,
-  open,
-  onClose,
-  openDraftInitially,
-  onDraftViewOpened,
-}: DetailPanelProps) {
-  const [showDraftPanel, setShowDraftPanel] = useState(false)
-  const [editingOrder, setEditingOrder] = useState<Order | null>(null)
-  const subViewOpen = showDraftPanel || editingOrder != null
-  const draftQuery = useOrderDraft(roomId, open && !subViewOpen)
-  const roomOrdersQuery = useRoomOrders(roomId, open && !subViewOpen)
-
-  const draft = draftQuery.data ?? null
-
-  useEffect(() => {
-    setShowDraftPanel(false)
-    setEditingOrder(null)
-  }, [roomId])
-
-  const visibleFields = useMemo(
-    () => getVisibleDraftFields(savedConfig),
-    [savedConfig],
-  )
-
-  function setField<K extends keyof FormState>(key: K, value: FormState[K]) {
-    setForm(prev => ({ ...prev, [key]: value }))
-  }
-
-  async function startEditing() {
-    setForm(formStateFromDraft(draft))
-    setIsEditing(true)
-  }
-
-  async function confirmEditing(): Promise<boolean> {
-    try {
-      await updateDraft.mutateAsync(formStateToUpdate(form))
-      setIsEditing(false)
-      return true
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err)
-      alert(`更新訂單草稿失敗：${message}`)
-      return false
-    }
-  }, [open, openDraftInitially, onDraftViewOpened, roomId])
-
-  const draftSummary = useMemo(() => {
-    if (draftQuery.isLoading) return '載入中...'
-    if (draftQuery.error) return '載入失敗'
-    if (!draft) return '空白草稿'
-    if (draft.item) return draft.item
-    return '草稿已建立'
-  }, [draft, draftQuery.error, draftQuery.isLoading])
-
-  if (showDraftPanel) {
-    return (
-      <OrderDraftPanel
-        roomId={roomId}
-        open={open}
-        onBack={() => setShowDraftPanel(false)}
-        onClosePanel={onClose}
-      />
-    )
-  }
-
-  const missingFieldSet = useMemo(() => {
-    const set = new Set<OrderFieldKey>()
-    for (const raw of missing) {
-      const mapped = MISSING_KEY_TO_FIELD[raw]
-      if (mapped) set.add(mapped)
-    }
-    return set
-  }, [missing])
-
-  function isFieldMissing(key: OrderFieldKey): boolean {
-    return missingFieldSet.has(key)
-  }
-
-  return (
-    <aside className="relative flex h-full w-[336px] flex-shrink-0 flex-col border-l border-[#B3B3B3] bg-white">
-      <OrderSidePanelToggle mode="close" onClick={onClose} />
-
-      <div className="flex-1 overflow-y-auto px-6 pt-6 pb-32">
-        {draftQuery.isLoading ? (
-          <div className="py-10 text-center text-sm text-black/40">載入中...</div>
-        ) : draftQuery.error ? (
-          <div className="py-10 text-center text-sm text-red-600">
-            無法載入訂單草稿：{(draftQuery.error as Error).message}
-          </div>
-        ) : !draft && !isEditing ? (
-          <div className="py-10 text-center text-sm text-black/40">
-            尚未產生訂單草稿，請先點上方「整理資料」。
-          </div>
-        ) : (
-          <div className="flex flex-col gap-4">
-            {visibleFields.map(field =>
-              field.key === 'send_datetime' && isEditing ? (
-                <DateTimeRow
-                  key={field.key}
-                  label={field.label}
-                  date={form.send_datetime_date}
-                  time={form.send_datetime_time}
-                  onDateChange={v => setField('send_datetime_date', v)}
-                  onTimeChange={v => setField('send_datetime_time', v)}
-                  missing={isFieldMissing('send_datetime')}
-                />
-              ) : (
-                <FormRow
-                  key={field.key}
-                  field={field}
-                  isEditing={isEditing && field.editable}
-                  form={form}
-                  setField={setField}
-                  draft={draft}
-                  missing={isFieldMissing(field.key)}
-                />
-              ),
-            )}
-          </div>
-        )}
-      </div>
-
-      <div className="flex-1 overflow-y-auto px-6 pt-6 pb-6">
-        <button
-          type="button"
-          onClick={() => setShowDraftPanel(true)}
-          className={cn(
-            'flex w-full items-center gap-3 rounded-xl border border-[#e9e9e9] bg-[#FAFAFA] px-4 py-3 text-left transition',
-            'hover:border-[#C5C7FF] hover:bg-[#F5F6FF] active:scale-[0.99]',
-          )}
-        >
-          <div className="min-w-0 flex-1">
-            <div
-              className={cn(
-                'text-base font-bold text-black',
-                "font-['Noto_Sans_TC',sans-serif]",
-              )}
-            >
-              訂單草稿
-            </div>
-            <div
-              className={cn(
-                'mt-0.5 truncate text-sm text-black/50',
-                "font-['Noto_Sans_TC',sans-serif]",
-              )}
-            >
-              {draftSummary}
-            </div>
-          </div>
-          <ChevronRight
-            className="h-5 w-5 flex-shrink-0 text-black/40"
-            aria-hidden
-          />
-        </button>
-      </div>
-    </aside>
-  )
+export function formatReadOnly(value: string | null | undefined): string {
+  if (!value) return '—'
+  const d = new Date(value)
+  if (Number.isNaN(d.getTime())) return value
+  return d.toLocaleString('zh-TW', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
 }
 
 interface FormRowProps {
-  field: DraftFieldDef
+  field: FieldDef
   isEditing: boolean
   form: FormState
   setField: <K extends keyof FormState>(key: K, value: FormState[K]) => void
-  draft: OrderDraft | null
+  display: Record<FieldKey, string> | null
   missing: boolean
 }
 
-function FormRow({ field, isEditing, form, setField, draft, missing }: FormRowProps) {
-  const displayValue =
-    draft != null ? formatDraftFieldValue(field.key, draft) : '—'
+export function FormRow({
+  field,
+  isEditing,
+  form,
+  setField,
+  display,
+  missing,
+}: FormRowProps) {
   const labelClasses = cn(
     'w-[110px] flex-shrink-0 font-bold font-["Noto_Sans_TC",sans-serif] text-base text-black/[0.87]',
     missing && 'text-red-600',
@@ -330,15 +287,17 @@ function FormRow({ field, isEditing, form, setField, draft, missing }: FormRowPr
               "font-['Noto_Sans_TC',sans-serif] text-base",
             )}
           >
-            {displayValue === '—' ? '請填寫' : displayValue}
+            {display?.[field.key] || '請填寫'}
           </span>
+        ) : field.variant === 'order_status' && field.editable ? (
+          <OrderStatusBadge status={normalizeOrderStatus(form.order_status)} />
         ) : (
           <span
             className={cn(
               "font-bold font-['Noto_Sans_TC',sans-serif] text-base text-black",
             )}
           >
-            {displayValue}
+            {display?.[field.key] || '—'}
           </span>
         )}
       </div>
@@ -346,8 +305,58 @@ function FormRow({ field, isEditing, form, setField, draft, missing }: FormRowPr
   )
 }
 
+/** Colored status badge (matches dashboard OrderTable). */
+export function OrderStatusBadge({ status }: { status: OrderStatus }) {
+  return (
+    <span
+      className={cn(
+        'inline-flex h-8 min-w-[88px] items-center justify-center rounded-lg px-3 text-sm font-bold',
+        "font-['Noto_Sans_TC',sans-serif]",
+        orderStatusBadgeClasses(status),
+      )}
+    >
+      {orderStatusLabel(status)}
+    </span>
+  )
+}
+
+/** Three selectable status blocks for edit mode. */
+export function OrderStatusBlockPicker({
+  value,
+  onChange,
+}: {
+  value: OrderStatus
+  onChange: (status: OrderStatus) => void
+}) {
+  return (
+    <div className="flex flex-wrap gap-2">
+      {ORDER_STATUS_OPTIONS.map(option => {
+        const selected = value === option.value
+        return (
+          <button
+            key={option.value}
+            type="button"
+            onClick={() => onChange(option.value)}
+            aria-pressed={selected}
+            className={cn(
+              'inline-flex h-8 min-w-[88px] items-center justify-center rounded-lg px-3 text-sm font-bold transition',
+              "font-['Noto_Sans_TC',sans-serif]",
+              orderStatusBadgeClasses(option.value),
+              selected
+                ? 'ring-2 ring-[#6168FC] ring-offset-1 shadow-sm'
+                : 'opacity-75 hover:opacity-100',
+            )}
+          >
+            {option.label}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
 function renderEditor(
-  field: DraftFieldDef,
+  field: FieldDef,
   form: FormState,
   setField: <K extends keyof FormState>(key: K, value: FormState[K]) => void,
   missing: boolean,
@@ -384,6 +393,15 @@ function renderEditor(
         <option value="FAILED">付款失敗</option>
         <option value="REFUNDED">已退款</option>
       </select>
+    )
+  }
+
+  if (field.variant === 'order_status' || field.key === 'order_status') {
+    return (
+      <OrderStatusBlockPicker
+        value={normalizeOrderStatus(form.order_status)}
+        onChange={status => setField('order_status', status)}
+      />
     )
   }
 
@@ -432,7 +450,7 @@ interface DateTimeRowProps {
   missing: boolean
 }
 
-function DateTimeRow({
+export function DateTimeRow({
   label,
   date,
   time,

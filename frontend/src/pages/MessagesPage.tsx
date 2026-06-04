@@ -14,6 +14,7 @@ export default function MessagesPage() {
 
   const [selectedRoomId, setSelectedRoomId] = useState<number | null>(null)
   const [showDetail, setShowDetail] = useState(false)
+  const [openDraftOnDetail, setOpenDraftOnDetail] = useState(false)
 
   const organizeMutation = useOrganizeData(selectedRoomId)
 
@@ -46,6 +47,7 @@ export default function MessagesPage() {
     if (selectedRoomId == null) return
     try {
       await organizeMutation.mutateAsync()
+      setOpenDraftOnDetail(true)
       setShowDetail(true)
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err)
@@ -61,18 +63,27 @@ export default function MessagesPage() {
         onSelect={handleSelect}
         isLoading={roomsQuery.isLoading}
       />
-      <div className="flex flex-1 flex-col bg-[#f5f5f5]">
+      <div className="relative flex min-w-0 flex-1 flex-col bg-[#f5f5f5]">
         {roomsQuery.error ? (
           <div className="flex flex-1 items-center justify-center text-sm text-red-600">
             無法載入聊天室：{(roomsQuery.error as Error).message}
           </div>
         ) : selectedRoom ? (
-          <ChatRoom
-            room={selectedRoom}
-            onOpenDetail={() => setShowDetail(true)}
-            onOrganizeOrder={handleOrganizeOrder}
-            isOrganizing={organizeMutation.isPending}
-          />
+          <>
+            <ChatRoom
+              room={selectedRoom}
+              detailPanelOpen={showDetail}
+              onOpenDetail={() => setShowDetail(true)}
+              onOrganizeOrder={handleOrganizeOrder}
+              isOrganizing={organizeMutation.isPending}
+            />
+            {!showDetail && (
+              <OrderSidePanelToggle
+                mode="open"
+                onClick={() => setShowDetail(true)}
+              />
+            )}
+          </>
         ) : (
           <div className="flex flex-1 items-center justify-center text-sm text-black/40">
             選擇左側聊天室開始檢視訊息
@@ -84,6 +95,8 @@ export default function MessagesPage() {
           roomId={selectedRoom.room_id}
           open={showDetail}
           onClose={() => setShowDetail(false)}
+          openDraftInitially={openDraftOnDetail}
+          onDraftViewOpened={() => setOpenDraftOnDetail(false)}
         />
       )}
     </div>

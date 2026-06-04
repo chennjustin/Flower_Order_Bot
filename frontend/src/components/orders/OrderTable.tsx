@@ -1,16 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
-import { ChevronLeft, ChevronRight, Download, Search, List, Calendar } from 'lucide-react'
+import { ChevronLeft, ChevronRight, ChevronDown, Download, Search, List, Calendar } from 'lucide-react'
 import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover'
 import { exportDocx } from '@/api/orders'
-import { useDeleteOrder, useOrders } from '@/hooks/useOrders'
+import { useOrders, useUpdateOrderStatus } from '@/hooks/useOrders'
 import {
   buildOrderTableColumns,
   formatOrderFieldValue,
@@ -27,6 +23,7 @@ import { toLocalDateKey } from '@/utils/datetime'
 import { rowsToCsvBlob } from '@/utils/csv'
 import { downloadBlob } from '@/utils/download'
 import type { Order } from '@/types/domain'
+import type { OrderStatus } from '@/types/enums'
 import type { OrderFieldKey } from '@/types/orderDisplay'
 import { cn } from '@/lib/utils'
 import { useOrderDisplayConfig } from '@/context/OrderDisplayConfigContext'
@@ -34,9 +31,8 @@ import CalendarView from './CalendarView'
 import OrderDatePicker from './OrderDatePicker'
 import OrderDetailDialog from './OrderDetailDialog'
 
-type QuickFilter = 'today' | 'pending' | null
+type QuickFilter = 'today' | 'in_progress' | null
 type ViewMode = 'list' | 'calendar'
-type FilterTab = '' | 'WAITING_OWNER' | 'today' | 'ORDER_CONFIRM'
 
 interface OrderTableProps {
   quickFilter?: QuickFilter
@@ -53,7 +49,7 @@ const FILTER_TABS: ReadonlyArray<{ value: FilterTab; label: string }> = [
 ]
 
 interface NormalizedOrder extends Order {
-  status_bucket: ChatStatus
+  display_status: OrderStatus
 }
 
 function filterOrdersByPickupDate(rows: NormalizedOrder[], date: Date): NormalizedOrder[] {
@@ -71,15 +67,14 @@ export default function OrderTable({
   showTitle = true,
 }: OrderTableProps) {
   const ordersQuery = useOrders()
-  const deleteMutation = useDeleteOrder()
+  const updateStatusMutation = useUpdateOrderStatus()
   const { savedConfig } = useOrderDisplayConfig()
 
   const [viewMode, setViewMode] = useState<ViewMode>('list')
-  const [activeTab, setActiveTab] = useState<FilterTab>('')
+  const [activeTab, setActiveTab] = useState<OrderFilterTab>('')
   const [dateFilterActive, setDateFilterActive] = useState(false)
   const [currentDate, setCurrentDate] = useState(() => new Date())
   const [searchText, setSearchText] = useState('')
-  const [pendingDelete, setPendingDelete] = useState<number | null>(null)
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
 
   const orders = useMemo(() => ordersQuery.data ?? [], [ordersQuery.data])
@@ -87,39 +82,49 @@ export default function OrderTable({
   const effectiveStatusTab: FilterTab =
     quickFilter === 'pending' ? 'WAITING_OWNER' : activeTab
 
-  const isTodayFilter =
-    dateFilterActive && toLocalDateKey(currentDate) === toLocalDateKey(new Date())
+  // Status-only tabs; "today" is handled separately via activeTab / date picker.
+  const effectiveStatusTab: '' | 'in_progress' | 'completed' =
+    quickFilter === 'in_progress' || activeTab === 'in_progress'
+      ? 'in_progress'
+      : activeTab === 'completed'
+        ? 'completed'
+        : ''
 
   useEffect(() => {
     if (quickFilter === 'today') {
       setCurrentDate(new Date())
       setDateFilterActive(true)
-      setActiveTab('')
+      setActiveTab('today')
     }
   }, [quickFilter])
 
-  function isTabHighlighted(tab: FilterTab): boolean {
+  function isTabHighlighted(tab: OrderFilterTab): boolean {
     if (quickFilter === 'today' && tab === 'today') return true
-    if (quickFilter === 'pending' && tab === 'WAITING_OWNER') return true
+    if (quickFilter === 'in_progress' && tab === 'in_progress') return true
     if (quickFilter) return false
-    if (tab === 'today') return isTodayFilter
-    if (tab === '') return activeTab === '' && !dateFilterActive
-    return activeTab === tab && !dateFilterActive
+    if (tab === 'today') return activeTab === 'today'
+    return activeTab === tab
   }
 
   const filtered = useMemo<NormalizedOrder[]>(() => {
     let rows: NormalizedOrder[] = orders.map(o => ({
       ...o,
-      status_bucket: normalizeStatus(o.order_status as unknown as string),
+      display_status: normalizeOrderStatus(o.order_status),
     }))
 
-    if (effectiveStatusTab === 'WAITING_OWNER') {
-      rows = rows.filter(r => r.status_bucket === 'WAITING_OWNER')
-    } else if (effectiveStatusTab === 'ORDER_CONFIRM') {
-      rows = rows.filter(r => r.status_bucket === 'ORDER_CONFIRM')
+    if (effectiveStatusTab === 'in_progress') {
+      rows = rows.filter(r => isInProgressOrder(r.display_status))
+    } else if (effectiveStatusTab === 'completed') {
+      rows = rows.filter(r => r.display_status === 'COMPLETED')
     } else if (dateFilterActive || quickFilter === 'today') {
       const filterDate = quickFilter === 'today' ? new Date() : currentDate
       rows = filterOrdersByPickupDate(rows, filterDate)
+    }
+
+    // Cancelled orders only appear under「所有訂單」.
+    const showCancelledOrders = activeTab === '' && effectiveStatusTab === ''
+    if (!showCancelledOrders) {
+      rows = rows.filter(r => !isCancelledOrder(r.display_status))
     }
 
     const q = searchText.trim().toLowerCase()
@@ -130,18 +135,18 @@ export default function OrderTable({
     }
 
     return rows
-  }, [orders, effectiveStatusTab, dateFilterActive, currentDate, searchText, quickFilter])
+  }, [orders, effectiveStatusTab, dateFilterActive, currentDate, searchText, activeTab, quickFilter])
 
   const visibleColumns = useMemo(
     () => buildOrderTableColumns(savedConfig),
     [savedConfig],
   )
 
-  function selectTab(value: FilterTab) {
+  function selectTab(value: OrderFilterTab) {
     if (value === 'today') {
       setCurrentDate(new Date())
       setDateFilterActive(true)
-      setActiveTab('')
+      setActiveTab('today')
       onQuickFilterClear?.()
       return
     }
@@ -185,15 +190,16 @@ export default function OrderTable({
     }
   }
 
-  async function confirmDelete() {
-    if (pendingDelete == null) return
-    const orderId = pendingDelete
+  async function handleStatusChange(orderId: number, status: OrderStatus) {
+    const order = orders.find(o => o.id === orderId)
+    if (order && normalizeOrderStatus(order.order_status) === normalizeOrderStatus(status)) {
+      return
+    }
     try {
-      await deleteMutation.mutateAsync(orderId)
-      setPendingDelete(null)
+      await updateStatusMutation.mutateAsync({ orderId, status })
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err)
-      alert(`取消訂單時發生錯誤：${message}`)
+      alert(`更新訂單狀態失敗：${message}`)
     }
   }
 
@@ -260,7 +266,7 @@ export default function OrderTable({
 
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <div className="inline-flex h-10 items-center gap-1 rounded-[36px] bg-[#F7F7F7] px-3 py-1.5">
-          {FILTER_TABS.map(tab => (
+          {ORDER_FILTER_TABS.map(tab => (
             <button
               key={tab.value}
               type="button"
@@ -303,7 +309,7 @@ export default function OrderTable({
 
       {viewMode === 'calendar' ? (
         <CalendarView
-          orders={orders}
+          orders={filtered}
           currentDate={currentDate}
           onDateChange={d => {
             setCurrentDate(d)
@@ -395,35 +401,6 @@ export default function OrderTable({
         open={selectedOrder !== null}
         onOpenChange={open => !open && setSelectedOrder(null)}
       />
-
-      <Dialog open={pendingDelete !== null} onOpenChange={open => !open && setPendingDelete(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>確定要刪除此訂單？</DialogTitle>
-            <DialogDescription>
-              訂單編號 #{pendingDelete} 將被取消，此操作無法復原。
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <DialogClose asChild>
-              <button
-                type="button"
-                className="h-9 rounded-md border border-black/10 bg-white px-4 text-sm font-bold text-black/70 transition hover:bg-black/5"
-              >
-                取消
-              </button>
-            </DialogClose>
-            <button
-              type="button"
-              onClick={confirmDelete}
-              disabled={deleteMutation.isPending}
-              className="h-9 rounded-md bg-[#AE1914] px-4 text-sm font-bold text-white transition hover:opacity-90 disabled:opacity-60"
-            >
-              {deleteMutation.isPending ? '刪除中…' : '確認刪除'}
-            </button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </section>
   )
 }
@@ -432,7 +409,8 @@ interface CellProps {
   column: OrderTableColumnKey
   row: NormalizedOrder
   onExport: (orderId: number) => void
-  onDelete: (orderId: number) => void
+  onStatusChange: (orderId: number, status: OrderStatus) => void
+  isStatusUpdating: boolean
 }
 
 function Cell({ column, row, onExport, onDelete }: CellProps) {
@@ -481,4 +459,67 @@ function Cell({ column, row, onExport, onDelete }: CellProps) {
   }
 
   return <>{formatOrderFieldValue(column as OrderFieldKey, row)}</>
+}
+
+interface OrderStatusToggleProps {
+  orderId: number
+  status: OrderStatus
+  disabled?: boolean
+  onChange: (orderId: number, status: OrderStatus) => void
+}
+
+function OrderStatusToggle({
+  orderId,
+  status,
+  disabled,
+  onChange,
+}: OrderStatusToggleProps) {
+  const [open, setOpen] = useState(false)
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          disabled={disabled}
+          onClick={e => e.stopPropagation()}
+          aria-label="切換訂單狀態"
+          className={cn(
+            'inline-flex h-7 items-center gap-1 whitespace-nowrap rounded-lg px-3 py-1.5 text-sm font-bold leading-[112.5%] transition',
+            "font-['Noto_Sans_TC',sans-serif]",
+            'disabled:cursor-wait disabled:opacity-70',
+            orderStatusBadgeClasses(status),
+          )}
+        >
+          {orderStatusLabel(status)}
+          <ChevronDown className="h-3 w-3 opacity-60" aria-hidden />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align="start" className="w-36 p-2" onClick={e => e.stopPropagation()}>
+        <ul className="flex flex-col gap-1">
+          {ORDER_STATUS_OPTIONS.map(option => (
+            <li key={option.value}>
+              <button
+                type="button"
+                disabled={disabled}
+                onClick={() => {
+                  onChange(orderId, option.value)
+                  setOpen(false)
+                }}
+                className={cn(
+                  'flex w-full items-center rounded-lg px-3 py-2 text-left text-sm font-bold transition',
+                  "font-['Noto_Sans_TC',sans-serif]",
+                  option.value === status
+                    ? orderStatusBadgeClasses(option.value)
+                    : 'text-black/70 hover:bg-black/[0.04]',
+                )}
+              >
+                {option.label}
+              </button>
+            </li>
+          ))}
+        </ul>
+      </PopoverContent>
+    </Popover>
+  )
 }

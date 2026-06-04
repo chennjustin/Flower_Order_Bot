@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import type { Order } from '@/types/domain'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { normalizeStatus, statusBadgeClasses, statusText } from '@/utils/orderStatus'
+import { normalizeOrderStatus, orderStatusBadgeClasses, orderStatusLabel } from '@/utils/orderStatus'
 import { formatHeaderDate, toLocalDateKey } from '@/utils/datetime'
 import { cn } from '@/lib/utils'
 
@@ -15,6 +15,12 @@ interface CalendarViewProps {
 
 const WEEKDAY_LABELS = ['日', '一', '二', '三', '四', '五', '六'] as const
 const MAX_VISIBLE_IN_CELL = 3
+const MISSING_CUSTOMER_NAME = '（沒有姓名）'
+
+function displayCustomerName(name: string | null | undefined): string {
+  const trimmed = name?.trim()
+  return trimmed ? trimmed : MISSING_CUSTOMER_NAME
+}
 
 interface OrderPillProps {
   order: Order
@@ -23,7 +29,8 @@ interface OrderPillProps {
 }
 
 function OrderPill({ order, onSelect, stopTrigger = false }: OrderPillProps) {
-  const bucket = normalizeStatus(order.order_status as unknown as string)
+  const bucket = normalizeOrderStatus(order.order_status)
+  const customerLabel = displayCustomerName(order.customer_name)
   return (
     <button
       type="button"
@@ -33,11 +40,11 @@ function OrderPill({ order, onSelect, stopTrigger = false }: OrderPillProps) {
       }}
       className={cn(
         'mb-0.5 box-border block w-full min-w-0 max-w-full shrink-0 self-stretch truncate rounded px-1.5 py-0.5 text-left text-xs font-bold transition hover:opacity-80',
-        statusBadgeClasses(bucket),
+        orderStatusBadgeClasses(bucket),
       )}
-      title={`${order.customer_name} - ${statusText(bucket)}`}
+      title={`${customerLabel} - ${orderStatusLabel(bucket)}`}
     >
-      {order.customer_name}
+      {customerLabel}
     </button>
   )
 }
