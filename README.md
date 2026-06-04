@@ -1,6 +1,6 @@
 # **Flourish**
 
-本專案為花店商家後台：透過 LINE Bot 接收顧客訊息，以 OpenAI 將對話整理成結構化訂單草稿；商家確認後寫入訂單資料庫，並在 `/orders` 查詢。CSV 由前端在瀏覽器產生下載，DOCX 工單由後端提供。
+本專案為花店商家後台：透過 LINE Bot 接收顧客訊息，以 OpenAI 將對話整理成結構化訂單草稿；商家確認後寫入訂單資料庫，並在 `/orders` 查詢。CSV 由前端在瀏覽器產生下載，DOCX 訂單由後端提供。
 
 **目前分支（`refactor/db`）** 已改為 **多租戶 schema**（`store` → `customer` → `chat_room` / `order`），主資料庫建議使用 **Supabase PostgreSQL**；Docker Compose **不再**內建本機 Postgres 容器。
 
@@ -12,7 +12,7 @@
 - ✅ GPT 將對話轉為結構化訂單草稿（關鍵字觸發）
 - ✅ **PostgreSQL**（開發／部署以 Supabase 或自備 Postgres 為主）
 - ✅ 管理訂單、顧客（`customer`）與聊天紀錄
-- ✅ `/orders` 查詢、CSV（前端）、DOCX 工單（後端）
+- ✅ `/orders` 查詢、CSV（前端）、DOCX 訂單（後端）
 - ✅ 前端 **React + TypeScript + Vite**
 - ✅ **Alembic** 資料庫版本控制
 
@@ -251,7 +251,7 @@ pytest tests/test_contract_smoke.py
 ### 重構後手動 smoke
 
 - 首頁訂單表與統計可載入；刪除訂單後列表刷新。
-- `Messages`：切換聊天室、送訊、右側草稿面板、「更新／建立工單」。
+- `Messages`：切換聊天室、送訊、右側草稿面板、「建立新訂單」。
 - DOCX 下載、CSV 瀏覽器下載。
 - `docker compose up` 下 5173 / 8000 行為與本機模式一致。
 

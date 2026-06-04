@@ -1,10 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Check, ChevronLeft, Pencil, Plus, Upload } from 'lucide-react'
+import { Check, ChevronLeft, Pencil, Plus } from 'lucide-react'
 import OrderSidePanelToggle from './OrderSidePanelToggle'
 import {
   useCreateOrder,
   useOrderDraft,
-  useUpdateOrder,
   useUpdateOrderDraft,
 } from '@/hooks/useOrderDraft'
 import { useOrderDisplayConfig } from '@/context/OrderDisplayConfigContext'
@@ -41,7 +40,6 @@ export default function OrderDraftPanel({
 }: OrderDraftPanelProps) {
   const draftQuery = useOrderDraft(roomId, open)
   const updateDraft = useUpdateOrderDraft(roomId)
-  const updateOrder = useUpdateOrder(roomId)
   const createOrder = useCreateOrder(roomId)
   const { savedConfig } = useOrderDisplayConfig()
 
@@ -136,23 +134,12 @@ export default function OrderDraftPanel({
     return confirmEditing()
   }
 
-  async function handleUpdateOrder() {
-    if (!(await ensureSavedIfEditing())) return
-    try {
-      await updateOrder.mutateAsync()
-      alert('工單更新成功！')
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err)
-      alert(`更新工單失敗：${message}`)
-    }
-  }
-
   async function handleCreateOrder() {
     if (!(await ensureSavedIfEditing())) return
     try {
       const result = await createOrder.mutateAsync()
       if (result.ok) {
-        alert('工單建立成功！')
+        alert('訂單建立成功！')
         setMissing([])
         onBack()
       } else {
@@ -161,7 +148,7 @@ export default function OrderDraftPanel({
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err)
-      alert(`建立工單失敗：${message}`)
+      alert(`建立訂單失敗：${message}`)
     }
   }
 
@@ -178,8 +165,7 @@ export default function OrderDraftPanel({
     return missingFieldSet.has(key)
   }
 
-  const isPending =
-    updateDraft.isPending || updateOrder.isPending || createOrder.isPending
+  const isPending = updateDraft.isPending || createOrder.isPending
 
   return (
     <aside className="relative flex h-full w-[336px] flex-shrink-0 flex-col border-l border-[#B3B3B3] bg-white">
@@ -262,33 +248,15 @@ export default function OrderDraftPanel({
       </div>
 
       {(draft || isEditing) && (
-        <div className="absolute bottom-4 left-0 right-0 z-20 flex justify-center gap-2">
-          <button
-            type="button"
-            onClick={handleUpdateOrder}
-            disabled={isPending || isEditing}
-            aria-disabled={isPending || isEditing}
-            title={isEditing ? '請先完成編輯（點 ✓）後再更新工單' : undefined}
-            className={cn(
-              'flex h-10 w-[136px] items-center justify-center gap-2 rounded-xl px-3 text-base font-bold text-white transition active:scale-95',
-              "font-['Noto_Sans_TC',sans-serif]",
-              'disabled:cursor-not-allowed disabled:opacity-50 disabled:active:scale-100 disabled:hover:shadow-none',
-              isEditing
-                ? 'bg-[#D8EAFF] text-[#528DD2]'
-                : 'bg-[#77B5FF] hover:bg-[#5C9FE8] hover:shadow-[2px_2px_4px_rgba(0,0,0,0.25)]',
-            )}
-          >
-            <Upload className="h-4 w-4" />
-            <span>更新工單</span>
-          </button>
+        <div className="absolute bottom-4 left-0 right-0 z-20 flex justify-center">
           <button
             type="button"
             onClick={handleCreateOrder}
             disabled={isPending || isEditing}
             aria-disabled={isPending || isEditing}
-            title={isEditing ? '請先完成編輯（點 ✓）後再建立新工單' : undefined}
+            title={isEditing ? '請先完成編輯（點 ✓）後再建立新訂單' : undefined}
             className={cn(
-              'flex h-10 w-[136px] items-center justify-center gap-2 rounded-xl px-3 text-base font-bold text-white transition active:scale-95',
+              'flex h-10 w-[200px] items-center justify-center gap-2 rounded-xl px-3 text-base font-bold text-white transition active:scale-95',
               "font-['Noto_Sans_TC',sans-serif]",
               'disabled:cursor-not-allowed disabled:opacity-50 disabled:active:scale-100 disabled:hover:shadow-none',
               isEditing
@@ -297,7 +265,7 @@ export default function OrderDraftPanel({
             )}
           >
             <Plus className="h-4 w-4" />
-            <span>建立新工單</span>
+            <span>建立新訂單</span>
           </button>
         </div>
       )}
