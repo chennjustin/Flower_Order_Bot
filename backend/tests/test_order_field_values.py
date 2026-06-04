@@ -5,7 +5,9 @@ from app.enums.payment import PaymentStatus
 from app.enums.shipment import ShipmentMethod
 from app.schemas.order import OrderOut
 from app.models.order import OrderDraft
+from app.domain.order_fields import ALL_CATALOG_KEYS
 from app.services.order_field_values import (
+    build_docx_catalog_context,
     build_docx_render_context,
     build_legacy_docx_context,
     build_order_field_context,
@@ -61,9 +63,28 @@ def test_build_legacy_docx_context_keeps_template_keys() -> None:
 def test_build_docx_render_context_merges_legacy_and_catalog() -> None:
     order = _sample_order()
     merged = build_docx_render_context(order, ["id", "item"])
-    assert merged["phone"] == "0912345678"
+    assert merged["phone"] == ""
     assert merged["id"] == "42"
     assert merged["item"] == "花束"
+
+
+def test_build_docx_catalog_context_includes_all_catalog_keys() -> None:
+    order = _sample_order()
+    ctx = build_docx_catalog_context(order, ["customer_name"])
+    assert set(ctx.keys()) == set(ALL_CATALOG_KEYS)
+    assert ctx["customer_name"] == "Amy"
+    assert ctx["pay_status"] == ""
+    assert ctx["item"] == ""
+
+
+def test_build_docx_render_context_hides_legacy_aliases_when_field_hidden() -> None:
+    order = _sample_order()
+    merged = build_docx_render_context(order, ["item"])
+    assert merged["item"] == "花束"
+    assert merged["phone"] == ""
+    assert merged["receiver_phone"] == ""
+    assert merged["pay_way"] == ""
+    assert merged["weekday"] == ""
 
 
 class DummyCustomer:

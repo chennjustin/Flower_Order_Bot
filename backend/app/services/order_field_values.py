@@ -6,7 +6,7 @@ from collections.abc import Iterable
 from datetime import datetime
 from typing import Any
 
-from app.domain.order_fields import get_field_label, is_catalog_field_key
+from app.domain.order_fields import ALL_CATALOG_KEYS, get_field_label, is_catalog_field_key
 from app.enums.order import OrderStatus
 from app.enums.payment import PaymentStatus
 from app.enums.shipment import ShipmentMethod
@@ -127,31 +127,68 @@ def build_order_field_context(
 
 
 def build_legacy_docx_context(order: OrderOut) -> dict[str, Any]:
-    """Legacy template variable names (order_template.docx)."""
-    send_dt = order.send_datetime
+    """Legacy template variable names (order_template.docx); all fields shown."""
+    return _build_legacy_docx_context_masked(order, frozenset(ALL_CATALOG_KEYS))
+
+
+def _build_legacy_docx_context_masked(
+    order: OrderOut, visible: frozenset[str]
+) -> dict[str, Any]:
+    """Legacy docx placeholders; hidden catalog fields render as empty."""
+    send_dt = order.send_datetime if "send_datetime" in visible else None
+    order_date = order.order_date if "order_date" in visible else None
+
+    def _str_field(key: str, value: str | None) -> str:
+        if key not in visible:
+            return ""
+        return value or ""
+
     return {
-        "customer_name": order.customer_name,
-        "phone": order.customer_phone,
-        "timestamp": _format_date_only(order.order_date),
-        "item": order.item,
-        "quantity": order.quantity,
-        "pay_way": order.pay_way or "",
-        "note": order.note or "",
-        "weekday": _weekday_zh(send_dt),
-        "send_datetime": _format_datetime_cell(send_dt),
-        "receiver_name": order.customer_name,
-        "receiver_phone": order.customer_phone,
-        "delivery_address": order.delivery_address or "",
-        "total_amount": order.total_amount,
+        "customer_name": _str_field("customer_name", order.customer_name),
+        "phone": _str_field("customer_phone", order.customer_phone),
+        "timestamp": _format_date_only(order_date) if "order_date" in visible else "",
+        "item": _str_field("item", order.item),
+        "quantity": order.quantity if "quantity" in visible else "",
+        "pay_way": _str_field("pay_way", order.pay_way),
+        "note": _str_field("note", order.note),
+        "weekday": _weekday_zh(send_dt) if "send_datetime" in visible else "",
+        "send_datetime": _format_datetime_cell(send_dt) if "send_datetime" in visible else "",
+        "receiver_name": _str_field("customer_name", order.customer_name),
+        "receiver_phone": _str_field("customer_phone", order.customer_phone),
+        "delivery_address": _str_field("delivery_address", order.delivery_address),
+        "total_amount": order.total_amount if "total_amount" in visible else "",
+    }
+
+
+def build_docx_catalog_context(
+    order: OrderOut, visible_fields: list[str]
+) -> dict[str, str]:
+    """Every catalog key for docxtpl; hidden fields are empty strings."""
+    visible = frozenset(visible_fields)
+    return {
+        key: format_order_field_value(key, order) if key in visible else ""
+        for key in ALL_CATALOG_KEYS
     }
 
 
 def build_docx_render_context(order: OrderOut, visible_fields: list[str]) -> dict[str, Any]:
-    """Merge legacy aliases with catalog keys for configured visible fields."""
+    """
+    Full DOCX context: legacy aliases + all catalog keys.
+
+    Template placeholders stay defined for every key; store-hidden fields are "".
+    """
+    visible = frozenset(visible_fields)
     return {
-        **build_legacy_docx_context(order),
-        **build_order_field_context(order, visible_fields),
+        **_build_legacy_docx_context_masked(order, visible),
+        **build_docx_catalog_context(order, visible_fields),
     }
+
+
+def build_docx_render_context_full_catalog(
+    order: OrderOut, visible_fields: list[str]
+) -> dict[str, Any]:
+    """Alias for build_docx_render_context (multi-store DOCX Step 5)."""
+    return build_docx_render_context(order, visible_fields)
 
 
 def is_catalog_value_empty(key: str, value: object) -> bool:
