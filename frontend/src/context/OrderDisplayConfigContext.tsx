@@ -8,10 +8,17 @@ import {
   type ReactNode,
 } from 'react'
 import {
-  fetchDefaultOrderFieldConfig,
-  updateDefaultOrderFieldConfig,
+  fetchOrderFieldConfig,
+  updateOrderFieldConfig,
 } from '@/api/orderFieldConfig'
-import { isFieldLockedVisible } from '@/config/orderDisplayFields'
+import { getDefaultConfig, isFieldLockedVisible } from '@/config/orderDisplayFields'
+import { useStore } from '@/context/StoreContext'
+import {
+  buildConfigFromApiResponse,
+  buildOrderDisplayStorageKey,
+  extractFieldOrderKeys,
+  extractVisibleFieldKeys,
+} from '@/lib/orderDisplayFromApi'
 import { loadConfig, mergeWithRegistry, saveConfig } from '@/lib/orderDisplayStorage'
 import type { OrderDisplayConfig, OrderFieldConfigItem, OrderFieldKey } from '@/types/orderDisplay'
 
@@ -69,72 +76,57 @@ interface OrderDisplayConfigProviderProps {
 }
 
 export function OrderDisplayConfigProvider({ children }: OrderDisplayConfigProviderProps) {
+  const { currentStoreId, isReady } = useStore()
+  const storageKey =
+    currentStoreId != null ? buildOrderDisplayStorageKey(currentStoreId) : null
+
   const [savedConfig, setSavedConfig] = useState<OrderDisplayConfig>(() =>
-    mergeWithRegistry(loadConfig()),
+    mergeWithRegistry(getDefaultConfig()),
   )
   const [draftConfig, setDraftConfig] = useState<OrderDisplayConfig>(() => cloneConfig(savedConfig))
   const [loading, setLoading] = useState(true)
   const [savePending, setSavePending] = useState(false)
   const [loadError, setLoadError] = useState<string | null>(null)
 
-  const applyVisibleFieldsToConfig = useCallback(
-    (baseConfig: OrderDisplayConfig, visibleFields: OrderFieldKey[]) => {
-      const visibleSet = new Set<OrderFieldKey>(visibleFields)
-      const normalizedBase = mergeWithRegistry(baseConfig)
-      return {
-        version: 1 as const,
-        fields: normalizedBase.fields.map(field => ({
-          ...field,
-          visible: isFieldLockedVisible(field.key) ? true : visibleSet.has(field.key),
-        })),
-      }
-    },
-    [],
-  )
-
-  const buildConfigFromVisibleFields = useCallback((visibleFields: OrderFieldKey[]) => {
-    const visibleSet = new Set<OrderFieldKey>(visibleFields)
-    const merged = mergeWithRegistry(loadConfig())
-    return {
-      version: 1 as const,
-      fields: merged.fields.map(field => ({
-        ...field,
-        visible: isFieldLockedVisible(field.key) ? true : visibleSet.has(field.key),
-      })),
-    }
-  }, [])
-
-  const extractVisibleFieldKeys = useCallback((config: OrderDisplayConfig): OrderFieldKey[] => {
-    return sortFieldsByOrder(config.fields)
-      .filter(field => field.visible)
-      .map(field => field.key)
-  }, [])
-
   useEffect(() => {
+    if (!isReady || currentStoreId == null || storageKey == null) {
+      return
+    }
+
     let cancelled = false
+    setLoading(true)
+
     ;(async () => {
       try {
-        const remote = await fetchDefaultOrderFieldConfig()
-        if (cancelled) return
-        const normalized = mergeWithRegistry(
-          buildConfigFromVisibleFields(remote.visible_fields as OrderFieldKey[]),
-        )
+        const remote = await fetchOrderFieldConfig(currentStoreId)
+        if (cancelled) {
+          return
+        }
+        const normalized = buildConfigFromApiResponse(remote, storageKey)
         setSavedConfig(normalized)
         setDraftConfig(cloneConfig(normalized))
-        saveConfig(normalized)
+        saveConfig(normalized, storageKey)
         setLoadError(null)
       } catch (err) {
-        if (cancelled) return
+        if (cancelled) {
+          return
+        }
         const message = err instanceof Error ? err.message : String(err)
+        const fromLocal = mergeWithRegistry(loadConfig(storageKey))
+        setSavedConfig(fromLocal)
+        setDraftConfig(cloneConfig(fromLocal))
         setLoadError(`讀取後端欄位設定失敗，已改用本機暫存：${message}`)
       } finally {
-        if (!cancelled) setLoading(false)
+        if (!cancelled) {
+          setLoading(false)
+        }
       }
     })()
+
     return () => {
       cancelled = true
     }
-  }, [buildConfigFromVisibleFields])
+  }, [currentStoreId, isReady, storageKey])
 
   const hasChanges = useMemo(
     () => !configsEqual(savedConfig, draftConfig),
@@ -170,21 +162,25 @@ export function OrderDisplayConfigProvider({ children }: OrderDisplayConfigProvi
   }, [savedConfig])
 
   const save = useCallback(async () => {
+    if (currentStoreId == null || storageKey == null) {
+      throw new Error('No store selected')
+    }
     setSavePending(true)
-      const normalized = mergeWithRegistry(draftConfig)
+    const normalized = mergeWithRegistry(draftConfig)
     try {
-      const remote = await updateDefaultOrderFieldConfig(extractVisibleFieldKeys(normalized))
-      const applied = mergeWithRegistry(
-        applyVisibleFieldsToConfig(normalized, remote.visible_fields as OrderFieldKey[]),
-      )
-      saveConfig(applied)
+      const remote = await updateOrderFieldConfig(currentStoreId, {
+        visible_fields: extractVisibleFieldKeys(normalized),
+        field_order: extractFieldOrderKeys(normalized),
+      })
+      const applied = buildConfigFromApiResponse(remote, storageKey)
+      saveConfig(applied, storageKey)
       setSavedConfig(applied)
       setDraftConfig(cloneConfig(applied))
       setLoadError(null)
     } finally {
       setSavePending(false)
     }
-  }, [applyVisibleFieldsToConfig, draftConfig, extractVisibleFieldKeys])
+  }, [currentStoreId, draftConfig, storageKey])
 
   const value = useMemo<OrderDisplayConfigContextValue>(
     () => ({
