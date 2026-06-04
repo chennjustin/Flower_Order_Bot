@@ -77,6 +77,12 @@ pytest backend/tests/test_contract_smoke.py
   - Response model: `OrderDraftOut`
   - 若整理失敗或回覆空：**404** `{"detail": "No data found"}`
 
+### LLM Suggest (Formal Order Preview)
+- **POST** `/orders/{order_id}/suggest-from-chat`
+  - 依 `processed=false` 對話 + 目前訂單呼叫 OpenAI，**不寫入** `orders`
+  - Response: `OrderSuggestFromChatOut`（`suggested` + `source_message_ids`）
+- **PATCH** `/orders/{order_id}` 可帶 `mark_processed_message_ids`；成功後將該批訊息標為 `processed=true`
+
 ### Messages (Chat Rooms)
 Base prefix: `/chat_rooms`
 
