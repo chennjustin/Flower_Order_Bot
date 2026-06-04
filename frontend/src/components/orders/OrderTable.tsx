@@ -38,6 +38,8 @@ interface OrderTableProps {
   onQuickFilterClear?: () => void
   /** Hide the「訂單總覽」heading (e.g. on /order page). */
   showTitle?: boolean
+  /** Number of rows per page. Default 20. Dashboard uses 10. */
+  pageSize?: number
 }
 
 type ColumnKey =
@@ -64,7 +66,7 @@ interface ColumnDef {
 }
 
 const COLUMNS: ColumnDef[] = [
-  { key: 'export', label: '列印' },
+  { key: 'export', label: '列印', width: '92px' },
   { key: 'id', label: '訂單編號', width: '136px' },
   { key: 'order_status', label: '狀態', width: '120px' },
   { key: 'send_datetime', label: '取貨時間', width: '200px' },
@@ -104,6 +106,7 @@ export default function OrderTable({
   quickFilter,
   onQuickFilterClear,
   showTitle = true,
+  pageSize = 20,
 }: OrderTableProps) {
   const ordersQuery = useOrders()
   const updateStatusMutation = useUpdateOrderStatus()
@@ -115,6 +118,7 @@ export default function OrderTable({
   const [currentDate, setCurrentDate] = useState(() => new Date())
   const [searchText, setSearchText] = useState('')
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
+  const [currentPage, setCurrentPage] = useState(1)
 
   const orders = useMemo(() => ordersQuery.data ?? [], [ordersQuery.data])
 
@@ -175,6 +179,17 @@ export default function OrderTable({
 
     return rows
   }, [orders, effectiveStatusTab, dateFilterActive, currentDate, searchText, activeTab, quickFilter])
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize))
+
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [effectiveStatusTab, dateFilterActive, currentDate, searchText, quickFilter])
+
+  const pagedRows = useMemo(
+    () => filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize),
+    [filtered, currentPage, pageSize],
+  )
 
   const visibleColumns = useMemo<ColumnDef[]>(() => {
     const orderedKeys = [...savedConfig.fields]
@@ -249,7 +264,7 @@ export default function OrderTable({
   }
 
   return (
-    <section className="rounded-lg bg-white px-8 py-6 mt-6 mb-8 border-b-[1.5px] border-[#e9e9e9]">
+    <section className="w-full rounded-lg bg-white px-8 py-6 mt-6 mb-8 border-b-[1.5px] border-[#e9e9e9]">
       {/* Title row */}
       <div className="mb-4 flex flex-wrap items-center gap-4">
         {showTitle && (
@@ -356,6 +371,33 @@ export default function OrderTable({
             <ChevronRight className="h-3.5 w-3.5" strokeWidth={3} />
           </button>
         </div>
+
+        {/* Pagination — top, right-aligned */}
+        {totalPages > 1 && (
+          <div className="ml-auto flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+              className="flex h-8 w-8 items-center justify-center rounded-full bg-[#D9D9D9] text-white transition hover:enabled:bg-[#C5C7FF] disabled:opacity-40 disabled:cursor-not-allowed"
+              aria-label="上一頁"
+            >
+              <ChevronLeft className="h-4 w-4" strokeWidth={3} />
+            </button>
+            <span className="text-sm font-bold text-black/60 font-['Noto_Sans_TC',sans-serif]">
+              {currentPage} / {totalPages}
+            </span>
+            <button
+              type="button"
+              onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+              disabled={currentPage === totalPages}
+              className="flex h-8 w-8 items-center justify-center rounded-full bg-[#D9D9D9] text-white transition hover:enabled:bg-[#C5C7FF] disabled:opacity-40 disabled:cursor-not-allowed"
+              aria-label="下一頁"
+            >
+              <ChevronRight className="h-4 w-4" strokeWidth={3} />
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Content */}
@@ -381,7 +423,7 @@ export default function OrderTable({
             ) : (
               <>
                 <table
-                  className="border-separate w-max min-w-full"
+                  className="border-separate w-full table-fixed"
                   style={{ borderSpacing: '0 8px' }}
                 >
                   <thead className="sticky top-0 z-10">
@@ -394,18 +436,17 @@ export default function OrderTable({
                             "bg-[#F7F7F7] px-5 py-3 text-left align-middle font-['Noto_Sans_TC',sans-serif] text-base font-bold leading-[140%] text-black/[0.87] whitespace-nowrap relative",
                             'border-y-[0.5px] border-[rgba(175,175,175,0.6)]',
                             idx === 0 && 'rounded-l-xl border-l-[0.5px] border-r-0',
-                            idx === visibleColumns.length - 1 &&
-                              'rounded-r-xl border-r-[0.5px] border-l-0',
-                            idx !== 0 && idx !== visibleColumns.length - 1 && 'border-x-0',
+                            idx !== 0 && 'border-x-0',
                           )}
                         >
                           {col.label}
                         </th>
                       ))}
+                      <th className="bg-[#F7F7F7] rounded-r-xl border-y-[0.5px] border-r-[0.5px] border-[rgba(175,175,175,0.6)]" />
                     </tr>
                   </thead>
                   <tbody>
-                    {filtered.map(row => (
+                    {pagedRows.map(row => (
                       <tr
                         key={row.id}
                         className="group cursor-pointer bg-white"
@@ -419,9 +460,7 @@ export default function OrderTable({
                               "bg-white px-5 py-3 align-middle font-['Noto_Sans_TC',sans-serif] text-base font-bold leading-[140%] text-black/60 break-words transition-colors group-hover:bg-[#f0f6ff]",
                               'border-y-[0.5px] border-[rgba(175,175,175,0.6)]',
                               idx === 0 && 'rounded-l-xl border-l-[0.5px] border-r-0',
-                              idx === visibleColumns.length - 1 &&
-                                'rounded-r-xl border-r-[0.5px] border-l-0',
-                              idx !== 0 && idx !== visibleColumns.length - 1 && 'border-x-0',
+                              idx !== 0 && 'border-x-0',
                             )}
                           >
                             <Cell
@@ -433,6 +472,7 @@ export default function OrderTable({
                             />
                           </td>
                         ))}
+                        <td className="bg-white rounded-r-xl border-y-[0.5px] border-r-[0.5px] border-[rgba(175,175,175,0.6)] transition-colors group-hover:bg-[#f0f6ff]" />
                       </tr>
                     ))}
                   </tbody>
@@ -441,6 +481,31 @@ export default function OrderTable({
                   <div className="py-10 text-center text-[#aaa]">
                     <Search className="mx-auto mb-3 h-8 w-8" strokeWidth={1.5} />
                     <p>找不到符合條件的訂單</p>
+                  </div>
+                )}
+                {totalPages > 1 && (
+                  <div className="mt-4 flex items-center justify-end gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                      disabled={currentPage === 1}
+                      className="flex h-8 w-8 items-center justify-center rounded-full bg-[#D9D9D9] text-white transition hover:enabled:bg-[#C5C7FF] disabled:opacity-40 disabled:cursor-not-allowed"
+                      aria-label="上一頁"
+                    >
+                      <ChevronLeft className="h-4 w-4" strokeWidth={3} />
+                    </button>
+                    <span className="text-sm font-bold text-black/60 font-['Noto_Sans_TC',sans-serif]">
+                      {currentPage} / {totalPages}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                      disabled={currentPage === totalPages}
+                      className="flex h-8 w-8 items-center justify-center rounded-full bg-[#D9D9D9] text-white transition hover:enabled:bg-[#C5C7FF] disabled:opacity-40 disabled:cursor-not-allowed"
+                      aria-label="下一頁"
+                    >
+                      <ChevronRight className="h-4 w-4" strokeWidth={3} />
+                    </button>
                   </div>
                 )}
               </>
