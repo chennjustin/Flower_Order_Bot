@@ -2,6 +2,7 @@ import { useState } from 'react'
 import BrandLogo from './BrandLogo'
 import Sidebar from './Sidebar'
 import SidebarMenuIcon from './SidebarMenuIcon'
+import StorePicker from './StorePicker'
 
 export default function Navbar() {
   const [showSidebar, setShowSidebar] = useState(false)
@@ -20,6 +21,9 @@ export default function Navbar() {
         </button>
         <div className="absolute left-[73px] top-1/2 flex -translate-y-1/2 items-center gap-[13px]">
           <BrandLogo size="nav" />
+        </div>
+        <div className="absolute right-4 top-1/2 flex -translate-y-1/2 items-center">
+          <StorePicker />
         </div>
       </header>
 
