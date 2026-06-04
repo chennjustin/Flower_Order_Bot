@@ -18,9 +18,9 @@ export const ORDER_FILTER_TABS: ReadonlyArray<{
   label: string
 }> = [
   { value: '', label: '所有訂單' },
+  { value: 'today', label: '今日訂單' },
   { value: 'in_progress', label: '尚未製作' },
   { value: 'completed', label: '製作完成' },
-  { value: 'today', label: '今日訂單' },
 ]
 
 /** Normalize backend status into one of the three display buckets. */
