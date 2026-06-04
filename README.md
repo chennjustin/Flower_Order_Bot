@@ -181,7 +181,7 @@ PYTHONPATH=. python app/seeds/seed_all.py
 
 ### DOCX 工單
 
-`GET /orders/{order_id}.docx` 依訂單所屬 `chat_room.store_id` 讀欄位設定；模板占位符對 **所有** catalog key 都會渲染，隱藏欄位填空字串（避免 docxtpl 缺變數）。
+`GET /orders/{order_id}.docx` 依訂單所屬 `chat_room.store_id` 讀欄位設定；預設模板為 `backend/docs/工單模板.docx`（可用環境變數 `DOCX_TEMPLATE_FILE` 覆寫）。占位符使用 catalog key（例如 `{{ customer_name }}`、`{{ item }}`），隱藏欄位填空字串。若自行編輯 Word 模板，請用 docxtpl 語法 `{{ 變數名 }}`，變數名須與 catalog key 一致。
 
 ### 安全說明（重要）
 

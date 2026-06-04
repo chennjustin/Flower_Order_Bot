@@ -143,19 +143,25 @@ def _build_legacy_docx_context_masked(
             return ""
         return value or ""
 
+    delivery = _str_field("delivery_address", order.delivery_address)
+    pay_way = _str_field("pay_way", order.pay_way)
     return {
         "customer_name": _str_field("customer_name", order.customer_name),
         "phone": _str_field("customer_phone", order.customer_phone),
         "timestamp": _format_date_only(order_date) if "order_date" in visible else "",
         "item": _str_field("item", order.item),
         "quantity": order.quantity if "quantity" in visible else "",
-        "pay_way": _str_field("pay_way", order.pay_way),
+        "pay_way": pay_way,
+        # Aliases used by legacy order_template.docx placeholders.
+        "payway": pay_way,
         "note": _str_field("note", order.note),
         "weekday": _weekday_zh(send_dt) if "send_datetime" in visible else "",
         "send_datetime": _format_datetime_cell(send_dt) if "send_datetime" in visible else "",
         "receiver_name": _str_field("customer_name", order.customer_name),
         "receiver_phone": _str_field("customer_phone", order.customer_phone),
-        "delivery_address": _str_field("delivery_address", order.delivery_address),
+        "delivery_address": delivery,
+        "receipt_address": delivery,
+        "card_message": "",
         "total_amount": order.total_amount if "total_amount" in visible else "",
     }
 

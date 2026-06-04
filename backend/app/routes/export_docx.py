@@ -1,4 +1,5 @@
 import io
+import os
 from pathlib import Path
 
 from docxtpl import DocxTemplate
@@ -13,7 +14,10 @@ from app.services.order_field_values import build_docx_render_context_full_catal
 from app.services.order_service import get_order, get_order_out_by_id
 
 api_router = APIRouter()
-TEMPLATE_PATH = Path(__file__).resolve().parents[2] / "docs" / "order_template.docx"
+_DOCS_DIR = Path(__file__).resolve().parents[2] / "docs"
+# Default staff work-order template (override via DOCX_TEMPLATE_FILE in .env).
+_TEMPLATE_FILENAME = os.getenv("DOCX_TEMPLATE_FILE", "工單模板.docx")
+TEMPLATE_PATH = _DOCS_DIR / _TEMPLATE_FILENAME
 
 
 @api_router.get("/orders/{order_id}.docx")
