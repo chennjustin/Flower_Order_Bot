@@ -20,12 +20,13 @@ from app.repositories.order_repository import (
     get_latest_order_draft_by_room,
     get_order_by_id,
     list_all_orders,
+    list_orders_by_customer_id,
     now_taipei_naive,
     save_order,
     save_order_draft,
 )
 from app.schemas.chat import ChatMessagePayload
-from app.schemas.order import OrderDraftOut, OrderDraftUpdate, OrderOut
+from app.schemas.order import OrderDraftOut, OrderDraftUpdate, OrderOut, OrderPatchUpdate
 from app.services.message_service import get_chat_room_by_room_id
 from app.services.payment_service import get_pay_way_by_order_id, get_payment_method_by_id
 from app.services.user_service import (
@@ -72,6 +73,23 @@ async def get_all_orders(db: AsyncSession) -> Optional[List[OrderOut]]:
         if out:
             results.append(out)
     results.sort(key=lambda x: x.id, reverse=True)
+    return results
+
+
+async def get_orders_by_room_id(db: AsyncSession, room_id: int) -> List[OrderOut]:
+    """Return all orders (including cancelled) for the customer linked to this chat room."""
+    room = await get_chat_room_by_room_id(db, room_id)
+    if not room:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Chat room {room_id} not found.",
+        )
+
+    results: list[OrderOut] = []
+    for order in await list_orders_by_customer_id(db, room.customer_id):
+        out = await _build_order_out(db, order)
+        if out:
+            results.append(out)
     return results
 
 
@@ -234,6 +252,55 @@ async def delete_order_by_id(db: AsyncSession, order_id: int) -> bool:
     await db.commit()
     await db.refresh(order)
     return True
+
+
+async def update_order_fields_by_id(
+    db: AsyncSession, order_id: int, patch: OrderPatchUpdate
+) -> OrderOut:
+    order = await get_order_by_id(db, order_id)
+    if not order:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Order with id {order_id} not found.",
+        )
+
+    if patch.customer_name is not None:
+        order.customer_name = patch.customer_name
+    if patch.customer_phone is not None:
+        order.customer_phone = patch.customer_phone
+    if patch.item is not None:
+        order.item_type = patch.item
+    if patch.quantity is not None:
+        order.quantity = patch.quantity
+    if patch.total_amount is not None:
+        order.total_amount = patch.total_amount
+    if patch.note is not None:
+        order.notes = patch.note
+    if patch.shipment_method is not None:
+        order.shipment_method = patch.shipment_method
+    if patch.send_datetime is not None:
+        order.delivery_datetime = to_taipei_naive(patch.send_datetime)
+    if patch.delivery_address is not None:
+        order.delivery_address = patch.delivery_address
+    if patch.pay_way is not None:
+        order.pay_way = patch.pay_way
+    if patch.pay_status is not None:
+        order.pay_status = patch.pay_status
+    if patch.order_status is not None:
+        order.status = patch.order_status
+
+    order.updated_at = now_taipei_naive()
+    db.add(order)
+    await db.commit()
+    await db.refresh(order)
+
+    out = await _build_order_out(db, order)
+    if not out:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to build order response for id {order_id}.",
+        )
+    return out
 
 
 async def update_order_status_by_id(

@@ -14,6 +14,7 @@ __all__ = [
     "get_order_by_id",
     "list_active_orders",
     "list_all_orders",
+    "list_orders_by_customer_id",
     "get_latest_confirmed_order_by_room",
     "get_latest_order_draft_by_room",
     "save_order",
@@ -36,6 +37,16 @@ async def list_active_orders(db: AsyncSession) -> list[Order]:
 async def list_all_orders(db: AsyncSession) -> list[Order]:
     """All orders including CANCELLED (for dashboard「所有訂單」)."""
     stmt = select(Order)
+    result = await db.execute(stmt)
+    return result.scalars().all()
+
+
+async def list_orders_by_customer_id(db: AsyncSession, customer_id: int) -> list[Order]:
+    stmt = (
+        select(Order)
+        .where(Order.customer_id == customer_id)
+        .order_by(Order.created_at.desc())
+    )
     result = await db.execute(stmt)
     return result.scalars().all()
 

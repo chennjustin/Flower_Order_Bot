@@ -1,4 +1,4 @@
-import { Archive, ChevronDown, ChevronsLeft, Loader2 } from 'lucide-react'
+import { Archive, ChevronDown, Loader2, PanelRightOpen } from 'lucide-react'
 import { useState } from 'react'
 import { useSwitchChatRoomMode } from '@/hooks/useChatRooms'
 import {
@@ -19,6 +19,7 @@ interface ChatHeaderProps {
   roomName: string
   avatar?: string | null
   status?: string | null
+  detailPanelOpen?: boolean
   onOpenDetail: () => void
   onOrganizeOrder: () => void
   isOrganizing?: boolean
@@ -29,6 +30,7 @@ export default function ChatHeader({
   roomName,
   avatar,
   status,
+  detailPanelOpen,
   onOpenDetail,
   onOrganizeOrder,
   isOrganizing,
@@ -110,22 +112,30 @@ export default function ChatHeader({
             </PopoverContent>
           </Popover>
         )}
-        <button
-          type="button"
-          onClick={onOpenDetail}
-          className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full text-black/60 transition hover:bg-black/5 hover:text-black active:scale-95"
-          aria-label="開啟訂單詳情"
-        >
-          <ChevronsLeft className="h-6 w-6" strokeWidth={2.5} />
-        </button>
       </div>
 
-      <button
-        type="button"
-        onClick={onOrganizeOrder}
-        disabled={isOrganizing}
-        className="mr-6 flex h-10 w-[120px] flex-shrink-0 items-center justify-center gap-3 rounded-xl bg-[#C5C7FF] px-3 text-base font-bold text-white transition hover:bg-[#A8ACFF] hover:shadow-[2px_2px_4px_rgba(0,0,0,0.25)] active:scale-95 disabled:opacity-70 font-['Noto_Sans_TC',sans-serif]"
-      >
+      <div className="mr-6 flex flex-shrink-0 items-center gap-3">
+        {!detailPanelOpen && (
+          <button
+            type="button"
+            onClick={onOpenDetail}
+            className={cn(
+              'flex h-10 items-center gap-2 rounded-xl border border-[#C5C7FF] bg-white px-3 text-sm font-bold text-[#6168FC] transition',
+              "font-['Noto_Sans_TC',sans-serif]",
+              'hover:bg-[#F5F6FF] hover:shadow-[2px_2px_4px_rgba(0,0,0,0.12)] active:scale-95',
+            )}
+            aria-label="開啟訂單詳情"
+          >
+            <PanelRightOpen className="h-4 w-4" aria-hidden />
+            <span>訂單詳情</span>
+          </button>
+        )}
+        <button
+          type="button"
+          onClick={onOrganizeOrder}
+          disabled={isOrganizing}
+          className="flex h-10 w-[120px] items-center justify-center gap-3 rounded-xl bg-[#C5C7FF] px-3 text-base font-bold text-white transition hover:bg-[#A8ACFF] hover:shadow-[2px_2px_4px_rgba(0,0,0,0.25)] active:scale-95 disabled:opacity-70 font-['Noto_Sans_TC',sans-serif]"
+        >
         {isOrganizing ? (
           <Loader2 className="h-5 w-5 animate-spin" />
         ) : (
@@ -134,7 +144,8 @@ export default function ChatHeader({
             <span>整理資料</span>
           </>
         )}
-      </button>
+        </button>
+      </div>
     </header>
   )
 }
