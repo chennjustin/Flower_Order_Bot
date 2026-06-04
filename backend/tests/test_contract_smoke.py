@@ -19,7 +19,8 @@ async def test_contract_smoke_endpoints_exist():
         stats_resp = await client.get("/stats", headers=store_headers)
         assert stats_resp.status_code in (200, 404)
 
-        assert (await client.get("/stores")).status_code in (200, 500)
+        stores_resp = await client.get("/stores")
+        assert 200 <= stores_resp.status_code < 300
 
         # payment methods
         assert (await client.get("/payment_methods")).status_code == 200

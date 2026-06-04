@@ -15,8 +15,6 @@ import json
 from alembic import op
 import sqlalchemy as sa
 
-from app.domain.order_fields import ALL_CATALOG_KEYS
-
 # revision identifiers, used by Alembic.
 revision = "a9f3c2d1e4b7"
 down_revision = "e2f1a4b5c6d7"
@@ -24,7 +22,23 @@ branch_labels = None
 depends_on = None
 
 TABLE = "store_order_field_config"
-DEFAULT_FIELD_ORDER: list[str] = list(ALL_CATALOG_KEYS)
+# Frozen at migration authoring time; do not import runtime catalog (deterministic upgrade).
+DEFAULT_FIELD_ORDER: list[str] = [
+    "id",
+    "customer_name",
+    "customer_phone",
+    "item",
+    "order_status",
+    "send_datetime",
+    "total_amount",
+    "quantity",
+    "note",
+    "shipment_method",
+    "delivery_address",
+    "pay_way",
+    "pay_status",
+    "order_date",
+]
 
 
 def _empty_display_config() -> dict:

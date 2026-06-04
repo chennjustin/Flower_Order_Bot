@@ -86,7 +86,7 @@ def get_field_label(key: str) -> str:
 
 
 def is_catalog_field_key(key: str) -> bool:
-    return key in FIELD_LABELS
+    return key in ALL_CATALOG_KEYS
 
 
 def build_display_config(

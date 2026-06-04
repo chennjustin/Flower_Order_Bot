@@ -20,13 +20,27 @@ FRONTEND_REGISTRY_PATH = (
 )
 
 
+_REGISTRY_ENTRY_RE = re.compile(
+    r"key:\s*['\"]([^'\"]+)['\"],\s*label:\s*['\"]([^'\"]+)['\"]",
+    re.MULTILINE,
+)
+
+
 def _parse_frontend_registry(path: Path) -> dict[str, str]:
     content = path.read_text(encoding="utf-8")
-    entries = re.findall(
-        r"\{\s*key:\s*'([^']+)',\s*label:\s*'([^']+)'",
-        content,
-    )
-    return dict(entries)
+    pairs: list[tuple[str, str]] = [
+        (match.group(1), match.group(2))
+        for match in _REGISTRY_ENTRY_RE.finditer(content)
+    ]
+    seen_keys: set[str] = set()
+    duplicate_keys: list[str] = []
+    for key, _label in pairs:
+        if key in seen_keys:
+            duplicate_keys.append(key)
+        else:
+            seen_keys.add(key)
+    assert not duplicate_keys, f"Duplicate registry keys: {sorted(set(duplicate_keys))}"
+    return dict(pairs)
 
 
 def test_frontend_registry_file_exists() -> None:

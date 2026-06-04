@@ -89,7 +89,11 @@ export function OrderDisplayConfigProvider({ children }: OrderDisplayConfigProvi
   const [loadError, setLoadError] = useState<string | null>(null)
 
   useEffect(() => {
-    if (!isReady || currentStoreId == null || storageKey == null) {
+    if (!isReady) {
+      return
+    }
+    if (currentStoreId == null || storageKey == null) {
+      setLoading(false)
       return
     }
 

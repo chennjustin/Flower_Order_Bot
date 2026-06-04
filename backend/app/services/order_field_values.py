@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 from datetime import datetime
+from decimal import Decimal
 from typing import Any
 
 from app.domain.order_fields import ALL_CATALOG_KEYS, get_field_label, is_catalog_field_key
@@ -202,7 +203,7 @@ def is_catalog_value_empty(key: str, value: object) -> bool:
     if key in NUMERIC_CATALOG_KEYS:
         if value is None:
             return True
-        if isinstance(value, (int, float)):
+        if isinstance(value, (int, float, Decimal)):
             return value <= 0
         return True
     return value in (None, "")
@@ -215,19 +216,31 @@ def draft_out_catalog_values(
     """Merge draft snapshot with pending update using catalog keys."""
     upd = update or OrderDraftUpdate()
     return {
-        "customer_name": upd.customer_name or draft.customer_name,
-        "customer_phone": upd.customer_phone or draft.customer_phone,
-        "item": upd.item or draft.item,
-        "send_datetime": upd.send_datetime or draft.send_datetime,
+        "customer_name": (
+            upd.customer_name if upd.customer_name is not None else draft.customer_name
+        ),
+        "customer_phone": (
+            upd.customer_phone if upd.customer_phone is not None else draft.customer_phone
+        ),
+        "item": upd.item if upd.item is not None else draft.item,
+        "send_datetime": (
+            upd.send_datetime if upd.send_datetime is not None else draft.send_datetime
+        ),
         "total_amount": (
             upd.total_amount if upd.total_amount is not None else draft.total_amount
         ),
         "quantity": upd.quantity if upd.quantity is not None else draft.quantity,
-        "note": upd.note or draft.note,
-        "shipment_method": upd.shipment_method or draft.shipment_method,
-        "delivery_address": upd.delivery_address or draft.delivery_address,
-        "pay_way": upd.pay_way or draft.pay_way,
-        "pay_status": upd.pay_status or draft.pay_status,
+        "note": upd.note if upd.note is not None else draft.note,
+        "shipment_method": (
+            upd.shipment_method if upd.shipment_method is not None else draft.shipment_method
+        ),
+        "delivery_address": (
+            upd.delivery_address
+            if upd.delivery_address is not None
+            else draft.delivery_address
+        ),
+        "pay_way": upd.pay_way if upd.pay_way is not None else draft.pay_way,
+        "pay_status": upd.pay_status if upd.pay_status is not None else draft.pay_status,
     }
 
 

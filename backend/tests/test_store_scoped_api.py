@@ -60,11 +60,20 @@ async def test_order_field_config_path_mismatch_returns_403() -> None:
 
 
 @pytest.mark.asyncio
-async def test_stores_list_does_not_require_store_header() -> None:
+async def test_stores_list_does_not_require_store_header(monkeypatch) -> None:
+    from types import SimpleNamespace
+
     from app.main import app
+
+    async def fake_list_stores(_db):  # noqa: ANN001
+        return [SimpleNamespace(id=1, name="Test Store", slug="test")]
+
+    monkeypatch.setattr("app.routes.stores.list_stores", fake_list_stores)
 
     transport = httpx.ASGITransport(app=app)
     async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
         response = await client.get("/stores")
-    # 200 when DB has stores; still proves route exists without X-Store-Id
-    assert response.status_code in (200, 500)
+    assert response.status_code == 200
+    payload = response.json()
+    assert isinstance(payload, list)
+    assert payload[0]["id"] == 1
