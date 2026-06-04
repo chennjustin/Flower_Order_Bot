@@ -10,6 +10,8 @@ Backfill shape:
 
 from __future__ import annotations
 
+import json
+
 from alembic import op
 import sqlalchemy as sa
 
@@ -63,11 +65,13 @@ def upgrade() -> None:
             "visible_fields": visible_fields,
             "field_order": list(DEFAULT_FIELD_ORDER),
         }
+        # psycopg2 cannot bind raw dict; serialize to JSON text for PostgreSQL.
         conn.execute(
             sa.text(
-                f"UPDATE {TABLE} SET display_config = :display_config WHERE id = :id"
+                f"UPDATE {TABLE} SET display_config = CAST(:display_config AS JSON) "
+                "WHERE id = :id"
             ),
-            {"display_config": display_config, "id": row_id},
+            {"display_config": json.dumps(display_config), "id": row_id},
         )
 
     # All rows populated; enforce NOT NULL for new code paths.
