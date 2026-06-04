@@ -6,32 +6,35 @@ import {
   updateOrder,
   updateOrderDraft,
 } from '@/api/orders'
+import { useStoreQueryGate } from '@/hooks/useStoreQuery'
+import { orderDraftQueryKey, ordersQueryKey, statsQueryKey } from '@/lib/storeQueryKeys'
 import type { CreateOrderResult, OrderDraft, OrderDraftUpdate } from '@/types/domain'
 
-export const orderDraftQueryKey = (roomId: number) =>
-  ['chatRooms', roomId, 'orderDraft'] as const
-
 export function useOrderDraft(roomId: number | null, enabled: boolean) {
+  const { storeId, enabled: storeReady } = useStoreQueryGate()
+  const draftEnabled = storeReady && enabled && roomId != null && storeId != null
+
   return useQuery<OrderDraft | null>({
     queryKey:
-      roomId == null
-        ? ['chatRooms', 'pending', 'orderDraft']
-        : orderDraftQueryKey(roomId),
+      storeId != null && roomId != null
+        ? orderDraftQueryKey(storeId, roomId)
+        : ['chatRooms', 'pending', 'orderDraft'],
     queryFn: () => fetchOrderDraft(roomId as number),
-    enabled: roomId != null && enabled,
+    enabled: draftEnabled,
   })
 }
 
 export function useUpdateOrderDraft(roomId: number | null) {
   const qc = useQueryClient()
+  const { storeId } = useStoreQueryGate()
   return useMutation({
     mutationFn: (draft: OrderDraftUpdate) => {
       if (roomId == null) return Promise.reject(new Error('No room selected'))
       return updateOrderDraft(roomId, draft)
     },
     onSuccess: () => {
-      if (roomId != null) {
-        qc.invalidateQueries({ queryKey: orderDraftQueryKey(roomId) })
+      if (roomId != null && storeId != null) {
+        qc.invalidateQueries({ queryKey: orderDraftQueryKey(storeId, roomId) })
       }
     },
   })
@@ -42,15 +45,17 @@ export function useUpdateOrderDraft(roomId: number | null) {
  */
 export function useOrganizeData(roomId: number | null) {
   const qc = useQueryClient()
+  const { storeId } = useStoreQueryGate()
   return useMutation({
     mutationFn: () => {
       if (roomId == null) return Promise.reject(new Error('No room selected'))
       return organizeData(roomId)
     },
     onSuccess: data => {
-      if (roomId != null) {
-        qc.setQueryData(orderDraftQueryKey(roomId), data)
-        qc.invalidateQueries({ queryKey: orderDraftQueryKey(roomId) })
+      if (roomId != null && storeId != null) {
+        const key = orderDraftQueryKey(storeId, roomId)
+        qc.setQueryData(key, data)
+        qc.invalidateQueries({ queryKey: key })
       }
     },
   })
@@ -58,15 +63,16 @@ export function useOrganizeData(roomId: number | null) {
 
 export function useCreateOrder(roomId: number | null) {
   const qc = useQueryClient()
+  const { storeId } = useStoreQueryGate()
   return useMutation<CreateOrderResult, Error>({
     mutationFn: () => {
       if (roomId == null) return Promise.reject(new Error('No room selected'))
       return createOrderFromDraft(roomId)
     },
     onSuccess: result => {
-      if (result.ok) {
-        qc.invalidateQueries({ queryKey: ['orders'] })
-        qc.invalidateQueries({ queryKey: ['stats'] })
+      if (result.ok && storeId != null) {
+        qc.invalidateQueries({ queryKey: ordersQueryKey(storeId) })
+        qc.invalidateQueries({ queryKey: statsQueryKey(storeId) })
       }
     },
   })
@@ -74,14 +80,17 @@ export function useCreateOrder(roomId: number | null) {
 
 export function useUpdateOrder(roomId: number | null) {
   const qc = useQueryClient()
+  const { storeId } = useStoreQueryGate()
   return useMutation({
     mutationFn: () => {
       if (roomId == null) return Promise.reject(new Error('No room selected'))
       return updateOrder(roomId)
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['orders'] })
-      qc.invalidateQueries({ queryKey: ['stats'] })
+      if (storeId != null) {
+        qc.invalidateQueries({ queryKey: ordersQueryKey(storeId) })
+        qc.invalidateQueries({ queryKey: statsQueryKey(storeId) })
+      }
     },
   })
 }

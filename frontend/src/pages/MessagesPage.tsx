@@ -2,11 +2,13 @@ import { useEffect, useMemo, useState } from 'react'
 import ChatList from '@/components/messages/ChatList'
 import ChatRoom from '@/components/messages/ChatRoom'
 import DetailPanel from '@/components/messages/DetailPanel'
+import { useStore } from '@/context/StoreContext'
 import { useChatRooms } from '@/hooks/useChatRooms'
 import { useOrganizeData } from '@/hooks/useOrderDraft'
 import type { ChatRoom as ChatRoomType } from '@/types/domain'
 
 export default function MessagesPage() {
+  const { currentStoreId } = useStore()
   const roomsQuery = useChatRooms()
   const rooms = useMemo(() => roomsQuery.data ?? [], [roomsQuery.data])
 
@@ -14,6 +16,12 @@ export default function MessagesPage() {
   const [showDetail, setShowDetail] = useState(false)
 
   const organizeMutation = useOrganizeData(selectedRoomId)
+
+  // Clear selection when switching stores so we do not show another store's room.
+  useEffect(() => {
+    setSelectedRoomId(null)
+    setShowDetail(false)
+  }, [currentStoreId])
 
   useEffect(() => {
     if (rooms.length === 0) {
