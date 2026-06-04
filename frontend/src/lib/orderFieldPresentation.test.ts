@@ -64,6 +64,26 @@ describe('buildOrderTableColumns', () => {
     expect(columns[columns.length - 1]?.key).toBe('cancel')
     expect(columns.some(col => col.key === 'customer_name')).toBe(true)
   })
+
+  it('orders data columns by field.order from store config', () => {
+    const config = getDefaultConfig()
+    const reordered = config.fields.map(field => ({
+      ...field,
+      order:
+        field.key === 'pay_status'
+          ? 0
+          : field.key === 'customer_name'
+            ? 1
+            : field.order + 10,
+      visible:
+        field.key === 'pay_status' || field.key === 'customer_name' || field.visible,
+    }))
+    const columns = buildOrderTableColumns({ version: 1, fields: reordered })
+    const dataKeys = columns
+      .map(col => col.key)
+      .filter(key => key !== 'export' && key !== 'cancel')
+    expect(dataKeys.indexOf('pay_status')).toBeLessThan(dataKeys.indexOf('customer_name'))
+  })
 })
 
 describe('formatOrderFieldValue', () => {

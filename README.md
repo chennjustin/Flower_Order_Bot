@@ -24,6 +24,7 @@
 - [安裝與設定](#安裝與設定)
 - [環境變數](#環境變數)
 - [資料庫與店家（store）](#資料庫與店家store)
+- [多店後台 API 與欄位設定](#多店後台-api-與欄位設定)
 - [執行應用程式](#執行應用程式)
 - [Webhook 配置](#webhook-配置)
 - [API 契約守門](#api-契約守門)
@@ -140,6 +141,64 @@ PYTHONPATH=. python app/seeds/seed_all.py
 
 若仍要連過去 compose 裡的 `db` 容器，請在 `.env` 取消註解 `POSTGRES_*` 並自行調整 `docker-compose`；**目前預設流程以 Supabase 為準**，根目錄 `docker-compose.yml` 已不含 `db` 服務。
 
+### 每店訂單欄位設定（`store_order_field_config`）
+
+每家店在 `store_order_field_config` 表有一列（`store_id` unique）。顯示與拖曳順序主要存在 JSON 欄位 **`display_config`**：
+
+```json
+{
+  "visible_fields": ["id", "customer_name", "item", "quantity", "..."],
+  "field_order": ["customer_name", "item", "id", "quantity", "..."]
+}
+```
+
+| 鍵 | 說明 |
+|----|------|
+| `visible_fields` | 後台列表／草稿／CSV 要顯示的 catalog key（固定欄位永遠在內） |
+| `field_order` | **完整** catalog 的顯示順序（含隱藏欄位）；設定頁拖曳只更新此順序 |
+
+舊欄位 `visible_fields`（JSON 陣列）仍會 dual-write，方便 rollback。Catalog 的 key／中文 label 定義在後端 `app/domain/order_fields.py` 與前端 `frontend/src/config/orderDisplayFields.ts`，須保持同步（測試：`test_order_fields_catalog_alignment.py`）。
+
+---
+
+## 多店後台 API 與欄位設定
+
+### 目前店家（Staff Dashboard）
+
+後台 React 應用在 Navbar 選店，將 `active-store-id` 寫入 `localStorage`，並由 axios 對下列 API 帶 **`X-Store-Id: <storeId>`**（亦可改用 query `?store_id=`，header 優先）：
+
+| 端點 | 說明 |
+|------|------|
+| `GET /stores` | 選店列表（`id`, `name`, `slug`），**不需** `X-Store-Id` |
+| `GET /orders` | 僅該店訂單（經 `order` → `chat_room.store_id`） |
+| `GET /chat_rooms` | 僅該店聊天室 |
+| `GET /stats` | 僅該店統計 |
+| `GET/PUT /stores/{store_id}/order-field-config` | 路徑 `store_id` 必須與 header/query 一致，否則 403 |
+
+缺少店家 context 時回 **400**；店家不存在回 **404**。
+
+開發用舊端點 `GET/PUT /store/order-field-config/default`（取 DB 第一筆 store）仍保留，**正式前端已改打** `/stores/{id}/order-field-config`。
+
+### DOCX 工單
+
+`GET /orders/{order_id}.docx` 依訂單所屬 `chat_room.store_id` 讀欄位設定；模板占位符對 **所有** catalog key 都會渲染，隱藏欄位填空字串（避免 docxtpl 缺變數）。
+
+### 安全說明（重要）
+
+目前後台**沒有登入／授權**；`X-Store-Id` 屬「信任前端帶入」模式，任何人只要能呼叫 API 即可指定店家。正式上線前應將 `store_id` 與 `owner_auth_user_id`（或 Supabase Auth JWT）綁定。LINE Bot 新顧客仍使用 `get_first_store_id()` 掛到最小 `id` 的 store，與後台選店無關。
+
+### 相關測試
+
+```bash
+# 後端（在 backend、venv 已啟用）
+pytest tests/test_store_context.py tests/test_store_scoped_api.py \
+  tests/test_orders_repository_store_scope.py tests/test_multi_store_docx_and_config.py \
+  tests/test_order_field_config_service.py tests/test_order_fields_catalog_alignment.py
+
+# 前端
+cd frontend && npm run test
+```
+
 ---
 
 ## 🚀 執行應用程式
@@ -241,13 +300,16 @@ pytest tests/test_contract_smoke.py
 
 ### `frontend/`（React + TypeScript）
 
-- Vite、TanStack Query、React Router（`/`、`/orders`、`/messages`、`/stats`）
+- Vite、TanStack Query、React Router（`/`、`/orders`、`/messages`、`/stats`、`/settings/order-fields`）
 - `frontend/.env`：`VITE_API_BASE_URL`（預設 `http://localhost:8000`）
+- `StoreContext` + Navbar 選店 → axios `X-Store-Id`；欄位設定 per-store：`order-display-config:{storeId}`
 
 ### 重構後手動 smoke
 
+- Navbar 選店後，Network 中 `/orders`、`/chat_rooms`、`/stats` 帶正確 `X-Store-Id`；切店後列表與統計數字改變。
 - 首頁訂單表與統計可載入；刪除訂單後列表刷新。
 - `Messages`：切換聊天室、送訊、右側草稿面板、「更新／建立工單」。
+- `settings/order-fields`：拖曳順序與顯示開關儲存後，重新整理仍正確；A/B 店設定互不干擾。
 - DOCX 下載、CSV 瀏覽器下載。
 - `docker compose up` 下 5173 / 8000 行為與本機模式一致。
 
