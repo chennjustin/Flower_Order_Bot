@@ -6,6 +6,7 @@ from datetime import datetime
 from typing import List, Optional
 
 from fastapi import HTTPException, status
+from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.time import to_taipei_aware, to_taipei_naive
@@ -254,6 +255,22 @@ async def delete_order_by_id(db: AsyncSession, order_id: int) -> bool:
     return True
 
 
+async def _mark_chat_messages_processed(
+    db: AsyncSession, room_id: int, message_ids: list[int]
+) -> None:
+    if not message_ids:
+        return
+    stmt = (
+        update(ChatMessage)
+        .where(
+            ChatMessage.id.in_(message_ids),
+            ChatMessage.room_id == room_id,
+        )
+        .values(processed=True)
+    )
+    await db.execute(stmt)
+
+
 async def update_order_fields_by_id(
     db: AsyncSession, order_id: int, patch: OrderPatchUpdate
 ) -> OrderOut:
@@ -263,6 +280,8 @@ async def update_order_fields_by_id(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Order with id {order_id} not found.",
         )
+
+    message_ids_to_mark = patch.mark_processed_message_ids or []
 
     if patch.customer_name is not None:
         order.customer_name = patch.customer_name
@@ -291,6 +310,7 @@ async def update_order_fields_by_id(
 
     order.updated_at = now_taipei_naive()
     db.add(order)
+    await _mark_chat_messages_processed(db, order.room_id, message_ids_to_mark)
     await db.commit()
     await db.refresh(order)
 

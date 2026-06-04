@@ -1,4 +1,9 @@
-import type { Order, OrderDraft, OrderDraftUpdate } from '@/types/domain'
+import type {
+  Order,
+  OrderDraft,
+  OrderDraftUpdate,
+  OrderPatchUpdate,
+} from '@/types/domain'
 import type { OrderStatus, PaymentStatus, ShipmentMethod } from '@/types/enums'
 import type { OrderFieldKey } from '@/types/orderDisplay'
 import {
@@ -177,6 +182,37 @@ export function formStateFromOrder(order: Order): FormState {
     pay_status: order.pay_status ?? 'PENDING',
     order_status: order.order_status ?? 'CONFIRMED',
   }
+}
+
+/** Apply a suggested PATCH onto form state (preview before save). */
+export function orderPatchToFormState(
+  patch: OrderPatchUpdate,
+  order: Order,
+): FormState {
+  const merged: Order = {
+    ...order,
+    customer_name: patch.customer_name ?? order.customer_name,
+    customer_phone: patch.customer_phone ?? order.customer_phone,
+    total_amount: patch.total_amount ?? order.total_amount,
+    pay_status: patch.pay_status ?? order.pay_status,
+    item: patch.item ?? order.item,
+    quantity: patch.quantity ?? order.quantity,
+    note: patch.note ?? order.note,
+    shipment_method: patch.shipment_method ?? order.shipment_method,
+    send_datetime: patch.send_datetime ?? order.send_datetime,
+    delivery_address: patch.delivery_address ?? order.delivery_address,
+    pay_way: patch.pay_way ?? order.pay_way,
+    order_status: patch.order_status ?? order.order_status,
+  }
+  return formStateFromOrder(merged)
+}
+
+/** True when form differs from the loaded order snapshot. */
+export function isOrderFormDirty(form: FormState, order: Order): boolean {
+  const baseline = formStateFromOrder(order)
+  return (Object.keys(form) as (keyof FormState)[]).some(
+    key => form[key] !== baseline[key],
+  )
 }
 
 /** Payload for PATCH /orders/{order_id}. */

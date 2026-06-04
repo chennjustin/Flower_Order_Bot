@@ -21,7 +21,9 @@ from app.schemas.order import (
     OrderDraftCreate,
     OrderPatchUpdate,
     OrderStatusUpdate,
+    OrderSuggestFromChatOut,
 )
+from app.usecases.suggest_order_from_chat import suggest_order_from_chat
 api_router = APIRouter()
 
 @api_router.get("/orders", response_model=Optional[List[OrderOut]])
@@ -46,6 +48,14 @@ async def patch_order(
     db: AsyncSession = Depends(get_db),
 ):
     return await update_order_fields_by_id(db, order_id, body)
+
+
+@api_router.post("/orders/{order_id}/suggest-from-chat", response_model=OrderSuggestFromChatOut)
+async def suggest_order_from_chat_route(
+    order_id: int,
+    db: AsyncSession = Depends(get_db),
+):
+    return await suggest_order_from_chat(db, order_id)
 
 
 # 更新 order 狀態（店家手動標示）
