@@ -1,21 +1,11 @@
-from datetime import datetime
-from typing import Optional
-from uuid import UUID
+"""Schemas for store listing (multi-tenant picker)."""
 
-from pydantic import BaseModel, ConfigDict
+from __future__ import annotations
 
-
-class StoreBase(BaseModel):
-    name: str
-    slug: Optional[str] = None
-    timezone: str = "Asia/Taipei"
-    active: bool = True
+from pydantic import BaseModel
 
 
-class StoreRead(StoreBase):
-    model_config = ConfigDict(from_attributes=True)
-
+class StoreListItem(BaseModel):
     id: int
-    owner_auth_user_id: UUID
-    created_at: datetime
-    updated_at: datetime
+    name: str
+    slug: str | None = None

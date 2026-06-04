@@ -100,23 +100,31 @@ async def require_path_store_id_matches(
 async def get_resolved_store_id(
     db: AsyncSession = Depends(get_db),
     x_store_id: Annotated[str | None, Header(alias=STORE_ID_HEADER)] = None,
-    store_id: Annotated[int | None, Query(description="Active store id")] = None,
+    store_id_query: Annotated[
+        int | None, Query(alias="store_id", description="Active store id")
+    ] = None,
 ) -> int:
     """FastAPI dependency: header-first, then query store_id."""
     return await resolve_store_id(
         db,
         header_value=x_store_id,
-        query_value=store_id,
+        query_value=store_id_query,
     )
 
 
 async def get_resolved_store_id_with_path(
-    path_store_id: int,
+    store_id: int,
     db: AsyncSession = Depends(get_db),
     x_store_id: Annotated[str | None, Header(alias=STORE_ID_HEADER)] = None,
-    store_id: Annotated[int | None, Query(description="Active store id")] = None,
+    store_id_query: Annotated[
+        int | None, Query(alias="store_id", description="Active store id")
+    ] = None,
 ) -> int:
     """FastAPI dependency for routes that also include store_id in the path."""
-    resolved = await get_resolved_store_id(db=db, x_store_id=x_store_id, store_id=store_id)
-    await require_path_store_id_matches(path_store_id, resolved)
+    resolved = await resolve_store_id(
+        db,
+        header_value=x_store_id,
+        query_value=store_id_query,
+    )
+    await require_path_store_id_matches(store_id, resolved)
     return resolved

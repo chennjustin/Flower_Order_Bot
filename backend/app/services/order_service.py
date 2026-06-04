@@ -77,9 +77,9 @@ async def _build_order_out(db: AsyncSession, order: Order) -> Optional[OrderOut]
     )
 
 
-async def get_all_orders(db: AsyncSession) -> Optional[List[OrderOut]]:
+async def get_all_orders(db: AsyncSession, store_id: int) -> Optional[List[OrderOut]]:
     results: list[OrderOut] = []
-    for order in await list_active_orders(db):
+    for order in await list_active_orders(db, store_id):
         out = await _build_order_out(db, order)
         if out:
             results.append(out)

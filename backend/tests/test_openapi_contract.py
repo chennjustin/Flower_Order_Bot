@@ -26,6 +26,7 @@ async def test_openapi_contains_frozen_core_paths():
     expected_paths = {
         "/health",
         "/callback",
+        "/stores",
         "/orders",
         "/order/{room_id}",
         "/order/{order_id}",

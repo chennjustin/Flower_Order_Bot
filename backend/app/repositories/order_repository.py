@@ -5,6 +5,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.enums.order import OrderStatus
+from app.models.chat import ChatRoom
 from app.models.order import Order, OrderDraft
 from app.core.time import now_taipei_naive
 
@@ -26,8 +27,12 @@ async def get_order_by_id(db: AsyncSession, order_id: int) -> Optional[Order]:
     return result.scalar_one_or_none()
 
 
-async def list_active_orders(db: AsyncSession) -> list[Order]:
-    stmt = select(Order).where(Order.status != OrderStatus.CANCELLED)
+async def list_active_orders(db: AsyncSession, store_id: int) -> list[Order]:
+    stmt = (
+        select(Order)
+        .join(ChatRoom, Order.room_id == ChatRoom.id)
+        .where(Order.status != OrderStatus.CANCELLED, ChatRoom.store_id == store_id)
+    )
     result = await db.execute(stmt)
     return result.scalars().all()
 
