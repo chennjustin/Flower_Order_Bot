@@ -9,10 +9,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.time import now_taipei_naive
 from app.domain.order_fields import (
+    ALL_CATALOG_KEYS,
     CORE_ORGANIZE_FIELDS,
     FIXED_VISIBLE_FIELDS,
     OPTIONAL_ORGANIZE_FIELDS,
     OPTIONAL_VISIBLE_FIELDS,
+    build_display_config,
 )
 from app.models.order_field_config import StoreOrderFieldConfig
 from app.models.store import Store
@@ -82,9 +84,11 @@ async def _get_or_create_config(db: AsyncSession, store_id: int) -> StoreOrderFi
     if config:
         return config
 
+    normalized_visible = _normalize_visible_fields(None)
     config = StoreOrderFieldConfig(
         store_id=store_id,
-        visible_fields=_normalize_visible_fields(None),
+        visible_fields=normalized_visible,
+        display_config=build_display_config(normalized_visible, list(ALL_CATALOG_KEYS)),
         organize_required_fields=[],
         created_at=now_taipei_naive(),
         updated_at=now_taipei_naive(),

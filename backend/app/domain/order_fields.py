@@ -87,3 +87,14 @@ def get_field_label(key: str) -> str:
 
 def is_catalog_field_key(key: str) -> bool:
     return key in FIELD_LABELS
+
+
+def build_display_config(
+    visible_fields: list[str],
+    field_order: list[str] | None = None,
+) -> dict[str, list[str]]:
+    """Default JSON payload for store_order_field_config.display_config."""
+    return {
+        "visible_fields": visible_fields,
+        "field_order": list(field_order) if field_order is not None else list(ALL_CATALOG_KEYS),
+    }
