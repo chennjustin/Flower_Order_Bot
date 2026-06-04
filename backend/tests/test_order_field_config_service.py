@@ -1,4 +1,5 @@
 from app.domain.order_fields import FIELD_LABELS, FIXED_VISIBLE_FIELDS
+from app.domain.order_fields import CORE_ORGANIZE_FIELDS
 from app.services.order_field_config_service import (
     _normalize_organize_required_fields,
     _normalize_visible_fields,
@@ -36,3 +37,13 @@ def test_resolve_optional_required_fields_uses_visible_and_manual() -> None:
         organize_required_fields=["delivery_address"],
     )
     assert fields == ["quantity", "note", "delivery_address"]
+
+
+def test_effective_organize_required_includes_core_plus_visible_optional() -> None:
+    visible_fields = _normalize_visible_fields(["quantity", "pay_status"])
+    optional_required = _resolve_optional_required_fields(visible_fields, [])
+    effective = [*CORE_ORGANIZE_FIELDS, *optional_required]
+    assert set(CORE_ORGANIZE_FIELDS) <= set(effective)
+    assert "quantity" in effective
+    assert "pay_status" in effective
+    assert "note" not in effective

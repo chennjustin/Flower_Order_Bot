@@ -4,11 +4,14 @@ from app.enums.order import OrderStatus
 from app.enums.payment import PaymentStatus
 from app.enums.shipment import ShipmentMethod
 from app.schemas.order import OrderOut
+from app.models.order import OrderDraft
 from app.services.order_field_values import (
     build_docx_render_context,
     build_legacy_docx_context,
     build_order_field_context,
+    draft_out_catalog_values,
     format_order_field_value,
+    order_draft_catalog_values,
 )
 
 
@@ -61,3 +64,39 @@ def test_build_docx_render_context_merges_legacy_and_catalog() -> None:
     assert merged["phone"] == "0912345678"
     assert merged["id"] == "42"
     assert merged["item"] == "花束"
+
+
+class DummyCustomer:
+    name = "Amy"
+    phone = "0912345678"
+
+
+def test_order_draft_catalog_values_maps_orm_to_catalog_keys() -> None:
+    draft = OrderDraft()
+    draft.item_type = "bouquet"
+    draft.notes = "pink"
+    draft.delivery_datetime = datetime(2026, 6, 2, 14, 0)
+    draft.total_amount = 500
+    values = order_draft_catalog_values(draft, DummyCustomer())
+    assert values["item"] == "bouquet"
+    assert values["note"] == "pink"
+    assert values["send_datetime"] == draft.delivery_datetime
+    assert values["customer_name"] == "Amy"
+
+
+def test_draft_out_catalog_values_prefers_update_over_draft() -> None:
+    from app.schemas.order import OrderDraftOut, OrderDraftUpdate
+
+    draft = OrderDraftOut(
+        id=1,
+        customer_name="Old",
+        customer_phone="0900000000",
+        item="old item",
+        total_amount=100,
+        order_date=datetime(2026, 6, 1, 10, 0),
+    )
+    update = OrderDraftUpdate(item="new item", total_amount=200)
+    values = draft_out_catalog_values(draft, update)
+    assert values["item"] == "new item"
+    assert values["total_amount"] == 200
+    assert values["customer_name"] == "Old"

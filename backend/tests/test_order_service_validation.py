@@ -104,3 +104,44 @@ async def test_validate_order_draft_required_fields_reports_catalog_keys(
     assert "send_datetime" in missing_fields
     assert "customer_name" in missing_fields
     assert "customer_phone" in missing_fields
+
+
+@pytest.mark.asyncio
+async def test_validate_reports_optional_field_when_visible_and_required(
+    monkeypatch,
+):
+    async def fake_get_chat_room_by_room_id(_db, _room_id):
+        return DummyRoom()
+
+    async def fake_get_effective_order_field_config(_db, _store_id):
+        return EffectiveOrderFieldConfig(
+            store_id=1,
+            visible_fields=[],
+            organize_required_fields=[
+                *CORE_ORGANIZE_FIELDS,
+                "quantity",
+            ],
+        )
+
+    async def fake_get_user_by_id(_db, _customer_id):
+        return DummyCustomer()
+
+    monkeypatch.setattr(
+        order_service, "get_chat_room_by_room_id", fake_get_chat_room_by_room_id
+    )
+    monkeypatch.setattr(
+        order_service,
+        "get_effective_order_field_config",
+        fake_get_effective_order_field_config,
+    )
+    monkeypatch.setattr(order_service, "get_user_by_id", fake_get_user_by_id)
+
+    order_draft = DummyOrderDraft()
+    order_draft.quantity = None
+    is_complete, missing_fields = await order_service.validate_order_draft_required_fields(
+        db=None,
+        order_draft=order_draft,
+    )
+
+    assert is_complete is False
+    assert missing_fields == ["quantity"]
