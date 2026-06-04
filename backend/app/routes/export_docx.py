@@ -1,54 +1,37 @@
-from fastapi import APIRouter, Depends
-from fastapi import HTTPException
-from fastapi.responses import StreamingResponse
-from sqlalchemy.ext.asyncio import AsyncSession
-from app.services.order_service import get_all_orders
-from app.core.database import get_db
-from docxtpl import DocxTemplate
 import io
 from pathlib import Path
+
+from docxtpl import DocxTemplate
+from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import StreamingResponse
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.database import get_db
+from app.services.message_service import get_chat_room_by_room_id
+from app.services.order_field_config_service import get_effective_order_field_config
+from app.services.order_field_values import build_docx_render_context
+from app.services.order_service import get_order, get_order_out_by_id
 
 api_router = APIRouter()
 TEMPLATE_PATH = Path(__file__).resolve().parents[2] / "docs" / "order_template.docx"
 
+
 @api_router.get("/orders/{order_id}.docx")
 async def export_order_docx(order_id: int, db: AsyncSession = Depends(get_db)):
-    orders = await get_all_orders(db)
-    order = next((o for o in orders if o.id == order_id), None)
+    order_row = await get_order(db, order_id)
+    if not order_row:
+        raise HTTPException(status_code=404, detail="Order not found")
+
+    order = await get_order_out_by_id(db, order_id)
     if not order:
-        return {"error": "Order not found"}
+        raise HTTPException(status_code=404, detail="Order not found")
 
-    # 處理 send_datetime 與中文星期
-    send_datetime_str = ""
-    weekday_str = ""
-    if getattr(order, "send_datetime", None):
-        send_datetime_str = order.send_datetime.strftime("%Y-%m-%d %H:%M")
-        WEEKDAY_MAP = {
-            "Monday": "星期一",
-            "Tuesday": "星期二",
-            "Wednesday": "星期三",
-            "Thursday": "星期四",
-            "Friday": "星期五",
-            "Saturday": "星期六",
-            "Sunday": "星期日",
-        }
-        weekday_str = WEEKDAY_MAP.get(order.send_datetime.strftime("%A"), "")
+    room = await get_chat_room_by_room_id(db, order_row.room_id)
+    if not room:
+        raise HTTPException(status_code=404, detail="Chat room not found")
 
-    context = {
-        "customer_name": order.customer_name,
-        "phone": order.customer_phone,
-        "timestamp": order.order_date.strftime("%Y-%m-%d") if getattr(order, "order_date", None) else "",
-        "item": order.item,
-        "quantity": order.quantity,
-        "pay_way": getattr(order, "pay_way", ""),
-        "note": order.note,
-        "weekday": weekday_str,
-        "send_datetime": send_datetime_str,
-        "receiver_name": getattr(order, "customer_name", ""),
-        "receiver_phone": getattr(order, "customer_phone", ""),
-        "delivery_address": getattr(order, "delivery_address", ""),
-        "total_amount": getattr(order, "total_amount", 0),
-    }
+    field_config = await get_effective_order_field_config(db, room.store_id)
+    context = build_docx_render_context(order, field_config.visible_fields)
 
     if not TEMPLATE_PATH.exists():
         raise HTTPException(status_code=500, detail="DOCX template not found")
@@ -63,5 +46,5 @@ async def export_order_docx(order_id: int, db: AsyncSession = Depends(get_db)):
     return StreamingResponse(
         file_stream,
         media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        headers={"Content-Disposition": f"attachment; filename=order_{order_id}.docx"}
+        headers={"Content-Disposition": f"attachment; filename=order_{order_id}.docx"},
     )
