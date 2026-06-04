@@ -39,7 +39,7 @@ export default function OrderFieldSettingsPage() {
   return (
     <div className="min-h-screen bg-[#F7F7F7]">
       <PageHeader title="訂單欄位設定" />
-      <div className="flex justify-center px-4 pb-12 pt-[136px]">
+      <div className="flex justify-center px-4 pb-12 pt-[160px]">
         <div className="flex w-full max-w-[820px] flex-col items-center justify-center gap-6 lg:flex-row lg:items-stretch lg:gap-8">
           <section className={settingsCardClass}>
             <div className="flex flex-1 flex-col px-10 pt-8">
