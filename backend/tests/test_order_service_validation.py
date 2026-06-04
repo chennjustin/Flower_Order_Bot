@@ -1,6 +1,6 @@
 import pytest
 
-from app.domain.order_fields import CORE_ORGANIZE_FIELDS
+from app.domain.order_fields import ALL_CATALOG_KEYS, CORE_ORGANIZE_FIELDS
 from app.services import order_service
 from app.services.order_field_config_service import EffectiveOrderFieldConfig
 
@@ -47,6 +47,7 @@ def patch_field_config(monkeypatch):
         return EffectiveOrderFieldConfig(
             store_id=1,
             visible_fields=[],
+            field_order=list(ALL_CATALOG_KEYS),
             organize_required_fields=list(CORE_ORGANIZE_FIELDS),
         )
 
@@ -117,6 +118,7 @@ async def test_validate_reports_optional_field_when_visible_and_required(
         return EffectiveOrderFieldConfig(
             store_id=1,
             visible_fields=[],
+            field_order=list(ALL_CATALOG_KEYS),
             organize_required_fields=[
                 *CORE_ORGANIZE_FIELDS,
                 "quantity",
