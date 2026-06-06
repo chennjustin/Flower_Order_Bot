@@ -1,6 +1,6 @@
 import { Archive, ChevronDown, ClipboardList, Loader2 } from 'lucide-react'
 import { useState } from 'react'
-import { useSwitchChatRoomMode } from '@/hooks/useChatRooms'
+import { useSwitchChatRoomMode, type ChatRoomsFilter } from '@/hooks/useChatRooms'
 import {
   Popover,
   PopoverContent,
@@ -24,6 +24,7 @@ interface ChatHeaderProps {
   onOrganizeOrder: () => void
   isOrganizing?: boolean
   showOrganizeButton?: boolean
+  roomFilters: ChatRoomsFilter
 }
 
 export default function ChatHeader({
@@ -36,8 +37,9 @@ export default function ChatHeader({
   onOrganizeOrder,
   isOrganizing,
   showOrganizeButton = true,
+  roomFilters,
 }: ChatHeaderProps) {
-  const switchMode = useSwitchChatRoomMode(roomId)
+  const switchMode = useSwitchChatRoomMode(roomId, roomFilters)
   const [stageMenuOpen, setStageMenuOpen] = useState(false)
   const currentStage = (status ?? 'IDLE') as ChatRoomStage
   const isSwitching = switchMode.isPending

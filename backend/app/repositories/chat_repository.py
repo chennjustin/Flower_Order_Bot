@@ -3,12 +3,13 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
-from sqlalchemy import select, update
+from sqlalchemy import and_, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
 from app.enums.chat import ChatMessageDirection, ChatMessageStatus, ChatRoomStage
 from app.models.chat import ChatMessage, ChatRoom
+from app.models.customer import Customer
 from app.schemas.chat import ChatMessagePayload
 
 
@@ -23,14 +24,104 @@ async def get_latest_chat_message(db: AsyncSession, room_id: int) -> Optional[Ch
     return result.scalar_one_or_none()
 
 
-async def list_chat_rooms(db: AsyncSession, store_id: int | None = None) -> list[ChatRoom]:
-    stmt = (
-        select(ChatRoom)
-        .options(joinedload(ChatRoom.customer))
-        .order_by(ChatRoom.updated_at.desc())
+def _apply_chat_room_filters(
+    stmt,
+    *,
+    store_id: int,
+    stage: Optional[ChatRoomStage] = None,
+    q: Optional[str] = None,
+):
+    stmt = stmt.join(Customer, ChatRoom.customer_id == Customer.id).where(
+        ChatRoom.store_id == store_id
     )
-    if store_id is not None:
-        stmt = stmt.where(ChatRoom.store_id == store_id)
+    if stage is not None:
+        stmt = stmt.where(ChatRoom.stage == stage)
+    search = (q or "").strip()
+    if search:
+        stmt = stmt.where(Customer.name.ilike(f"%{search}%"))
+    return stmt
+
+
+async def sum_store_unread_count(db: AsyncSession, store_id: int) -> int:
+    stmt = select(func.coalesce(func.sum(ChatRoom.unread_count), 0)).where(
+        ChatRoom.store_id == store_id
+    )
+    result = await db.execute(stmt)
+    return int(result.scalar() or 0)
+
+
+async def count_chat_rooms_filtered(
+    db: AsyncSession,
+    store_id: int,
+    *,
+    stage: Optional[ChatRoomStage] = None,
+    q: Optional[str] = None,
+) -> int:
+    stmt = select(func.count()).select_from(ChatRoom)
+    stmt = _apply_chat_room_filters(stmt, store_id=store_id, stage=stage, q=q)
+    result = await db.execute(stmt)
+    return int(result.scalar() or 0)
+
+
+async def list_chat_rooms_paginated(
+    db: AsyncSession,
+    store_id: int,
+    *,
+    limit: int,
+    offset: int,
+    stage: Optional[ChatRoomStage] = None,
+    q: Optional[str] = None,
+) -> list[ChatRoom]:
+    stmt = select(ChatRoom).options(joinedload(ChatRoom.customer))
+    stmt = _apply_chat_room_filters(stmt, store_id=store_id, stage=stage, q=q)
+    stmt = stmt.order_by(
+        func.coalesce(ChatRoom.last_message_ts, ChatRoom.updated_at).desc()
+    )
+    stmt = stmt.limit(limit).offset(offset)
+    result = await db.execute(stmt)
+    return list(result.scalars().unique().all())
+
+
+async def get_latest_messages_for_room_ids(
+    db: AsyncSession, room_ids: list[int]
+) -> dict[int, ChatMessage]:
+    if not room_ids:
+        return {}
+    latest_subq = (
+        select(
+            ChatMessage.room_id,
+            func.max(ChatMessage.created_at).label("max_created_at"),
+        )
+        .where(ChatMessage.room_id.in_(room_ids))
+        .group_by(ChatMessage.room_id)
+        .subquery()
+    )
+    stmt = select(ChatMessage).join(
+        latest_subq,
+        and_(
+            ChatMessage.room_id == latest_subq.c.room_id,
+            ChatMessage.created_at == latest_subq.c.max_created_at,
+        ),
+    )
+    result = await db.execute(stmt)
+    messages = result.scalars().all()
+    return {message.room_id: message for message in messages}
+
+
+async def list_chat_rooms(db: AsyncSession, store_id: int | None = None) -> list[ChatRoom]:
+    if store_id is None:
+        stmt = (
+            select(ChatRoom)
+            .options(joinedload(ChatRoom.customer))
+            .order_by(ChatRoom.updated_at.desc())
+        )
+    else:
+        return await list_chat_rooms_paginated(
+            db,
+            store_id,
+            limit=10_000,
+            offset=0,
+        )
     result = await db.execute(stmt)
     return result.scalars().all()
 

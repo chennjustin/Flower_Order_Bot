@@ -40,6 +40,23 @@ async def get_payment_method_by_order_id(
     return row[1]
 
 
+async def get_payment_methods_by_order_ids(
+    db: AsyncSession, order_ids: list[int]
+) -> dict[int, PaymentMethod]:
+    if not order_ids:
+        return {}
+    stmt = (
+        select(Payment.order_id, PaymentMethod)
+        .join(PaymentMethod, Payment.method_id == PaymentMethod.id)
+        .where(Payment.order_id.in_(order_ids))
+    )
+    result = await db.execute(stmt)
+    mapping: dict[int, PaymentMethod] = {}
+    for order_id, method in result.all():
+        mapping.setdefault(order_id, method)
+    return mapping
+
+
 async def save_payment_method(
     db: AsyncSession, payment_method: PaymentMethod
 ) -> PaymentMethod:

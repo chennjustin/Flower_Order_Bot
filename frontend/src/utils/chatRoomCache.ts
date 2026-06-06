@@ -1,11 +1,13 @@
-import type { QueryClient } from '@tanstack/react-query'
+import type { InfiniteData, QueryClient } from '@tanstack/react-query'
 
 import { fetchRoomMessages } from '@/api/messages'
-import { chatRoomsQueryKey, roomMessagesQueryKey } from '@/lib/storeQueryKeys'
-import type { ChatMessage, ChatMessageBody, ChatRoom } from '@/types/domain'
+import { roomMessagesQueryKey } from '@/lib/storeQueryKeys'
+import type { ChatMessage, ChatMessageBody, ChatRoom, ChatRoomListResponse } from '@/types/domain'
 import { ChatMessageDirection, ChatMessageStatus } from '@/types/enums'
 
 export { roomMessagesQueryKey } from '@/lib/storeQueryKeys'
+
+type ChatRoomsInfinite = InfiniteData<ChatRoomListResponse>
 
 export function previewTextFromBody(body: ChatMessageBody): string {
   const text = (body.text ?? '').trim()
@@ -33,6 +35,39 @@ export function sortChatRoomsByLastMessage(rooms: ChatRoom[]): ChatRoom[] {
   })
 }
 
+function patchInfiniteChatRooms(
+  data: ChatRoomsInfinite | undefined,
+  roomId: number,
+  patch: { text: string; timestamp: string },
+  options?: { bumpUnread?: boolean; selectedRoomId?: number | null },
+): ChatRoomsInfinite | undefined {
+  if (!data) return data
+  return {
+    ...data,
+    pages: data.pages.map((page, pageIndex) => ({
+      ...page,
+      items: sortChatRoomsByLastMessage(
+        page.items.map(room => {
+          if (room.room_id !== roomId) return room
+          const bumpUnread =
+            options?.bumpUnread === true &&
+            options.selectedRoomId != null &&
+            roomId !== options.selectedRoomId
+          return {
+            ...room,
+            unread_count: bumpUnread ? room.unread_count + 1 : room.unread_count,
+            last_message: { text: patch.text, timestamp: patch.timestamp },
+          }
+        }),
+      ),
+      total_unread:
+        pageIndex === 0 && options?.bumpUnread && options.selectedRoomId !== roomId
+          ? page.total_unread + 1
+          : page.total_unread,
+    })),
+  }
+}
+
 export function patchChatRoomLastMessage(
   qc: QueryClient,
   storeId: number,
@@ -40,22 +75,10 @@ export function patchChatRoomLastMessage(
   patch: { text: string; timestamp: string },
   options?: { bumpUnread?: boolean; selectedRoomId?: number | null },
 ): void {
-  qc.setQueryData<ChatRoom[]>(chatRoomsQueryKey(storeId), rooms => {
-    if (!rooms) return rooms
-    const updated = rooms.map(room => {
-      if (room.room_id !== roomId) return room
-      const bumpUnread =
-        options?.bumpUnread === true &&
-        options.selectedRoomId != null &&
-        roomId !== options.selectedRoomId
-      return {
-        ...room,
-        unread_count: bumpUnread ? room.unread_count + 1 : room.unread_count,
-        last_message: { text: patch.text, timestamp: patch.timestamp },
-      }
-    })
-    return sortChatRoomsByLastMessage(updated)
-  })
+  qc.setQueriesData<ChatRoomsInfinite>(
+    { queryKey: ['chatRooms', storeId] },
+    data => patchInfiniteChatRooms(data, roomId, patch, options),
+  )
 }
 
 export function mergeRoomMessages(
