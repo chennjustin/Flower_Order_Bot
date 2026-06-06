@@ -1,5 +1,4 @@
 import { useRef, useEffect, useState } from 'react'
-import { createPortal } from 'react-dom'
 import { useBlocker, useSearchParams } from 'react-router-dom'
 import OrderTable from '@/components/orders/OrderTable'
 import OrderDetailDialog from '@/components/orders/OrderDetailDialog'
@@ -105,31 +104,35 @@ export default function OrdersPage() {
         </DialogContent>
       </Dialog>
 
-      {(showLeaveDialog || blocker.state === 'blocked') && createPortal(
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/30">
-          <div className="w-[280px] rounded-2xl bg-white px-6 py-5 shadow-xl font-['Noto_Sans_TC',sans-serif]">
-            <p className="mb-1 text-base font-bold text-black">確定要離開？</p>
-            <p className="mb-5 text-sm text-black/50">尚未儲存的變更將會遺失。</p>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={handleLeaveCancel}
-                className="flex h-10 flex-1 items-center justify-center rounded-xl border border-[#e0e3ed] text-sm font-bold text-black/60 transition hover:bg-[#F5F5F5]"
-              >
-                繼續編輯
-              </button>
-              <button
-                type="button"
-                onClick={handleLeaveConfirm}
-                className="flex h-10 flex-1 items-center justify-center rounded-xl bg-red-500 text-sm font-bold text-white transition hover:bg-red-600"
-              >
-                離開
-              </button>
-            </div>
+      <Dialog open={showLeaveDialog || blocker.state === 'blocked'} onOpenChange={() => {}}>
+        <DialogContent
+          hideClose
+          overlayClassName="z-[9998] bg-black/30"
+          className="z-[9999] w-[280px] rounded-2xl border-0 px-6 py-5 shadow-xl"
+          onPointerDownOutside={e => e.preventDefault()}
+          onInteractOutside={e => e.preventDefault()}
+        >
+          <DialogTitle className="sr-only">確定要離開？</DialogTitle>
+          <p className="mb-1 text-base font-bold text-black font-['Noto_Sans_TC',sans-serif]">確定要離開？</p>
+          <p className="mb-5 text-sm text-black/50 font-['Noto_Sans_TC',sans-serif]">尚未儲存的變更將會遺失。</p>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={handleLeaveCancel}
+              className="flex h-10 flex-1 items-center justify-center rounded-xl border border-[#e0e3ed] text-sm font-bold text-black/60 transition hover:bg-[#F5F5F5] font-['Noto_Sans_TC',sans-serif] outline-none"
+            >
+              繼續編輯
+            </button>
+            <button
+              type="button"
+              onClick={handleLeaveConfirm}
+              className="flex h-10 flex-1 items-center justify-center rounded-xl bg-red-500 text-sm font-bold text-white transition hover:bg-red-600 font-['Noto_Sans_TC',sans-serif]"
+            >
+              離開
+            </button>
           </div>
-        </div>,
-        document.body,
-      )}
+        </DialogContent>
+      </Dialog>
     </>
   )
 }

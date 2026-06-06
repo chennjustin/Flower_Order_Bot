@@ -347,7 +347,7 @@ export default function OrderFormCard({
               <button
                 type="button"
                 onClick={() => setShowLeaveConfirm(false)}
-                className="flex h-10 flex-1 items-center justify-center rounded-xl border border-[#e0e3ed] text-sm font-bold text-black/60 transition hover:bg-[#F5F5F5]"
+                className="flex h-10 flex-1 items-center justify-center rounded-xl border border-[#e0e3ed] text-sm font-bold text-black/60 transition hover:bg-[#F5F5F5] outline-none"
               >
                 繼續編輯
               </button>
