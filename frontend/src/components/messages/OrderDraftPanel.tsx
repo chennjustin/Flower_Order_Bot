@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Check, ChevronLeft, Pencil, Plus } from 'lucide-react'
-import OrderSidePanelToggle from './OrderSidePanelToggle'
 import {
   useCreateOrder,
   useOrderDraft,
@@ -36,7 +35,7 @@ export default function OrderDraftPanel({
   roomId,
   open,
   onBack,
-  onClosePanel,
+  onClosePanel: _onClosePanel,
 }: OrderDraftPanelProps) {
   const draftQuery = useOrderDraft(roomId, open)
   const updateDraft = useUpdateOrderDraft(roomId)
@@ -169,9 +168,7 @@ export default function OrderDraftPanel({
 
   return (
     <aside className="relative flex h-full w-[336px] flex-shrink-0 flex-col border-l border-[#B3B3B3] bg-white">
-      <OrderSidePanelToggle mode="close" onClick={onClosePanel} />
-
-      <header className="flex h-20 flex-shrink-0 items-center gap-3 border-b-[1.5px] border-[#e9e9e9] px-4 pl-5">
+      <header className="flex h-20 flex-shrink-0 items-center gap-2 border-b-[1.5px] border-[#e9e9e9] px-4">
         <button
           type="button"
           onClick={onBack}

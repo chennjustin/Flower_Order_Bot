@@ -129,7 +129,7 @@ export default function ChatHeader({
             aria-label="開啟訂單詳情"
           >
             <ClipboardList className="h-4 w-4" aria-hidden />
-            <span>訂單詳情</span>
+            <span>訂單</span>
           </button>
         )}
         {showOrganizeButton && (
