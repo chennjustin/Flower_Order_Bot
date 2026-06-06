@@ -271,7 +271,16 @@ def test_store_tablename():
 
 def test_store_has_expected_columns():
     cols = _column_names(Store)
-    for c in ("id", "name", "slug", "timezone", "active", "owner_auth_user_id"):
+    for c in (
+        "id",
+        "name",
+        "slug",
+        "line_channel_access_token",
+        "line_channel_secret",
+        "timezone",
+        "active",
+        "owner_auth_user_id",
+    ):
         assert c in cols, f"Missing: {c}"
 
 

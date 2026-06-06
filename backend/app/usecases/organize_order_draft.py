@@ -23,6 +23,8 @@ from app.services.order_service import (
     get_order_draft_out_by_room,
     update_order_draft_by_room_id,
 )
+from app.core.line_client import line_bot_api_for_store
+from app.repositories.store_repository import get_store_by_id
 from app.services.user_service import get_line_uid_by_chatroom_id
 from app.utils.line_send_message import LINE_push_message
 from app.managers.prompt_manager import PromptManager
@@ -172,7 +174,10 @@ async def organize_order_draft(db: AsyncSession, chat_room_id: int) -> OrderDraf
 
         line_uid = await get_line_uid_by_chatroom_id(db, chat_room.id)
         if line_uid:
-            LINE_push_message(line_uid, ChatMessagePayload(text=warning_msg))
+            store = await get_store_by_id(db, chat_room.store_id)
+            if store:
+                line_api = line_bot_api_for_store(store)
+                LINE_push_message(line_api, line_uid, ChatMessagePayload(text=warning_msg))
         else:
             print("❗ 無法取得 LINE UID，無法推播缺漏提醒。")
 

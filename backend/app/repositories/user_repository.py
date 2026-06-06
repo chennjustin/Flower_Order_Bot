@@ -22,8 +22,13 @@ async def get_user_by_id(db: AsyncSession, user_id: int) -> Optional[Customer]:
     return result.scalar_one_or_none()
 
 
-async def get_user_by_line_uid(db: AsyncSession, line_uid: str) -> Optional[Customer]:
-    stmt = select(Customer).where(Customer.line_uid == line_uid)
+async def get_user_by_line_uid(
+    db: AsyncSession, line_uid: str, store_id: int
+) -> Optional[Customer]:
+    stmt = select(Customer).where(
+        Customer.line_uid == line_uid,
+        Customer.store_id == store_id,
+    )
     result = await db.execute(stmt)
     return result.scalar_one_or_none()
 

@@ -20,7 +20,7 @@ from app.repositories.order_repository import (
     get_latest_confirmed_order_by_room,
     get_latest_order_draft_by_room,
     get_order_by_id,
-    list_active_orders,
+    list_all_orders,
     list_orders_by_customer_id,
     now_taipei_naive,
     save_order,
@@ -40,6 +40,8 @@ from app.services.user_service import (
     get_user_by_id,
     update_user_info,
 )
+from app.core.line_client import line_bot_api_for_store
+from app.repositories.store_repository import get_store_by_id
 from app.utils.line_send_message import LINE_push_message
 
 
@@ -79,9 +81,11 @@ async def _build_order_out(db: AsyncSession, order: Order) -> Optional[OrderOut]
     )
 
 
-async def get_all_orders(db: AsyncSession, store_id: int) -> Optional[List[OrderOut]]:
+async def get_all_orders(
+    db: AsyncSession, store_id: int | None = None
+) -> Optional[List[OrderOut]]:
     results: list[OrderOut] = []
-    for order in await list_active_orders(db, store_id):
+    for order in await list_all_orders(db, store_id=store_id):
         out = await _build_order_out(db, order)
         if out:
             results.append(out)
@@ -175,7 +179,10 @@ async def create_order_by_room(db: AsyncSession, room_id: int) -> list[str]:
     line_uid = await get_line_uid_by_chatroom_id(db, room.id)
     msg = "訂單已經由後台送出囉～\n\n"
     if line_uid:
-        LINE_push_message(line_uid, ChatMessagePayload(text=msg))
+        store = await get_store_by_id(db, room.store_id)
+        if store:
+            line_api = line_bot_api_for_store(store)
+            LINE_push_message(line_api, line_uid, ChatMessagePayload(text=msg))
     else:
         print("❗ 無法取得 LINE UID，無法推播訂單已送出提醒。")
     db.add(

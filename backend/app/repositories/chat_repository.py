@@ -23,13 +23,14 @@ async def get_latest_chat_message(db: AsyncSession, room_id: int) -> Optional[Ch
     return result.scalar_one_or_none()
 
 
-async def list_chat_rooms(db: AsyncSession, store_id: int) -> list[ChatRoom]:
+async def list_chat_rooms(db: AsyncSession, store_id: int | None = None) -> list[ChatRoom]:
     stmt = (
         select(ChatRoom)
         .options(joinedload(ChatRoom.customer))
-        .where(ChatRoom.store_id == store_id)
         .order_by(ChatRoom.updated_at.desc())
     )
+    if store_id is not None:
+        stmt = stmt.where(ChatRoom.store_id == store_id)
     result = await db.execute(stmt)
     return result.scalars().all()
 

@@ -19,7 +19,7 @@ REUSE_EXISTING_CUSTOMER_CHANCE = 0.55
 async def resolve_seed_store_id(session: AsyncSession) -> int:
     store_id = await get_seed_store_id(session)
     if store_id is None:
-        raise RuntimeError("資料庫中沒有 store，請先在 Supabase 建立店家資料（建議 id=1）。")
+        raise RuntimeError("資料庫中沒有 store，請先執行 provision-stores 建立店家資料。")
     return store_id
 
 

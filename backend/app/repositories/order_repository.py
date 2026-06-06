@@ -29,19 +29,31 @@ async def get_order_by_id(db: AsyncSession, order_id: int) -> Optional[Order]:
     return result.scalar_one_or_none()
 
 
-async def list_active_orders(db: AsyncSession, store_id: int) -> list[Order]:
-    stmt = (
-        select(Order)
-        .join(ChatRoom, Order.room_id == ChatRoom.id)
-        .where(Order.status != OrderStatus.CANCELLED, ChatRoom.store_id == store_id)
-    )
+async def list_active_orders(
+    db: AsyncSession, store_id: int | None = None
+) -> list[Order]:
+    from app.models.chat import ChatRoom
+
+    stmt = select(Order).where(Order.status != OrderStatus.CANCELLED)
+    if store_id is not None:
+        stmt = stmt.join(ChatRoom, Order.room_id == ChatRoom.id).where(
+            ChatRoom.store_id == store_id
+        )
     result = await db.execute(stmt)
     return result.scalars().all()
 
 
-async def list_all_orders(db: AsyncSession) -> list[Order]:
+async def list_all_orders(
+    db: AsyncSession, store_id: int | None = None
+) -> list[Order]:
     """All orders including CANCELLED (for dashboard「所有訂單」)."""
+    from app.models.chat import ChatRoom
+
     stmt = select(Order)
+    if store_id is not None:
+        stmt = stmt.join(ChatRoom, Order.room_id == ChatRoom.id).where(
+            ChatRoom.store_id == store_id
+        )
     result = await db.execute(stmt)
     return result.scalars().all()
 

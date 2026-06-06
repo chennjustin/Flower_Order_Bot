@@ -16,21 +16,20 @@ export interface UpdateOrderFieldConfigPayload {
   field_order?: OrderFieldKey[]
 }
 
-export async function fetchOrderFieldConfig(
-  storeId: number,
-): Promise<OrderFieldConfigResponse> {
+/** Load field config for the OAuth-bound store (no path store_id). */
+export async function fetchOrderFieldConfig(): Promise<OrderFieldConfigResponse> {
   const { data } = await api.get<OrderFieldConfigResponse>(
-    `/stores/${storeId}/order-field-config`,
+    '/store/order-field-config/default',
   )
   return data
 }
 
+/** Persist field config for the OAuth-bound store. */
 export async function updateOrderFieldConfig(
-  storeId: number,
   payload: UpdateOrderFieldConfigPayload,
 ): Promise<OrderFieldConfigResponse> {
   const { data } = await api.put<OrderFieldConfigResponse>(
-    `/stores/${storeId}/order-field-config`,
+    '/store/order-field-config/default',
     payload,
   )
   return data
