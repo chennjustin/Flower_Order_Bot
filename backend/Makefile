@@ -1,7 +1,7 @@
 # Makefile
 
 # 標記這些目標為 phony，不對應到實際檔案
-.PHONY: all install migrate provision-stores run test contract-check
+.PHONY: all install migrate migration-new provision-stores run test contract-check
 
 # 預設目標：依序執行 install → migrate → run
 all: install migrate run
@@ -17,6 +17,11 @@ install:
 # 執行 Alembic 資料庫遷移
 migrate:
 	$(ALEMBIC) upgrade head
+
+# 從 model 與目前 DB 差異自動產生新 migration（需設定 DATABASE_ALEM_URL）
+migration-new:
+	@test -n "$(MSG)" || (echo 'Usage: make migration-new MSG="describe change"' && exit 1)
+	$(ALEMBIC) revision --autogenerate -m "$(MSG)"
 
 # 從 config/stores.provision.json 建立／更新 store（含 LINE slug 自動查詢）
 provision-stores:
