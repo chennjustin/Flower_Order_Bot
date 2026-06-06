@@ -94,15 +94,6 @@ def _filter_update_by_visible_fields(
     return OrderDraftUpdate(**payload)
 
 
-def _collect_missing_fields(
-    draft: OrderDraftOut,
-    order_draft_update: OrderDraftUpdate,
-    required_fields: set[str],
-) -> list[str]:
-    effective_values = draft_out_catalog_values(draft, order_draft_update)
-    return collect_missing_catalog_labels(effective_values, required_fields)
-
-
 def _load_draft_organize_prompt(
     *,
     baseline: OrderDraftOut,
@@ -207,7 +198,8 @@ async def organize_order_draft(db: AsyncSession, chat_room_id: int) -> OrganizeO
         compute_changed_fields(baseline_values, effective_values),
         visible_fields,
     )
-    missing_fields = _collect_missing_fields(draft, order_draft_update, required_fields)
+    # Use post-LLM merged catalog so customer_phone from the same organize run counts as filled.
+    missing_fields = collect_missing_catalog_labels(merged_values, required_fields)
 
     _log_organize_json("OUTPUT merged_catalog", merged_values)
     _log_organize_block("OUTPUT changed_fields", str(changed_fields))

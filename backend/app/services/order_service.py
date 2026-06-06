@@ -577,7 +577,7 @@ async def get_order_draft_out_by_room(db: AsyncSession, room_id: int) -> Optiona
     return OrderDraftOut(
         id=order_draft.id,
         customer_name=customer.name if customer else "未知",
-        customer_phone=customer.phone if customer else "未知",
+        customer_phone=(customer.phone or "") if customer else "",
         order_date=to_taipei_aware(order_draft.created_at),
         pay_way=order_draft.pay_way,
         pay_status=order_draft.pay_status or PaymentStatus.PENDING,

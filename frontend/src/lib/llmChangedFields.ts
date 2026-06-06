@@ -1,11 +1,11 @@
 import { MISSING_KEY_TO_FIELD, type FieldKey } from '@/components/messages/orderDraftForm'
 
-/** Highlighter-style classes for AI-changed field values (read-only). */
+/** Highlight classes for AI-changed field values (read-only). */
 export const AI_CHANGED_VALUE_CLASS =
-  'rounded-sm bg-[#FFF59D] px-1 font-bold'
+  'rounded-sm bg-[#D8EAFF] px-1 font-bold'
 
-/** Highlighter-style classes for AI-changed inputs (edit mode). */
-export const AI_CHANGED_INPUT_CLASS = 'bg-[#FFF59D] border-[#FDD835]'
+/** Highlight classes for AI-changed inputs (edit mode). */
+export const AI_CHANGED_INPUT_CLASS = 'bg-[#D8EAFF] border-[#77B5FF]'
 
 const KNOWN_FIELD_KEYS = new Set<FieldKey>([
   'id',

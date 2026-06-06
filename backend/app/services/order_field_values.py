@@ -200,6 +200,12 @@ def build_docx_render_context_full_catalog(
 
 def is_catalog_value_empty(key: str, value: object) -> bool:
     """True when a required catalog field has no usable value."""
+    if key == "customer_phone":
+        from app.usecases.llm_order_delta import is_phone_empty
+
+        if value is None:
+            return True
+        return is_phone_empty(str(value))
     if key in NUMERIC_CATALOG_KEYS:
         if value is None:
             return True
