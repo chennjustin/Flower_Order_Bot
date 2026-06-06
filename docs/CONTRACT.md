@@ -77,14 +77,16 @@ pytest backend/tests/test_contract_smoke.py
 
 ### LLM Organize (Draft)
 - **PATCH** `/organize_data/{room_id}`
-  - 觸發一次「整理訂單草稿」(OpenAI)
-  - Response model: `OrderDraftOut`
-  - 若整理失敗或回覆空：**404** `{"detail": "No data found"}`
+  - 觸發一次「整理訂單草稿」(OpenAI delta extraction)
+  - Response model: `OrganizeOrderDraftOut`（`draft` + `changed_fields` + `source_message_ids`）
+  - 無新訊息：**200** 回傳現有 draft，`changed_fields=[]`，不呼叫 OpenAI
+  - LLM / JSON 失敗：**502** `{"detail": "LLM returned empty or invalid JSON."}`
+  - OpenAI 暫時性錯誤：**503** `{"detail": "LLM service unavailable"}`
 
 ### LLM Suggest (Formal Order Preview)
 - **POST** `/orders/{order_id}/suggest-from-chat`
   - 依 `processed=false` 對話 + 目前訂單呼叫 OpenAI，**不寫入** `orders`
-  - Response: `OrderSuggestFromChatOut`（`suggested` + `source_message_ids`）
+  - Response: `OrderSuggestFromChatOut`（`suggested` + `changed_fields` + `source_message_ids`）
 - **PATCH** `/orders/{order_id}` 可帶 `mark_processed_message_ids`；成功後將該批訊息標為 `processed=true`
 
 ### Messages (Chat Rooms)
@@ -159,8 +161,9 @@ Stage enum: `ChatRoomStage`（實際 enum 定義在 `backend/app/enums/chat.py`�
 - 若訂單確認後又收到訊息：轉 `WAITING_OWNER`（人工回覆）
 
 ## LLM Draft Organize Behavior
-- 讀取該 room 所有 `processed=False` 的 `ChatMessage` 組成 `combined_text`
-- 用 `app/prompts/order_prompt.txt` 產生 prompt，呼叫 OpenAI `model="gpt-4.1"`, `temperature=0`
-- 期望模型輸出「純 JSON」，用 `json.loads(...)` 解析後更新 `OrderDraft`
+- 讀取該 room 所有 `processed=False` 的 `ChatMessage` 組成 `combined_text`（時間正序、Asia/Taipei）
+- 用 `app/prompts/order_prompt.txt` + `order_extraction_rules.txt` 產生 prompt，呼叫 OpenAI `model="gpt-4.1"`, `temperature=0`, `response_format=json_object`
+- 期望模型輸出「delta JSON」（僅有變更欄位），後端 server-side merge 後更新 `OrderDraft`
+- `customer_phone`：草稿整理時若 LLM delta 含電話，經 `customer_organize_sync` 寫入 `Customer.phone`（與 `order_draft` 分開）；正式訂單 suggest 亦允許 LLM 更新電話（寫入 `orders.customer_phone`，待 staff 儲存）；`customer_name` 永遠 locked
 - 若 draft 缺必要欄位：會對顧客 LINE push 缺漏提醒，並記錄一則 outgoing bot 訊息（且 `processed=True` 以免再被 GPT 讀到）
 

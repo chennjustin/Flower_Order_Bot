@@ -103,6 +103,13 @@ class OrderOut(OrderBase):
     pay_way: Optional[str] = None
 
 
+class OrderListOut(BaseModel):
+    items: list[OrderOut]
+    total: int
+    page: int
+    page_size: int
+
+
 class OrderStatusUpdate(BaseModel):
     """PATCH /order/{order_id}/status request body."""
 
@@ -128,8 +135,17 @@ class OrderPatchUpdate(BaseModel):
     mark_processed_message_ids: Optional[list[int]] = None
 
 
+class OrganizeOrderDraftOut(BaseModel):
+    """PATCH /organize_data/{room_id} — LLM draft organize with delta metadata."""
+
+    draft: OrderDraftOut
+    changed_fields: list[str] = []
+    source_message_ids: list[int] = []
+
+
 class OrderSuggestFromChatOut(BaseModel):
     """POST /orders/{order_id}/suggest-from-chat — LLM preview, no DB write."""
 
     suggested: OrderPatchUpdate
+    changed_fields: list[str] = []
     source_message_ids: list[int] = []

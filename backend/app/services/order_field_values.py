@@ -213,34 +213,30 @@ def draft_out_catalog_values(
     draft: OrderDraftOut,
     update: OrderDraftUpdate | None = None,
 ) -> dict[str, object]:
-    """Merge draft snapshot with pending update using catalog keys."""
+    """Merge draft snapshot with a partial update (respects model_fields_set)."""
+
     upd = update or OrderDraftUpdate()
+    sent = upd.model_fields_set
+
+    def pick(field: str, draft_value: object, update_value: object) -> object:
+        if field in sent:
+            return update_value
+        return draft_value
+
     return {
-        "customer_name": (
-            upd.customer_name if upd.customer_name is not None else draft.customer_name
+        "customer_name": pick("customer_name", draft.customer_name, upd.customer_name),
+        "customer_phone": pick("customer_phone", draft.customer_phone, upd.customer_phone),
+        "item": pick("item", draft.item, upd.item),
+        "send_datetime": pick("send_datetime", draft.send_datetime, upd.send_datetime),
+        "total_amount": pick("total_amount", draft.total_amount, upd.total_amount),
+        "quantity": pick("quantity", draft.quantity, upd.quantity),
+        "note": pick("note", draft.note, upd.note),
+        "shipment_method": pick("shipment_method", draft.shipment_method, upd.shipment_method),
+        "delivery_address": pick(
+            "delivery_address", draft.delivery_address, upd.delivery_address
         ),
-        "customer_phone": (
-            upd.customer_phone if upd.customer_phone is not None else draft.customer_phone
-        ),
-        "item": upd.item if upd.item is not None else draft.item,
-        "send_datetime": (
-            upd.send_datetime if upd.send_datetime is not None else draft.send_datetime
-        ),
-        "total_amount": (
-            upd.total_amount if upd.total_amount is not None else draft.total_amount
-        ),
-        "quantity": upd.quantity if upd.quantity is not None else draft.quantity,
-        "note": upd.note if upd.note is not None else draft.note,
-        "shipment_method": (
-            upd.shipment_method if upd.shipment_method is not None else draft.shipment_method
-        ),
-        "delivery_address": (
-            upd.delivery_address
-            if upd.delivery_address is not None
-            else draft.delivery_address
-        ),
-        "pay_way": upd.pay_way if upd.pay_way is not None else draft.pay_way,
-        "pay_status": upd.pay_status if upd.pay_status is not None else draft.pay_status,
+        "pay_way": pick("pay_way", draft.pay_way, upd.pay_way),
+        "pay_status": pick("pay_status", draft.pay_status, upd.pay_status),
     }
 
 

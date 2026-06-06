@@ -82,3 +82,16 @@ async def count_pending_orders(session: AsyncSession, store_id: int) -> int:
         .where(Order.status == OrderStatus.PENDING, Customer.store_id == store_id)
     )
     return (await session.execute(stmt)).scalar() or 0
+
+
+async def count_in_progress_orders(session: AsyncSession, store_id: int) -> int:
+    stmt = (
+        select(func.count())
+        .select_from(Order)
+        .join(Customer, Order.customer_id == Customer.id)
+        .where(
+            Order.status.in_([OrderStatus.CONFIRMED, OrderStatus.PENDING]),
+            Customer.store_id == store_id,
+        )
+    )
+    return (await session.execute(stmt)).scalar() or 0

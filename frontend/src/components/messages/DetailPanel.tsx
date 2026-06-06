@@ -20,6 +20,8 @@ interface DetailPanelProps {
   onDraftViewOpened?: () => void
   onSubViewChange?: (view: DetailPanelSubView) => void
   onDirtyChange?: (dirty: boolean) => void
+  draftAiChangedFields?: string[]
+  onDraftAiHighlightClear?: () => void
 }
 
 export default function DetailPanel({
@@ -30,6 +32,8 @@ export default function DetailPanel({
   onDraftViewOpened,
   onSubViewChange,
   onDirtyChange,
+  draftAiChangedFields = [],
+  onDraftAiHighlightClear,
 }: DetailPanelProps) {
   const [showDraftPanel, setShowDraftPanel] = useState(false)
   const [editingOrder, setEditingOrder] = useState<Order | null>(null)
@@ -77,6 +81,8 @@ export default function DetailPanel({
         onBack={() => { onDirtyChange?.(false); setShowDraftPanel(false) }}
         onClosePanel={onClose}
         onDirtyChange={onDirtyChange}
+        aiChangedFields={draftAiChangedFields}
+        onAiHighlightClear={onDraftAiHighlightClear}
       />
     )
   }

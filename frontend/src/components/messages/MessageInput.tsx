@@ -61,8 +61,8 @@ export default function MessageInput({ roomId, disabled, onSend }: MessageInputP
     if (!file || busy) return
     setUploading(true)
     try {
-      const url = await uploadStaffChatImage(roomId, file)
-      setImageUrl(url)
+      const { image_url } = await uploadStaffChatImage(roomId, file)
+      setImageUrl(image_url)
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err)
       alert(`上傳失敗：${msg}`)

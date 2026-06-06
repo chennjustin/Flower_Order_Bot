@@ -1,0 +1,35 @@
+## Shared field rules
+
+### Timezone (Asia/Taipei)
+- All dates and times use Asia/Taipei (UTC+8, 台北時間).
+- Message timestamps below are already Taipei local time.
+- Reference now: {reference_now}
+- When the customer says "明天下午三點取貨", interpret as 15:00 on the next calendar day in Taipei, not UTC.
+- Output `send_datetime` as `YYYY-MM-DDTHH:MM:SS` (no `Z` suffix) or `YYYY-MM-DDTHH:MM:SS+08:00`.
+
+### Message directions
+- `INCOMING`: customer message (primary data source)
+- `OUTGOING_BY_STORE`: store staff message
+- `OUTGOING_BY_BOT`: system reply
+
+### Delta output (hard rule)
+- Output a single JSON object only (no markdown, no prose).
+- Include ONLY fields that new messages add or change compared to baseline.
+- Omit fields that stay the same as baseline.
+- To clear an optional string field, output `""` or `null`.
+
+### Field semantics
+- `customer_phone`: Taiwan phone from new messages (mobile `09xxxxxxxx`, landline `02...`, or `+8869...`). Output when the customer provides or corrects a contact number. This updates the customer profile, not only the draft.
+- `item`: product name only (e.g. "花束"), no extra specs.
+- `note`: colors, flowers, style, budget, card text, other requirements.
+- `shipment_method`: only `STORE_PICKUP` or `DELIVERY`.
+- `pay_way`: payment method text (e.g. "現金", "轉帳", "信用卡", "LINEPAY").
+- `pay_status`: only `PENDING` / `PAID` / `FAILED` / `REFUNDED`.
+- `quantity`, `total_amount`: numbers (no quotes). Use `-1` for unknown budget when first mentioned.
+
+### Customer identity
+{customer_identity_rules}
+
+### Data trust
+- Use only baseline and new messages; do not guess.
+- On conflict, prefer the latest explicit statement.

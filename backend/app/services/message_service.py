@@ -4,8 +4,9 @@ from typing import List, Optional
 
 from fastapi import HTTPException, status
 
-from app.models.chat import ChatRoom, ChatMessage
+from app.models.chat import ChatMessage, ChatRoom
 from app.schemas.chat import (
+    ChatRoomListOut,
     ChatRoomOut,
     ChatMessageOut,
     ChatMessagePayload,
@@ -16,14 +17,19 @@ from app.core.line_client import line_bot_api_for_store
 from app.repositories.store_repository import get_store_by_id
 from app.utils.line_send_message import LINE_push_message
 from app.services.user_service import get_user_by_id
+from app.enums.chat import ChatRoomStage
 from app.repositories.chat_repository import (
+    count_chat_rooms_filtered,
     create_chat_message_entry as repo_create_chat_message_entry,
     create_chat_room as repo_create_chat_room,
     get_chat_room_by_id as repo_get_chat_room_by_id,
     get_chat_room_by_user_id as repo_get_chat_room_by_user_id,
     get_latest_chat_message,
+    get_latest_messages_for_room_ids,
     list_chat_messages,
     list_chat_rooms,
+    list_chat_rooms_paginated,
+    sum_store_unread_count,
     switch_chat_room_mode as repo_switch_chat_room_mode,
     touch_chat_room_updated_at,
 )
@@ -52,31 +58,83 @@ async def get_latest_message(db: AsyncSession, room_id: int) -> Optional[ChatMes
     )
     return message
 
+def _chat_room_to_out(room: ChatRoom, last_msg: Optional[ChatMessageOut]) -> ChatRoomOut:
+    return ChatRoomOut(
+        room_id=room.id,
+        user_name=room.user.name if room.user else "未知",
+        user_avatar_url=room.user.avatar_url if room.user else None,
+        unread_count=room.unread_count,
+        status=room.stage,
+        last_message={
+            "text": last_msg.message.text or "",
+            "timestamp": last_msg.created_at,
+        }
+        if last_msg
+        else None,
+    )
+
+
+async def _build_chat_room_outs(
+    db: AsyncSession, rooms: list[ChatRoom]
+) -> list[ChatRoomOut]:
+    if not rooms:
+        return []
+    latest_map = await get_latest_messages_for_room_ids(db, [room.id for room in rooms])
+    response: list[ChatRoomOut] = []
+    for room in rooms:
+        message = latest_map.get(room.id)
+        last_msg = None
+        if message:
+            last_msg = ChatMessageOut(
+                id=message.id,
+                direction=message.direction,
+                user_avatar_url=None,
+                message=_payload_from_chat_row(message),
+                status=message.status,
+                created_at=message.created_at,
+            )
+        response.append(_chat_room_to_out(room, last_msg))
+    return response
+
+
+async def get_chat_room_page(
+    db: AsyncSession,
+    store_id: int,
+    *,
+    limit: int = 30,
+    offset: int = 0,
+    stage: Optional[ChatRoomStage] = None,
+    q: Optional[str] = None,
+) -> ChatRoomListOut:
+    limit = max(1, min(limit, 100))
+    offset = max(0, offset)
+    total = await count_chat_rooms_filtered(db, store_id, stage=stage, q=q)
+    rooms = await list_chat_rooms_paginated(
+        db,
+        store_id,
+        limit=limit,
+        offset=offset,
+        stage=stage,
+        q=q,
+    )
+    items = await _build_chat_room_outs(db, rooms)
+    total_unread = await sum_store_unread_count(db, store_id)
+    return ChatRoomListOut(
+        items=items,
+        total=total,
+        total_unread=total_unread,
+        has_more=offset + len(items) < total,
+    )
+
+
 async def get_chat_room_list(
     db: AsyncSession, store_id: int | None = None
 ) -> Optional[List[ChatRoomOut]]:
-    rooms = await list_chat_rooms(db, store_id=store_id)
-
-    response = []
-    for room in rooms:
-        last_msg = await get_latest_message(db, room.id)
-        # 如果聊天室沒有訊息，則不顯示最後訊息
-        response.append(ChatRoomOut(
-            room_id=room.id,
-            user_name=room.user.name if room.user else "未知",
-            user_avatar_url=room.user.avatar_url if room.user else None,
-            unread_count=room.unread_count,
-            status=room.stage,
-            last_message={
-                "text": last_msg.message.text or "",
-                "timestamp": last_msg.created_at,
-            } if last_msg else None,
-        ))
-
-    # 以 last_message 的 time stamp 排序
-    response.sort(key=lambda x: x.last_message.timestamp if x.last_message else datetime.min, reverse=True)
-
-    return response
+    if store_id is None:
+        rooms = await list_chat_rooms(db, store_id=None)
+        return await _build_chat_room_outs(db, rooms)
+    page = await get_chat_room_page(db, store_id, limit=10_000, offset=0)
+    return page.items
 
 async def get_chat_room_by_room_id(db: AsyncSession, room_id: int) -> Optional[ChatRoom]:
     return await repo_get_chat_room_by_id(db, room_id)
