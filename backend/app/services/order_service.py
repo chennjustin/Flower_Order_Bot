@@ -68,16 +68,23 @@ logger = logging.getLogger(__name__)
 async def _sync_order_to_calendar(db: AsyncSession, order: Order, *, delete: bool = False) -> None:
     """Best-effort: mirror an order onto the store owner's Google Calendar.
 
-    Resolves the store via the order's chat room. Never raises — a calendar
-    problem must not break the order operation that triggered it.
+    Resolves the store via ``order.store_id`` (direct orders) or the order's chat room.
+    Never raises — a calendar problem must not break the order operation that triggered it.
     """
     try:
-        room = await get_chat_room_by_room_id(db, order.room_id)
-        if not room:
+        store_id = order.store_id
+        if store_id is None and order.room_id is not None:
+            room = await get_chat_room_by_room_id(db, order.room_id)
+            if not room:
+                return
+            store_id = room.store_id
+        if store_id is None:
             return
-        store = await get_store_by_id(db, room.store_id)
+
+        store = await get_store_by_id(db, store_id)
         if not store or not is_connected(store):
             return
+
         if delete:
             await delete_order_event(db, store, order)
         else:
