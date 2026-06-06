@@ -52,7 +52,7 @@ export default function OrderEditPanel({
   const [isEditing, setIsEditing] = useState(false)
   const [form, setForm] = useState<FormState>(() => formStateFromOrder(order))
   const [pendingMessageIds, setPendingMessageIds] = useState<number[]>([])
-  const [aiPreviewHint, setAiPreviewHint] = useState(false)
+  const [, setAiPreviewHint] = useState(false)
   const [aiChangedKeys, setAiChangedKeys] = useState<Set<FieldKey>>(() => new Set())
   const [showLeaveDialog, setShowLeaveDialog] = useState(false)
 
