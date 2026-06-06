@@ -12,6 +12,9 @@ import {
   orderStatusBadgeClasses,
   orderStatusLabel,
 } from '@/utils/orderStatus'
+import { useState } from 'react'
+import { ChevronDown } from 'lucide-react'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { cn } from '@/lib/utils'
 
 export type EditableKey =
@@ -374,10 +377,7 @@ export function FormRow({
   display,
   missing,
 }: FormRowProps) {
-  const labelClasses = cn(
-    'w-[110px] flex-shrink-0 font-bold font-["Noto_Sans_TC",sans-serif] text-base text-black/[0.87]',
-    missing && 'text-red-600',
-  )
+  const labelClasses = 'w-[110px] flex-shrink-0 font-bold font-["Noto_Sans_TC",sans-serif] text-base text-black/[0.87]'
 
   return (
     <div className="flex min-h-8 items-center gap-2">
@@ -385,15 +385,6 @@ export function FormRow({
       <div className="flex-1">
         {isEditing ? (
           renderEditor(field, form, setField, missing)
-        ) : missing ? (
-          <span
-            className={cn(
-              "block w-full rounded-md border-[1.5px] border-red-500 bg-red-50 px-3 py-1.5 font-bold text-red-600",
-              "font-['Noto_Sans_TC',sans-serif] text-base",
-            )}
-          >
-            {display?.[field.key] || '請填寫'}
-          </span>
         ) : field.variant === 'order_status' && field.editable ? (
           <OrderStatusBadge status={normalizeOrderStatus(form.order_status)} />
         ) : (
@@ -425,7 +416,7 @@ export function OrderStatusBadge({ status }: { status: OrderStatus }) {
   )
 }
 
-/** Three selectable status blocks for edit mode. */
+/** Dropdown select for order status in edit mode. */
 export function OrderStatusBlockPicker({
   value,
   onChange,
@@ -433,30 +424,44 @@ export function OrderStatusBlockPicker({
   value: OrderStatus
   onChange: (status: OrderStatus) => void
 }) {
+  const [open, setOpen] = useState(false)
   return (
-    <div className="flex flex-wrap gap-2">
-      {ORDER_STATUS_OPTIONS.map(option => {
-        const selected = value === option.value
-        return (
-          <button
-            key={option.value}
-            type="button"
-            onClick={() => onChange(option.value)}
-            aria-pressed={selected}
-            className={cn(
-              'inline-flex h-8 min-w-[88px] items-center justify-center rounded-lg px-3 text-sm font-bold transition',
-              "font-['Noto_Sans_TC',sans-serif]",
-              orderStatusBadgeClasses(option.value),
-              selected
-                ? 'ring-2 ring-[#6168FC] ring-offset-1 shadow-sm'
-                : 'opacity-75 hover:opacity-100',
-            )}
-          >
-            {option.label}
-          </button>
-        )
-      })}
-    </div>
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          className={cn(
+            'inline-flex h-8 items-center gap-1.5 rounded-lg px-3 text-sm font-bold transition',
+            "font-['Noto_Sans_TC',sans-serif]",
+            orderStatusBadgeClasses(value),
+            'hover:opacity-90 active:scale-95',
+          )}
+        >
+          {orderStatusLabel(value)}
+          <ChevronDown className="h-3.5 w-3.5 opacity-70" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align="start" className="w-36 p-2">
+        <ul className="flex flex-col gap-1">
+          {ORDER_STATUS_OPTIONS.map(option => (
+            <li key={option.value}>
+              <button
+                type="button"
+                onClick={() => { onChange(option.value); setOpen(false) }}
+                className={cn(
+                  'inline-flex w-full h-8 items-center justify-center rounded-lg px-3 text-sm font-bold transition',
+                  "font-['Noto_Sans_TC',sans-serif]",
+                  orderStatusBadgeClasses(option.value),
+                  option.value === value ? 'ring-2 ring-[#6168FC] ring-offset-1' : 'opacity-75 hover:opacity-100',
+                )}
+              >
+                {option.label}
+              </button>
+            </li>
+          ))}
+        </ul>
+      </PopoverContent>
+    </Popover>
   )
 }
 
@@ -466,11 +471,12 @@ function renderEditor(
   setField: <K extends keyof FormState>(key: K, value: FormState[K]) => void,
   missing: boolean,
 ) {
+  const emptyHint = missing ? '此欄位不可為空' : undefined
   const inputClasses = cn(
     'w-full rounded-md border-[1.5px] border-[#e0e3ed] bg-[#fafbff] px-3 py-2 text-[15px] text-black outline-none transition',
     "font-['Noto_Sans_TC',sans-serif]",
     'focus:border-[#6168FC] focus:shadow-[0_0_0_2px_#e4e7ff]',
-    missing && 'border-red-500 bg-red-50 focus:shadow-[0_0_0_2px_rgba(220,53,69,0.25)]',
+    missing && 'border-red-500 bg-red-50 placeholder:text-red-400 focus:shadow-[0_0_0_2px_rgba(220,53,69,0.25)]',
   )
 
   if (field.variant === 'select' && field.key === 'shipment_method') {
@@ -516,6 +522,7 @@ function renderEditor(
         type="number"
         min="0"
         value={form.quantity}
+        placeholder={emptyHint}
         onChange={e => setField('quantity', e.target.value)}
         className={inputClasses}
       />
@@ -529,6 +536,7 @@ function renderEditor(
         min="0"
         step="0.01"
         value={form.total_amount}
+        placeholder={emptyHint}
         onChange={e => setField('total_amount', e.target.value)}
         className={inputClasses}
       />
@@ -540,6 +548,7 @@ function renderEditor(
     <input
       type="text"
       value={form[key] as string}
+      placeholder={emptyHint}
       onChange={e => setField(key, e.target.value as FormState[typeof key])}
       className={inputClasses}
     />
@@ -569,15 +578,10 @@ export function DateTimeRow({
     'focus:border-[#6168FC] focus:shadow-[0_0_0_2px_#e4e7ff]',
     missing && 'border-red-500 bg-red-50 focus:shadow-[0_0_0_2px_rgba(220,53,69,0.25)]',
   )
-  const labelClasses = cn(
-    'w-[110px] flex-shrink-0 font-bold font-["Noto_Sans_TC",sans-serif] text-base text-black/[0.87]',
-    missing && 'text-red-600',
-  )
-
   return (
     <>
       <div className="flex min-h-8 items-center gap-2">
-        <div className={labelClasses}>{label}</div>
+        <div className='w-[110px] flex-shrink-0 font-bold font-["Noto_Sans_TC",sans-serif] text-base text-black/[0.87]'>{label}</div>
         <div className="flex-1">
           <input
             type="date"

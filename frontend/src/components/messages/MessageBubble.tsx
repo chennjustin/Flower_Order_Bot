@@ -65,9 +65,9 @@ export default function MessageBubble({ message, showAvatar }: MessageBubbleProp
               <div className="h-8 w-8 rounded-full bg-[#D9D9D9]" />
             ))}
         </div>
-        <div className="flex max-w-[360px] items-end gap-0.5">
+        <div className="flex max-w-[70%] items-end gap-0.5">
           <div className="space-y-1">
-            <div className="inline-block min-h-10 rounded-3xl bg-[#D9D9D9] px-4 py-[9px] font-['Noto_Sans_TC',sans-serif] text-base text-black/[0.87]">
+            <div className="inline-block min-h-10 rounded-3xl bg-[#D9D9D9] px-4 py-[9px] font-['Noto_Sans_TC',sans-serif] text-base text-black/[0.87] [line-break:strict] break-words">
               {bubbleInner}
             </div>
             {isFailed ? (
@@ -84,9 +84,9 @@ export default function MessageBubble({ message, showAvatar }: MessageBubbleProp
 
   return (
     <div className="mb-3 flex justify-end">
-      <div className="flex max-w-[360px] flex-row-reverse items-end gap-0.5">
-        <div className="space-y-1 text-right">
-          <div className="inline-block min-h-10 rounded-3xl bg-[#77B5FF] px-4 py-[9px] font-['Noto_Sans_TC',sans-serif] text-base text-white">
+      <div className="flex max-w-[70%] flex-row-reverse items-end gap-0.5">
+        <div className="space-y-1 text-left">
+          <div className="inline-block min-h-10 rounded-3xl bg-[#77B5FF] px-4 py-[9px] font-['Noto_Sans_TC',sans-serif] text-base text-white [line-break:strict] break-words">
             {bubbleInner}
           </div>
           {isFailed ? (

@@ -89,29 +89,31 @@ function RoomOrderRow({ order, onSelect }: RoomOrderRowProps) {
           >
             #{order.id}
           </span>
-          <span
-            className={cn(
-              'min-w-0 flex-1 truncate text-sm font-bold text-black',
-              "font-['Noto_Sans_TC',sans-serif]",
-            )}
-            title={order.item}
-          >
-            {order.item}
-          </span>
-          <span
-            className={cn(
-              'inline-flex h-5 flex-shrink-0 items-center rounded-xl px-2 text-xs font-bold whitespace-nowrap',
-              "font-['Noto_Sans_TC',sans-serif]",
-              orderStatusBadgeClasses(status),
-            )}
-          >
-            {orderStatusLabel(status)}
-          </span>
+          <div className="flex min-w-0 flex-1 items-center gap-1.5">
+            <span
+              className={cn(
+                'min-w-0 truncate text-sm font-bold text-black',
+                "font-['Noto_Sans_TC',sans-serif]",
+              )}
+              title={order.item}
+            >
+              {order.item}
+            </span>
+            <span
+              className={cn(
+                'inline-flex h-5 flex-shrink-0 items-center rounded-xl px-2 text-xs font-bold whitespace-nowrap',
+                "font-['Noto_Sans_TC',sans-serif]",
+                orderStatusBadgeClasses(status),
+              )}
+            >
+              {orderStatusLabel(status)}
+            </span>
+          </div>
         </div>
         {(pickupTime || order.total_amount != null) && (
           <div
             className={cn(
-              'flex items-center gap-2 pl-10 text-xs text-black/50',
+              'flex items-center gap-1 pl-[3rem] text-xs text-black/50',
               "font-['Noto_Sans_TC',sans-serif]",
             )}
           >

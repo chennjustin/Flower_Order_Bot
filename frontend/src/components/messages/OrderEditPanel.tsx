@@ -12,7 +12,6 @@ import {
   orderStatusLabel,
 } from '@/utils/orderStatus'
 import { cn } from '@/lib/utils'
-import OrderSidePanelToggle from './OrderSidePanelToggle'
 import {
   DRAFT_SUPPORTED_KEYS,
   DateTimeRow,
@@ -40,7 +39,7 @@ export default function OrderEditPanel({
   roomId,
   order,
   onBack,
-  onClosePanel,
+  onClosePanel: _onClosePanel,
   onOrderUpdated,
 }: OrderEditPanelProps) {
   const updateOrder = useUpdateRoomOrder(roomId)
@@ -51,6 +50,7 @@ export default function OrderEditPanel({
   const [form, setForm] = useState<FormState>(() => formStateFromOrder(order))
   const [pendingMessageIds, setPendingMessageIds] = useState<number[]>([])
   const [aiPreviewHint, setAiPreviewHint] = useState(false)
+  const [showLeaveDialog, setShowLeaveDialog] = useState(false)
 
   const orderStatus = normalizeOrderStatus(order.order_status)
   const isCancelled = orderStatus === 'CANCELLED'
@@ -161,23 +161,32 @@ export default function OrderEditPanel({
   const isSaving = updateOrder.isPending
   const isSuggesting = suggestFromChat.isPending
 
+  const REQUIRED_FIELDS: { key: keyof FormState; label: string }[] = [
+    { key: 'item', label: '品項' },
+    { key: 'customer_name', label: '客戶姓名' },
+    { key: 'customer_phone', label: '客戶電話' },
+    { key: 'quantity', label: '數量' },
+    { key: 'total_amount', label: '總金額' },
+  ]
+
+  function handleBack() {
+    if (isDirty) {
+      setShowLeaveDialog(true)
+    } else {
+      onBack()
+    }
+  }
+
   return (
     <aside className="relative flex h-full w-[336px] flex-shrink-0 flex-col border-l border-[#B3B3B3] bg-white">
-      <OrderSidePanelToggle mode="close" onClick={onClosePanel} />
-
-      <header className="flex h-20 flex-shrink-0 items-center gap-3 border-b-[1.5px] border-[#e9e9e9] px-4 pl-5">
+      <header className="flex h-20 flex-shrink-0 items-center gap-2 border-b-[1.5px] border-[#e9e9e9] px-4">
         <button
           type="button"
-          onClick={onBack}
-          className={cn(
-            'flex flex-shrink-0 items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-bold text-[#528DD2] transition',
-            "font-['Noto_Sans_TC',sans-serif]",
-            'hover:bg-[#D8EAFF]/60 active:scale-95',
-          )}
+          onClick={handleBack}
+          className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full text-gray-600 transition hover:bg-[#F5F6FF] hover:text-[#6168FC] active:scale-95"
           aria-label="返回訂單詳情"
         >
-          <ChevronLeft className="h-4 w-4" aria-hidden />
-          <span>返回</span>
+          <ChevronLeft className="h-6 w-6" strokeWidth={2.5} aria-hidden />
         </button>
         <span className="min-w-0 flex-1 truncate text-lg font-bold text-black font-['Noto_Sans_TC',sans-serif]">
           訂單 #{order.id}
@@ -199,87 +208,100 @@ export default function OrderEditPanel({
         </button>
       </header>
 
-      <div className="flex flex-1 flex-col overflow-hidden">
-        <div className="flex-shrink-0 px-6 pt-4">
-          <button
-            type="button"
-            onClick={handleAiImport}
-            disabled={isCancelled || isSuggesting || isSaving}
-            className={cn(
-              'flex h-10 w-full items-center justify-center gap-2 rounded-xl border border-[#C5C7FF] bg-[#F5F6FF] text-sm font-bold text-[#6168FC] transition',
-              "font-['Noto_Sans_TC',sans-serif]",
-              'hover:bg-[#E8EAFF] active:scale-95 disabled:cursor-not-allowed disabled:opacity-50',
-            )}
-          >
-            {isSuggesting ? (
-              <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+      <div className="flex-1 overflow-y-auto px-6 pt-4 pb-6">
+        {aiPreviewHint && isEditing && (
+          <p className="mb-3 text-center text-xs text-[#6168FC] font-['Noto_Sans_TC',sans-serif]">
+            以下為 AI 建議，請確認後按「更新訂單」寫入資料庫
+          </p>
+        )}
+        <div className="flex flex-col gap-4">
+          {visibleFields.map(field =>
+            field.key === 'send_datetime' && isEditing ? (
+              <DateTimeRow
+                key={field.key}
+                label={field.label}
+                date={form.send_datetime_date}
+                time={form.send_datetime_time}
+                onDateChange={(v: string) => setField('send_datetime_date', v)}
+                onTimeChange={(v: string) => setField('send_datetime_time', v)}
+                missing={false}
+              />
             ) : (
-              <Sparkles className="h-4 w-4" aria-hidden />
-            )}
-            <span>從對話 AI 帶入</span>
-          </button>
-          {aiPreviewHint && isEditing && (
-            <p className="mt-2 text-center text-xs text-[#6168FC] font-['Noto_Sans_TC',sans-serif]">
-              以下為 AI 建議，請確認後按「更新訂單」寫入資料庫
-            </p>
+              <FormRow
+                key={field.key}
+                field={field}
+                isEditing={isEditing && field.editable}
+                form={form}
+                setField={setField}
+                display={display}
+                missing={isEditing && REQUIRED_FIELDS.some(r => r.key === field.key) && !String(form[field.key as keyof FormState] ?? '').trim()}
+              />
+            ),
           )}
-        </div>
-
-        <div className="flex-1 overflow-y-auto px-6 pt-4 pb-28">
-          <div className="flex flex-col gap-4">
-            {visibleFields.map(field =>
-              field.key === 'send_datetime' && isEditing ? (
-                <DateTimeRow
-                  key={field.key}
-                  label={field.label}
-                  date={form.send_datetime_date}
-                  time={form.send_datetime_time}
-                  onDateChange={v => setField('send_datetime_date', v)}
-                  onTimeChange={v => setField('send_datetime_time', v)}
-                  missing={false}
-                />
-              ) : (
-                <FormRow
-                  key={field.key}
-                  field={field}
-                  isEditing={isEditing && field.editable}
-                  form={form}
-                  setField={setField}
-                  display={display}
-                  missing={false}
-                />
-              ),
-            )}
-          </div>
         </div>
       </div>
 
-      <div className="absolute bottom-4 left-0 right-0 z-20 flex flex-col items-center gap-1 px-4">
+      <div className="flex-shrink-0 flex gap-2 px-4 py-3">
+        <button
+          type="button"
+          onClick={handleAiImport}
+          disabled={isCancelled || isSuggesting || isSaving}
+          className={cn(
+            'flex h-10 flex-1 items-center justify-center gap-1.5 rounded-xl border border-[#C5C7FF] bg-[#F5F6FF] text-sm font-bold text-[#6168FC] transition',
+            "font-['Noto_Sans_TC',sans-serif]",
+            'hover:bg-[#E8EAFF] active:scale-95 disabled:cursor-not-allowed disabled:opacity-50',
+          )}
+        >
+          {isSuggesting ? (
+            <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+          ) : (
+            <Sparkles className="h-4 w-4" aria-hidden />
+          )}
+          <span>AI 整理</span>
+        </button>
         <button
           type="button"
           onClick={commitOrder}
           disabled={!isDirty || isSaving || isCancelled}
-          aria-disabled={!isDirty || isSaving || isCancelled}
-          title={
-            !isDirty
-              ? '請先從對話帶入或編輯欄位後再更新訂單'
-              : undefined
-          }
+          title={!isDirty ? '請先從對話帶入或編輯欄位後再更新訂單' : undefined}
           className={cn(
-            'flex h-10 w-full max-w-[200px] items-center justify-center gap-2 rounded-xl px-3 text-base font-bold text-white transition active:scale-95',
+            'flex h-10 flex-1 items-center justify-center gap-1.5 rounded-xl text-sm font-bold text-white transition active:scale-95',
             "font-['Noto_Sans_TC',sans-serif]",
-            'disabled:cursor-not-allowed disabled:opacity-50 disabled:active:scale-100 disabled:hover:shadow-none',
+            'disabled:cursor-not-allowed disabled:opacity-50 disabled:active:scale-100',
             isDirty && !isCancelled
               ? 'bg-[#6168FC] hover:bg-[#4F51FF] hover:shadow-[2px_2px_4px_rgba(0,0,0,0.25)]'
               : 'bg-[#C5C7FF]',
           )}
         >
-          {isSaving ? (
-            <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-          ) : null}
+          {isSaving ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : null}
           <span>更新訂單</span>
         </button>
       </div>
+
+      {showLeaveDialog && (
+        <div className="absolute inset-0 z-[1100] flex items-center justify-center rounded-[inherit] bg-black/20">
+          <div className="w-[280px] rounded-2xl bg-white px-6 py-5 shadow-xl font-['Noto_Sans_TC',sans-serif]">
+              <p className="mb-1 text-base font-bold text-black">確定要離開？</p>
+              <p className="mb-5 text-sm text-black/50">尚未儲存的變更將會遺失。</p>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowLeaveDialog(false)}
+                  className="flex h-10 flex-1 items-center justify-center rounded-xl border border-[#e0e3ed] text-sm font-bold text-black/60 transition hover:bg-[#F5F5F5]"
+                >
+                  繼續編輯
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setShowLeaveDialog(false); onBack() }}
+                  className="flex h-10 flex-1 items-center justify-center rounded-xl bg-red-500 text-sm font-bold text-white transition hover:bg-red-600"
+                >
+                  離開
+                </button>
+              </div>
+          </div>
+        </div>
+      )}
     </aside>
   )
 }

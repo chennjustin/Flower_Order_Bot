@@ -77,7 +77,7 @@ export default function MessageList({ messages }: MessageListProps) {
   return (
     <div
       ref={containerRef}
-      className="flex-1 overflow-y-auto bg-white px-6 py-6"
+      className="flex-1 overflow-y-auto bg-white px-6 pt-6"
     >
       {entries.map(entry =>
         entry.kind === 'date' ? (
@@ -94,6 +94,7 @@ export default function MessageList({ messages }: MessageListProps) {
           />
         ),
       )}
+      <div className="h-6 shrink-0" />
     </div>
   )
 }

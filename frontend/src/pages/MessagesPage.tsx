@@ -4,7 +4,6 @@ import ChatRoom from '@/components/messages/ChatRoom'
 import DetailPanel, {
   type DetailPanelSubView,
 } from '@/components/messages/DetailPanel'
-import OrderSidePanelToggle from '@/components/messages/OrderSidePanelToggle'
 import { useStore } from '@/context/StoreContext'
 import { useChatRooms } from '@/hooks/useChatRooms'
 import { useChatRealtime } from '@/hooks/useChatRealtime'
@@ -92,12 +91,6 @@ export default function MessagesPage() {
               isOrganizing={organizeMutation.isPending}
               showOrganizeButton={showOrganizeButton}
             />
-            {!showDetail && (
-              <OrderSidePanelToggle
-                mode="open"
-                onClick={() => setShowDetail(true)}
-              />
-            )}
           </>
         ) : (
           <div className="flex flex-1 items-center justify-center text-sm text-black/40">
