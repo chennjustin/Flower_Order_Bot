@@ -56,15 +56,18 @@ async def create_user(db: AsyncSession, user_data: CustomerCreate) -> Customer:
 async def update_user_info(
     db: AsyncSession,
     user_id: int,
+    *,
     name: Optional[str] = None,
     phone: Optional[str] = None,
+    update_name: bool = False,
+    update_phone: bool = False,
 ) -> Customer:
     user = await get_user_by_id(db, user_id)
     if not user:
         raise Exception("User not found")
-    if name:
-        user.name = name
-    if phone:
+    if update_name:
+        user.name = name or ""
+    if update_phone:
         user.phone = phone
     user.updated_at = now_taipei_naive()
     await db.commit()

@@ -122,13 +122,13 @@ def _normalize_organize_required_fields(raw_fields: list[str] | None) -> list[st
 def _resolve_optional_required_fields(
     visible_fields: list[str], organize_required_fields: list[str] | None
 ) -> list[str]:
-    visible_optional_required = [f for f in OPTIONAL_ORGANIZE_FIELDS if f in set(visible_fields)]
-    manual_optional_required = _normalize_organize_required_fields(organize_required_fields)
-    return [
-        f
-        for f in OPTIONAL_ORGANIZE_FIELDS
-        if f in (set(visible_optional_required) | set(manual_optional_required))
-    ]
+    """Optional catalog fields are required only when explicitly configured.
+
+    Visibility alone must not imply requiredness — nullable fields may stay empty
+    on create unless the store lists them in organize_required_fields.
+    """
+    del visible_fields  # kept for call-site stability; not used in resolution
+    return _normalize_organize_required_fields(organize_required_fields)
 
 
 async def _get_store_or_404(db: AsyncSession, store_id: int) -> Store:

@@ -32,9 +32,9 @@ export function useUpdateOrderDraft(roomId: number | null) {
       if (roomId == null) return Promise.reject(new Error('No room selected'))
       return updateOrderDraft(roomId, draft)
     },
-    onSuccess: () => {
-      if (roomId != null && storeId != null) {
-        qc.invalidateQueries({ queryKey: orderDraftQueryKey(storeId, roomId) })
+    onSuccess: data => {
+      if (roomId != null && storeId != null && data != null) {
+        qc.setQueryData(orderDraftQueryKey(storeId, roomId), data)
       }
     },
   })

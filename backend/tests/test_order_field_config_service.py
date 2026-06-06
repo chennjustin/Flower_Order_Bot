@@ -64,23 +64,21 @@ def test_normalize_organize_required_fields_filters_to_optional() -> None:
     assert fields == ["quantity", "delivery_address"]
 
 
-def test_resolve_optional_required_fields_uses_visible_and_manual() -> None:
+def test_resolve_optional_required_fields_uses_explicit_config_only() -> None:
     visible_fields = _normalize_visible_fields(["quantity", "note"])
     fields = _resolve_optional_required_fields(
         visible_fields=visible_fields,
         organize_required_fields=["delivery_address"],
     )
-    assert fields == ["quantity", "note", "delivery_address"]
+    assert fields == ["delivery_address"]
 
 
-def test_effective_organize_required_includes_core_plus_visible_optional() -> None:
+def test_resolve_optional_required_fields_ignores_visible_when_not_configured() -> None:
     visible_fields = _normalize_visible_fields(["quantity", "pay_status"])
     optional_required = _resolve_optional_required_fields(visible_fields, [])
+    assert optional_required == []
     effective = [*CORE_ORGANIZE_FIELDS, *optional_required]
-    assert set(CORE_ORGANIZE_FIELDS) <= set(effective)
-    assert "quantity" in effective
-    assert "pay_status" in effective
-    assert "note" not in effective
+    assert set(effective) == set(CORE_ORGANIZE_FIELDS)
 
 
 def test_load_display_settings_from_display_config_json() -> None:

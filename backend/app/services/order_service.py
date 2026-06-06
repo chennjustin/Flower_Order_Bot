@@ -287,26 +287,33 @@ async def update_order_fields_by_id(
 
     message_ids_to_mark = patch.mark_processed_message_ids or []
 
-    if patch.customer_name is not None:
+    # Nullable columns: explicit null clears the stored value.
+    if _patch_field_was_sent(patch, "customer_name"):
         order.customer_name = patch.customer_name
-    if patch.customer_phone is not None:
+    if _patch_field_was_sent(patch, "customer_phone"):
         order.customer_phone = patch.customer_phone
-    if patch.item is not None:
-        order.item_type = patch.item
-    if patch.quantity is not None:
+    if _patch_field_was_sent(patch, "quantity"):
         order.quantity = patch.quantity
-    if patch.total_amount is not None:
-        order.total_amount = patch.total_amount
-    if patch.note is not None:
+    if _patch_field_was_sent(patch, "note"):
         order.notes = patch.note
+    if _patch_field_was_sent(patch, "send_datetime"):
+        order.delivery_datetime = (
+            to_taipei_naive(patch.send_datetime) if patch.send_datetime else None
+        )
+    if _patch_field_was_sent(patch, "delivery_address"):
+        order.delivery_address = patch.delivery_address
+    if _patch_field_was_sent(patch, "pay_way"):
+        order.pay_way = patch.pay_way
+
+    # NOT NULL columns: ignore explicit null — keep the existing value.
+    if _patch_field_was_sent(patch, "item") and patch.item is not None:
+        order.item_type = patch.item
+    if _patch_field_was_sent(patch, "total_amount") and patch.total_amount is not None:
+        order.total_amount = patch.total_amount
+
+    # Enums / status: only apply when a concrete value is sent.
     if patch.shipment_method is not None:
         order.shipment_method = patch.shipment_method
-    if patch.send_datetime is not None:
-        order.delivery_datetime = to_taipei_naive(patch.send_datetime)
-    if patch.delivery_address is not None:
-        order.delivery_address = patch.delivery_address
-    if patch.pay_way is not None:
-        order.pay_way = patch.pay_way
     if patch.pay_status is not None:
         order.pay_status = patch.pay_status
     if patch.order_status is not None:
@@ -405,6 +412,15 @@ async def create_order_draft_by_room_id(db: AsyncSession, room_id: int) -> Order
     return order_draft
 
 
+def _patch_field_was_sent(patch: OrderDraftUpdate | OrderPatchUpdate, field: str) -> bool:
+    """True when the client included this key in the PATCH body (null means clear)."""
+    return field in patch.model_fields_set
+
+
+def _draft_field_was_sent(draft_in: OrderDraftUpdate, field: str) -> bool:
+    return _patch_field_was_sent(draft_in, field)
+
+
 async def update_order_draft_by_room_id(
     db: AsyncSession,
     room_id: int,
@@ -424,7 +440,8 @@ async def update_order_draft_by_room_id(
         )
 
     if allow_customer_update and (
-        draft_in.customer_name is not None or draft_in.customer_phone is not None
+        _draft_field_was_sent(draft_in, "customer_name")
+        or _draft_field_was_sent(draft_in, "customer_phone")
     ):
         customer = await get_user_by_id(db, order_draft.customer_id)
         if not customer:
@@ -435,27 +452,31 @@ async def update_order_draft_by_room_id(
         await update_user_info(
             db,
             customer.id,
-            name=draft_in.customer_name or customer.name,
-            phone=draft_in.customer_phone or customer.phone,
+            name=draft_in.customer_name,
+            phone=draft_in.customer_phone,
+            update_name=_draft_field_was_sent(draft_in, "customer_name"),
+            update_phone=_draft_field_was_sent(draft_in, "customer_phone"),
         )
 
-    if draft_in.item is not None:
+    if _draft_field_was_sent(draft_in, "item"):
         order_draft.item_type = draft_in.item
-    if draft_in.quantity is not None:
+    if _draft_field_was_sent(draft_in, "quantity"):
         order_draft.quantity = draft_in.quantity
-    if draft_in.total_amount is not None:
+    if _draft_field_was_sent(draft_in, "total_amount"):
         order_draft.total_amount = draft_in.total_amount
-    if draft_in.note is not None:
+    if _draft_field_was_sent(draft_in, "note"):
         order_draft.notes = draft_in.note
-    if draft_in.shipment_method is not None:
+    if _draft_field_was_sent(draft_in, "shipment_method"):
         order_draft.shipment_method = draft_in.shipment_method
-    if draft_in.send_datetime is not None:
-        order_draft.delivery_datetime = to_taipei_naive(draft_in.send_datetime)
-    if draft_in.delivery_address is not None:
+    if _draft_field_was_sent(draft_in, "send_datetime"):
+        order_draft.delivery_datetime = (
+            to_taipei_naive(draft_in.send_datetime) if draft_in.send_datetime else None
+        )
+    if _draft_field_was_sent(draft_in, "delivery_address"):
         order_draft.delivery_address = draft_in.delivery_address
-    if draft_in.pay_way is not None:
+    if _draft_field_was_sent(draft_in, "pay_way"):
         order_draft.pay_way = draft_in.pay_way
-    if draft_in.pay_status is not None:
+    if _draft_field_was_sent(draft_in, "pay_status"):
         order_draft.pay_status = draft_in.pay_status
     order_draft.updated_at = now_taipei_naive()
 
