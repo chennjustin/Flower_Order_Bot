@@ -3,7 +3,7 @@ import { useQueryClient } from '@tanstack/react-query'
 
 import { roomMessagesQueryKey } from '@/lib/storeQueryKeys'
 
-const DELTA_SYNC_MS = 10_000
+const DELTA_SYNC_MS = 1_000
 
 /** Fallback when Redis SSE is unavailable: poll incremental sync while tab is visible. */
 export function useVisibleRoomDeltaSync(
