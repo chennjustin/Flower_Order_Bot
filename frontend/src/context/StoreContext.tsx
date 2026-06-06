@@ -8,7 +8,7 @@ import {
   type ReactNode,
 } from 'react'
 import { fetchMyStore, type StoreListItem } from '@/api/stores'
-import { useAuth } from '@/contexts/AuthContext'
+import { useAuth } from '@/hooks/useAuth'
 import { getActiveStoreId, setActiveStoreId } from '@/lib/activeStoreStorage'
 
 export interface StoreContextValue {
@@ -28,7 +28,7 @@ interface StoreProviderProps {
 }
 
 export function StoreProvider({ children }: StoreProviderProps) {
-  const { session, loading: authLoading } = useAuth()
+  const { isAuthenticated, isLoading: authLoading } = useAuth()
   const [stores, setStores] = useState<StoreListItem[]>([])
   const [currentStoreId, setCurrentStoreIdState] = useState<number | null>(() =>
     getActiveStoreId(),
@@ -39,7 +39,7 @@ export function StoreProvider({ children }: StoreProviderProps) {
   useEffect(() => {
     if (authLoading) return
 
-    if (!session?.access_token) {
+    if (!isAuthenticated) {
       setStores([])
       setCurrentStoreIdState(null)
       setActiveStoreId(null)
@@ -81,7 +81,7 @@ export function StoreProvider({ children }: StoreProviderProps) {
     return () => {
       cancelled = true
     }
-  }, [authLoading, session?.access_token])
+  }, [authLoading, isAuthenticated])
 
   const setCurrentStoreId = useCallback((storeId: number) => {
     setCurrentStoreIdState(storeId)

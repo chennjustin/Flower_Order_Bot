@@ -1,20 +1,26 @@
 import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useAuth } from '@/contexts/AuthContext'
+import AuthLoading from '@/components/auth/AuthLoading'
+import { useAuth } from '@/hooks/useAuth'
+import { getOnboardingPath } from '@/lib/onboardingPaths'
 import { isSupabaseConfigured } from '@/lib/supabase'
 
 export default function LoginPage() {
-  const { session, loading, signInWithGoogle } = useAuth()
+  const { session, isAuthenticated, isLoading, signInWithGoogle } = useAuth()
   const navigate = useNavigate()
 
   useEffect(() => {
-    if (!loading && session?.access_token) navigate('/', { replace: true })
-  }, [session, loading, navigate])
+    if (isLoading || !isAuthenticated || !session) return
 
-  if (loading) {
+    const target =
+      session.onboardingStep === 'DONE' ? '/' : getOnboardingPath(session.onboardingStep)
+    navigate(target, { replace: true })
+  }, [isLoading, isAuthenticated, session, navigate])
+
+  if (isLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center text-sm text-gray-400">
-        載入中...
+        <AuthLoading />
       </div>
     )
   }
@@ -42,7 +48,7 @@ export default function LoginPage() {
         </div>
 
         <button
-          onClick={signInWithGoogle}
+          onClick={() => void signInWithGoogle()}
           className="flex w-full items-center justify-center gap-3 rounded-lg border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-700 shadow-sm transition hover:bg-gray-50 active:scale-[0.98]"
         >
           <svg width="20" height="20" viewBox="0 0 48 48">

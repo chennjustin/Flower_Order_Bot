@@ -11,7 +11,7 @@ import {
   fetchOrderFieldConfig,
   updateOrderFieldConfig,
 } from '@/api/orderFieldConfig'
-import { useAuth } from '@/contexts/AuthContext'
+import { useAuth } from '@/hooks/useAuth'
 import { getDefaultConfig, isFieldLockedVisible } from '@/config/orderDisplayFields'
 import {
   buildConfigFromApiResponse,
@@ -76,7 +76,7 @@ interface OrderDisplayConfigProviderProps {
 }
 
 export function OrderDisplayConfigProvider({ children }: OrderDisplayConfigProviderProps) {
-  const { session, loading: authLoading } = useAuth()
+  const { isAuthenticated, isLoading: authLoading } = useAuth()
   const [storageKey, setStorageKey] = useState<string | null>(null)
   const [savedConfig, setSavedConfig] = useState<OrderDisplayConfig>(() =>
     mergeWithRegistry(getDefaultConfig()),
@@ -89,7 +89,7 @@ export function OrderDisplayConfigProvider({ children }: OrderDisplayConfigProvi
   useEffect(() => {
     if (authLoading) return
 
-    if (!session?.access_token) {
+    if (!isAuthenticated) {
       setStorageKey(null)
       const local = mergeWithRegistry(loadConfig())
       setSavedConfig(local)
@@ -134,7 +134,7 @@ export function OrderDisplayConfigProvider({ children }: OrderDisplayConfigProvi
     return () => {
       cancelled = true
     }
-  }, [authLoading, session?.access_token])
+  }, [authLoading, isAuthenticated])
 
   const hasChanges = useMemo(
     () => !configsEqual(savedConfig, draftConfig),
@@ -170,7 +170,7 @@ export function OrderDisplayConfigProvider({ children }: OrderDisplayConfigProvi
   }, [savedConfig])
 
   const save = useCallback(async () => {
-    if (!session?.access_token) {
+    if (!isAuthenticated) {
       throw new Error('Not signed in')
     }
     setSavePending(true)
@@ -190,7 +190,7 @@ export function OrderDisplayConfigProvider({ children }: OrderDisplayConfigProvi
     } finally {
       setSavePending(false)
     }
-  }, [draftConfig, session?.access_token])
+  }, [draftConfig, isAuthenticated])
 
   const value = useMemo<OrderDisplayConfigContextValue>(
     () => ({

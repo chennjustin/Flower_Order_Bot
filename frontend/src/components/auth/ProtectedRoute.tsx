@@ -1,18 +1,15 @@
 import { Navigate, Outlet } from 'react-router-dom'
-import { useAuth } from '@/contexts/AuthContext'
+import AuthLoading from '@/components/auth/AuthLoading'
+import { useAuth } from '@/hooks/useAuth'
 
 export default function ProtectedRoute() {
-  const { session, loading } = useAuth()
+  const { isAuthenticated, isLoading } = useAuth()
 
-  if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center text-sm text-gray-400">
-        載入中...
-      </div>
-    )
+  if (isLoading) {
+    return <AuthLoading />
   }
 
-  if (!session) return <Navigate to="/login" replace />
+  if (!isAuthenticated) return <Navigate to="/login" replace />
 
   return <Outlet />
 }

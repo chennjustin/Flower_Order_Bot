@@ -1,23 +1,9 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { useAuth } from '@/contexts/AuthContext'
 import BrandLogo from './BrandLogo'
 import Sidebar from './Sidebar'
 import SidebarMenuIcon from './SidebarMenuIcon'
 export default function Navbar() {
   const [showSidebar, setShowSidebar] = useState(false)
-  const { session, signOut } = useAuth()
-  const navigate = useNavigate()
-
-  const displayName =
-    session?.user?.user_metadata?.full_name ??
-    session?.user?.email ??
-    '花店系統'
-
-  async function handleSignOut() {
-    await signOut()
-    navigate('/login', { replace: true })
-  }
 
   return (
     <>
