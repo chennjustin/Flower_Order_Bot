@@ -32,36 +32,23 @@ function LineOfficialInfoField({ label, children }: LineOfficialInfoFieldProps) 
 }
 
 interface LineOfficialAvatarProps {
-  imageUrl: string | null | undefined
-  displayName: string
+  imageUrl: string
 }
 
-/** LINE OA avatar with image or initials fallback. */
-function LineOfficialAvatar({ imageUrl, displayName }: LineOfficialAvatarProps) {
-  const initial = displayName.trim().charAt(0).toUpperCase() || 'L'
-
-  if (imageUrl) {
-    return (
-      <img
-        src={imageUrl}
-        alt=""
-        width={80}
-        height={80}
-        className="h-20 w-20 rounded-2xl border border-black/10 object-cover shadow-sm"
-      />
-    )
+/** LINE OA avatar; omitted when the API provides no profile image. */
+function LineOfficialAvatar({ imageUrl }: LineOfficialAvatarProps) {
+  if (!imageUrl) {
+    return null
   }
 
   return (
-    <div
-      aria-hidden
-      className={cn(
-        'flex h-20 w-20 items-center justify-center rounded-2xl border border-black/10',
-        'bg-brand-soft text-xl font-bold text-brand-primary-dark shadow-sm',
-      )}
-    >
-      {initial}
-    </div>
+    <img
+      src={imageUrl}
+      alt=""
+      width={80}
+      height={80}
+      className="h-20 w-20 rounded-2xl border border-black/10 object-cover shadow-sm"
+    />
   )
 }
 
@@ -109,9 +96,6 @@ export default function OnboardingLineOfficialPage() {
         <div className="overflow-hidden rounded-xl border border-black/8 bg-gradient-to-b from-brand-soft/35 to-white">
           {isLoading ? (
             <div className="px-5 py-4" aria-busy="true">
-              <div className="mb-4 flex justify-center">
-                <div className="h-20 w-20 animate-pulse rounded-2xl bg-black/10" />
-              </div>
               <div className="divide-y divide-black/6">
                 {[1, 2, 3].map((row) => (
                   <div key={row} className="flex items-center justify-between gap-4 py-3">
@@ -123,12 +107,11 @@ export default function OnboardingLineOfficialPage() {
             </div>
           ) : (
             <div className="px-5 py-4">
-              <div className="mb-4 flex justify-center">
-                <LineOfficialAvatar
-                  imageUrl={lineOfficialImageUrl}
-                  displayName={lineOfficialDisplayName}
-                />
-              </div>
+              {lineOfficialImageUrl ? (
+                <div className="mb-4 flex justify-center">
+                  <LineOfficialAvatar imageUrl={lineOfficialImageUrl} />
+                </div>
+              ) : null}
 
               <div>
                 <LineOfficialInfoField label="店家名稱">{storeName}</LineOfficialInfoField>
