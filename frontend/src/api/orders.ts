@@ -88,13 +88,10 @@ export async function updateOrderDraft(
   return data ?? null
 }
 
-/**
- * Trigger the LLM-driven `organize_data` flow for a room and return the
- * resulting draft.
- */
-export async function organizeData(roomId: number): Promise<OrderDraft> {
+/** Trigger LLM draft organize; returns draft plus `changed_fields` metadata. */
+export async function organizeData(roomId: number): Promise<OrganizeOrderDraftOut> {
   const { data } = await api.patch<OrganizeOrderDraftOut>(`/organize_data/${roomId}`)
-  return data.draft
+  return data
 }
 
 export async function exportDocx(orderId: number): Promise<Blob> {

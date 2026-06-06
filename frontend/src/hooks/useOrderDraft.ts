@@ -8,7 +8,12 @@ import {
 } from '@/api/orders'
 import { useStoreQueryGate } from '@/hooks/useStoreQuery'
 import { orderDraftQueryKey, ordersQueryKey, statsQueryKey } from '@/lib/storeQueryKeys'
-import type { CreateOrderResult, OrderDraft, OrderDraftUpdate } from '@/types/domain'
+import type {
+  CreateOrderResult,
+  OrderDraft,
+  OrderDraftUpdate,
+  OrganizeOrderDraftOut,
+} from '@/types/domain'
 
 export function useOrderDraft(roomId: number | null, enabled: boolean) {
   const { storeId, enabled: storeReady } = useStoreQueryGate()
@@ -47,14 +52,14 @@ export function useOrganizeData(roomId: number | null) {
   const qc = useQueryClient()
   const { storeId } = useStoreQueryGate()
   return useMutation({
-    mutationFn: () => {
+    mutationFn: (): Promise<OrganizeOrderDraftOut> => {
       if (roomId == null) return Promise.reject(new Error('No room selected'))
       return organizeData(roomId)
     },
-    onSuccess: data => {
+    onSuccess: result => {
       if (roomId != null && storeId != null) {
         const key = orderDraftQueryKey(storeId, roomId)
-        qc.setQueryData(key, data)
+        qc.setQueryData(key, result.draft)
         qc.invalidateQueries({ queryKey: key })
       }
     },

@@ -16,6 +16,10 @@ import { useState } from 'react'
 import { ChevronDown } from 'lucide-react'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { cn } from '@/lib/utils'
+import {
+  AI_CHANGED_INPUT_CLASS,
+  AI_CHANGED_VALUE_CLASS,
+} from '@/lib/llmChangedFields'
 
 export type EditableKey =
   | 'customer_name'
@@ -367,6 +371,8 @@ interface FormRowProps {
   setField: <K extends keyof FormState>(key: K, value: FormState[K]) => void
   display: Record<FieldKey, string> | null
   missing: boolean
+  /** True when LLM changed this field in the latest organize/suggest. */
+  aiChanged?: boolean
 }
 
 export function FormRow({
@@ -376,21 +382,24 @@ export function FormRow({
   setField,
   display,
   missing,
+  aiChanged = false,
 }: FormRowProps) {
   const labelClasses = 'w-[110px] flex-shrink-0 font-bold font-["Noto_Sans_TC",sans-serif] text-base text-black/[0.87]'
+  const showAiHighlight = aiChanged && !missing
 
   return (
     <div className="flex min-h-8 items-center gap-2">
       <div className={labelClasses}>{field.label}</div>
       <div className="flex-1">
         {isEditing ? (
-          renderEditor(field, form, setField, missing)
+          renderEditor(field, form, setField, missing, showAiHighlight)
         ) : field.variant === 'order_status' && field.editable ? (
           <OrderStatusBadge status={normalizeOrderStatus(form.order_status)} />
         ) : (
           <span
             className={cn(
-              "font-bold font-['Noto_Sans_TC',sans-serif] text-base text-black",
+              "font-['Noto_Sans_TC',sans-serif] text-base text-black",
+              showAiHighlight ? AI_CHANGED_VALUE_CLASS : 'font-bold',
             )}
           >
             {display?.[field.key] || '—'}
@@ -470,6 +479,7 @@ function renderEditor(
   form: FormState,
   setField: <K extends keyof FormState>(key: K, value: FormState[K]) => void,
   missing: boolean,
+  aiChanged: boolean,
 ) {
   const emptyHint = missing ? '此欄位不可為空' : undefined
   const inputClasses = cn(
@@ -477,6 +487,7 @@ function renderEditor(
     "font-['Noto_Sans_TC',sans-serif]",
     'focus:border-[#6168FC] focus:shadow-[0_0_0_2px_#e4e7ff]',
     missing && 'border-red-500 bg-red-50 placeholder:text-red-400 focus:shadow-[0_0_0_2px_rgba(220,53,69,0.25)]',
+    aiChanged && !missing && AI_CHANGED_INPUT_CLASS,
   )
 
   if (field.variant === 'select' && field.key === 'shipment_method') {
@@ -562,6 +573,7 @@ interface DateTimeRowProps {
   onDateChange: (v: string) => void
   onTimeChange: (v: string) => void
   missing: boolean
+  aiChanged?: boolean
 }
 
 export function DateTimeRow({
@@ -571,12 +583,15 @@ export function DateTimeRow({
   onDateChange,
   onTimeChange,
   missing,
+  aiChanged = false,
 }: DateTimeRowProps) {
+  const showAiHighlight = aiChanged && !missing
   const inputClasses = cn(
     'w-full rounded-md border-[1.5px] border-[#e0e3ed] bg-[#fafbff] px-3 py-2 text-[15px] text-black outline-none transition',
     "font-['Noto_Sans_TC',sans-serif]",
     'focus:border-[#6168FC] focus:shadow-[0_0_0_2px_#e4e7ff]',
     missing && 'border-red-500 bg-red-50 focus:shadow-[0_0_0_2px_rgba(220,53,69,0.25)]',
+    showAiHighlight && AI_CHANGED_INPUT_CLASS,
   )
   return (
     <>

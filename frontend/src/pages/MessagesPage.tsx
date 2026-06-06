@@ -21,6 +21,7 @@ export default function MessagesPage() {
   const [showDetail, setShowDetail] = useState(false)
   const [openDraftOnDetail, setOpenDraftOnDetail] = useState(false)
   const [detailSubView, setDetailSubView] = useState<DetailPanelSubView>('main')
+  const [draftAiChangedFields, setDraftAiChangedFields] = useState<string[]>([])
   const [showLeaveDialog, setShowLeaveDialog] = useState(false)
   const pendingRoomRef = useRef<ChatRoomType | null>(null)
   const isDirtyRef = useRef(false)
@@ -42,6 +43,7 @@ export default function MessagesPage() {
   useEffect(() => {
     setSelectedRoomId(null)
     setShowDetail(false)
+    setDraftAiChangedFields([])
   }, [currentStoreId])
 
   useEffect(() => {
@@ -81,13 +83,15 @@ export default function MessagesPage() {
     setSelectedRoomId(room.room_id)
     setShowDetail(false)
     setDetailSubView('main')
+    setDraftAiChangedFields([])
     isDirtyRef.current = false
   }
 
   async function handleOrganizeOrder() {
     if (selectedRoomId == null) return
     try {
-      await organizeMutation.mutateAsync()
+      const result = await organizeMutation.mutateAsync()
+      setDraftAiChangedFields(result.changed_fields)
       setOpenDraftOnDetail(true)
       setShowDetail(true)
     } catch (err) {
@@ -139,6 +143,8 @@ export default function MessagesPage() {
           onDraftViewOpened={() => setOpenDraftOnDetail(false)}
           onSubViewChange={setDetailSubView}
           onDirtyChange={handleDirtyChange}
+          draftAiChangedFields={draftAiChangedFields}
+          onDraftAiHighlightClear={() => setDraftAiChangedFields([])}
         />
       )}
 
