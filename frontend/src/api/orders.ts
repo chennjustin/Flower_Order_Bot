@@ -5,6 +5,7 @@ import type {
   OrderDraft,
   OrderDraftUpdate,
   OrderPatchUpdate,
+  OrderSuggestFromChatOut,
 } from '@/types/domain'
 
 export async function fetchOrders(): Promise<Order[]> {
@@ -29,6 +30,16 @@ export async function updateOrderById(
   patch: OrderPatchUpdate,
 ): Promise<Order> {
   const { data } = await api.patch<Order>(`/orders/${orderId}`, patch)
+  return data
+}
+
+/** LLM suggestion from unprocessed chat; does not write the order row. */
+export async function suggestOrderFromChat(
+  orderId: number,
+): Promise<OrderSuggestFromChatOut> {
+  const { data } = await api.post<OrderSuggestFromChatOut>(
+    `/orders/${orderId}/suggest-from-chat`,
+  )
   return data
 }
 

@@ -23,6 +23,7 @@ interface ChatHeaderProps {
   onOpenDetail: () => void
   onOrganizeOrder: () => void
   isOrganizing?: boolean
+  showOrganizeButton?: boolean
 }
 
 export default function ChatHeader({
@@ -34,6 +35,7 @@ export default function ChatHeader({
   onOpenDetail,
   onOrganizeOrder,
   isOrganizing,
+  showOrganizeButton = true,
 }: ChatHeaderProps) {
   const switchMode = useSwitchChatRoomMode(roomId)
   const [stageMenuOpen, setStageMenuOpen] = useState(false)
@@ -130,21 +132,23 @@ export default function ChatHeader({
             <span>訂單詳情</span>
           </button>
         )}
-        <button
-          type="button"
-          onClick={onOrganizeOrder}
-          disabled={isOrganizing}
-          className="flex h-10 w-[120px] items-center justify-center gap-3 rounded-xl bg-[#C5C7FF] px-3 text-base font-bold text-white transition hover:bg-[#A8ACFF] hover:shadow-[2px_2px_4px_rgba(0,0,0,0.25)] active:scale-95 disabled:opacity-70 font-['Noto_Sans_TC',sans-serif]"
-        >
-        {isOrganizing ? (
-          <Loader2 className="h-5 w-5 animate-spin" />
-        ) : (
-          <>
-            <Archive className="h-5 w-5" />
-            <span>整理資料</span>
-          </>
+        {showOrganizeButton && (
+          <button
+            type="button"
+            onClick={onOrganizeOrder}
+            disabled={isOrganizing}
+            className="flex h-10 w-[120px] items-center justify-center gap-3 rounded-xl bg-[#C5C7FF] px-3 text-base font-bold text-white transition hover:bg-[#A8ACFF] hover:shadow-[2px_2px_4px_rgba(0,0,0,0.25)] active:scale-95 disabled:opacity-70 font-['Noto_Sans_TC',sans-serif]"
+          >
+            {isOrganizing ? (
+              <Loader2 className="h-5 w-5 animate-spin" />
+            ) : (
+              <>
+                <Archive className="h-5 w-5" />
+                <span>整理資料</span>
+              </>
+            )}
+          </button>
         )}
-        </button>
       </div>
     </header>
   )

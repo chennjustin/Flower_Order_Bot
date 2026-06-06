@@ -70,6 +70,14 @@ export interface OrderPatchUpdate {
   delivery_address?: string | null
   pay_way?: string | null
   order_status?: OrderStatus | null
+  /** Mark chat messages processed after a successful save. */
+  mark_processed_message_ids?: number[] | null
+}
+
+/** LLM preview from POST /orders/{order_id}/suggest-from-chat (no DB write). */
+export interface OrderSuggestFromChatOut {
+  suggested: OrderPatchUpdate
+  source_message_ids: number[]
 }
 
 export interface LastMessage {

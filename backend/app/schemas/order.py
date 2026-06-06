@@ -124,3 +124,12 @@ class OrderPatchUpdate(BaseModel):
     delivery_address: Optional[str] = None
     pay_way: Optional[str] = None
     order_status: Optional[OrderStatus] = None
+    # When set, marks these chat messages processed after a successful save.
+    mark_processed_message_ids: Optional[list[int]] = None
+
+
+class OrderSuggestFromChatOut(BaseModel):
+    """POST /orders/{order_id}/suggest-from-chat — LLM preview, no DB write."""
+
+    suggested: OrderPatchUpdate
+    source_message_ids: list[int] = []

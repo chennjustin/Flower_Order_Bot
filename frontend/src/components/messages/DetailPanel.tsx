@@ -9,6 +9,9 @@ import RoomOrderList from './RoomOrderList'
 import type { Order } from '@/types/domain'
 import { cn } from '@/lib/utils'
 
+/** Right-panel sub-view; used to toggle chat-header actions (e.g. organize draft). */
+export type DetailPanelSubView = 'main' | 'draft' | 'order-edit'
+
 interface DetailPanelProps {
   roomId: number
   open: boolean
@@ -16,6 +19,7 @@ interface DetailPanelProps {
   /** Open the draft sub-view when the panel mounts (e.g. after organize data). */
   openDraftInitially?: boolean
   onDraftViewOpened?: () => void
+  onSubViewChange?: (view: DetailPanelSubView) => void
 }
 
 export default function DetailPanel({
@@ -24,6 +28,7 @@ export default function DetailPanel({
   onClose,
   openDraftInitially,
   onDraftViewOpened,
+  onSubViewChange,
 }: DetailPanelProps) {
   const [showDraftPanel, setShowDraftPanel] = useState(false)
   const [editingOrder, setEditingOrder] = useState<Order | null>(null)
@@ -44,6 +49,16 @@ export default function DetailPanel({
       onDraftViewOpened?.()
     }
   }, [open, openDraftInitially, onDraftViewOpened, roomId])
+
+  useEffect(() => {
+    if (!open) return
+    const view: DetailPanelSubView = editingOrder
+      ? 'order-edit'
+      : showDraftPanel
+        ? 'draft'
+        : 'main'
+    onSubViewChange?.(view)
+  }, [open, editingOrder, showDraftPanel, onSubViewChange])
 
   const draftSummary = useMemo(() => {
     if (draftQuery.isLoading) return '載入中...'

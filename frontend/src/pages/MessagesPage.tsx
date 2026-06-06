@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
 import ChatList from '@/components/messages/ChatList'
 import ChatRoom from '@/components/messages/ChatRoom'
-import DetailPanel from '@/components/messages/DetailPanel'
+import DetailPanel, {
+  type DetailPanelSubView,
+} from '@/components/messages/DetailPanel'
 import OrderSidePanelToggle from '@/components/messages/OrderSidePanelToggle'
 import { useStore } from '@/context/StoreContext'
 import { useChatRooms } from '@/hooks/useChatRooms'
@@ -16,8 +18,13 @@ export default function MessagesPage() {
   const [selectedRoomId, setSelectedRoomId] = useState<number | null>(null)
   const [showDetail, setShowDetail] = useState(false)
   const [openDraftOnDetail, setOpenDraftOnDetail] = useState(false)
+  const [detailSubView, setDetailSubView] =
+    useState<DetailPanelSubView>('main')
 
   const organizeMutation = useOrganizeData(selectedRoomId)
+  /** Organize draft is hidden while editing a formal order (use in-panel AI instead). */
+  const showOrganizeButton =
+    !showDetail || detailSubView !== 'order-edit'
 
   // Clear selection when switching stores so we do not show another store's room.
   useEffect(() => {
@@ -42,6 +49,7 @@ export default function MessagesPage() {
   function handleSelect(room: ChatRoomType) {
     setSelectedRoomId(room.room_id)
     setShowDetail(false)
+    setDetailSubView('main')
   }
 
   async function handleOrganizeOrder() {
@@ -77,6 +85,7 @@ export default function MessagesPage() {
               onOpenDetail={() => setShowDetail(true)}
               onOrganizeOrder={handleOrganizeOrder}
               isOrganizing={organizeMutation.isPending}
+              showOrganizeButton={showOrganizeButton}
             />
             {!showDetail && (
               <OrderSidePanelToggle
@@ -95,9 +104,13 @@ export default function MessagesPage() {
         <DetailPanel
           roomId={selectedRoom.room_id}
           open={showDetail}
-          onClose={() => setShowDetail(false)}
+          onClose={() => {
+            setShowDetail(false)
+            setDetailSubView('main')
+          }}
           openDraftInitially={openDraftOnDetail}
           onDraftViewOpened={() => setOpenDraftOnDetail(false)}
+          onSubViewChange={setDetailSubView}
         />
       )}
     </div>
