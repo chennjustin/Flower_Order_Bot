@@ -19,7 +19,7 @@ from app.repositories.order_repository import (
     get_latest_confirmed_order_by_room,
     get_latest_order_draft_by_room,
     get_order_by_id,
-    list_all_orders,
+    list_active_orders,
     list_orders_by_customer_id,
     now_taipei_naive,
     save_order,
