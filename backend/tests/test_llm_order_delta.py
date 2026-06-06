@@ -71,6 +71,28 @@ def test_phone_updates_when_customer_provides_different_number():
     assert merged["customer_phone"] == "0999888777"
 
 
+def test_phone_updates_in_order_suggest_flow():
+    baseline = {
+        "customer_name": "王小明",
+        "customer_phone": "0911222333",
+        "item": "花束",
+        "total_amount": 1000,
+        "quantity": 1,
+        "note": None,
+        "shipment_method": None,
+        "send_datetime": None,
+        "delivery_address": None,
+        "pay_way": None,
+        "pay_status": None,
+    }
+    merged = merge_delta_into_catalog(
+        baseline,
+        {"customer_phone": "0999888777"},
+        flow="order_suggest",
+    )
+    assert merged["customer_phone"] == "0999888777"
+
+
 def test_compute_changed_fields():
     baseline = {"total_amount": 2000, "note": ""}
     merged = {"total_amount": 2500, "note": "粉白色系"}

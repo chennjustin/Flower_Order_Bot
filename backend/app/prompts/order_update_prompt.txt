@@ -10,5 +10,6 @@
 
 ## Output rules (formal order)
 - Delta only: omit unchanged fields.
-- Do not output `customer_name`, or `customer_phone` (locked).
+- Do not output `customer_name` (locked).
+- When new messages contain a phone number, always output `customer_phone` (even if baseline already has one and the customer gives a different number).
 - Do not output `order_status`.

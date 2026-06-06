@@ -34,7 +34,9 @@ from app.usecases.llm_order_delta import (
 
 prompt_manager = PromptManager()
 
-ORDER_CUSTOMER_IDENTITY_RULES = """- `customer_name` and `customer_phone`: do not output; fixed from the formal order.
+ORDER_CUSTOMER_IDENTITY_RULES = """- `customer_name`: do not output; fixed from the formal order.
+- `customer_phone`: MUST output when new messages mention a phone number (fill empty baseline or replace with a new/corrected number). Use key `customer_phone` only.
+  Triggers: customer says "我的電話…", "聯絡我…", or sends digits like 0912345678 / +886912345678.
 - `order_date`: do not output; keep existing order date."""
 
 

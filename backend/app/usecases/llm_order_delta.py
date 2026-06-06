@@ -291,8 +291,8 @@ def _is_field_allowed_in_delta(key: str, *, flow: FlowKind) -> bool:
     if key == "customer_name":
         return False
     if key == "customer_phone":
-        # Draft: customer may provide a different contact number in chat.
-        return flow == "draft"
+        # Customer may provide or correct a contact number in chat (draft or formal order).
+        return True
     if key == "order_date":
         return flow == "draft"
     return key in DELTA_CATALOG_KEYS
@@ -385,7 +385,7 @@ def build_order_patch_from_merged(
 
     return OrderPatchUpdate(
         customer_name=order.customer_name,
-        customer_phone=order.customer_phone,
+        customer_phone=pick_str(order.customer_phone, merged.get("customer_phone")),
         total_amount=pick_num(order.total_amount, merged.get("total_amount")),
         pay_status=merged.get("pay_status") or order.pay_status,  # type: ignore[arg-type]
         item=pick_str(order.item, merged.get("item")),

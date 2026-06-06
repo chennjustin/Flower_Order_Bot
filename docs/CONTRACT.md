@@ -164,6 +164,6 @@ Stage enum: `ChatRoomStage`（實際 enum 定義在 `backend/app/enums/chat.py`�
 - 讀取該 room 所有 `processed=False` 的 `ChatMessage` 組成 `combined_text`（時間正序、Asia/Taipei）
 - 用 `app/prompts/order_prompt.txt` + `order_extraction_rules.txt` 產生 prompt，呼叫 OpenAI `model="gpt-4.1"`, `temperature=0`, `response_format=json_object`
 - 期望模型輸出「delta JSON」（僅有變更欄位），後端 server-side merge 後更新 `OrderDraft`
-- `customer_phone`：草稿整理時若 LLM delta 含電話，經 `customer_organize_sync` 寫入 `Customer.phone`（與 `order_draft` 分開）；`customer_name` 永遠 locked
+- `customer_phone`：草稿整理時若 LLM delta 含電話，經 `customer_organize_sync` 寫入 `Customer.phone`（與 `order_draft` 分開）；正式訂單 suggest 亦允許 LLM 更新電話（寫入 `orders.customer_phone`，待 staff 儲存）；`customer_name` 永遠 locked
 - 若 draft 缺必要欄位：會對顧客 LINE push 缺漏提醒，並記錄一則 outgoing bot 訊息（且 `processed=True` 以免再被 GPT 讀到）
 
