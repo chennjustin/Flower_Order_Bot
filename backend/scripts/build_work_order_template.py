@@ -14,17 +14,19 @@ from docx.shared import Pt
 # Label (Traditional Chinese UI) -> catalog key for docxtpl
 FIELD_ROWS: list[tuple[str, str]] = [
     ("訂單編號", "id"),
+    ("狀態", "order_status"),
     ("顧客姓名", "customer_name"),
+    ("顧客電話", "customer_phone"),
     ("品項", "item"),
     ("數量", "quantity"),
     ("總金額", "total_amount"),
     ("備註", "note"),
-    ("取貨方式", "shipment_method"),
-    ("送貨地址", "delivery_address"),
-    ("訂單日期", "order_date"),
     ("取貨時間", "send_datetime"),
+    ("取貨方式", "shipment_method"),
     ("付款方式", "pay_way"),
     ("付款狀態", "pay_status"),
+    ("送貨地址", "delivery_address"),
+    ("訂單日期", "order_date"),
 ]
 
 OUTPUT = Path(__file__).resolve().parents[1] / "docs" / "工單模板.docx"

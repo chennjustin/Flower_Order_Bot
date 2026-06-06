@@ -11,6 +11,7 @@ from app.core.time import now_taipei_naive
 from app.domain.order_fields import (
     ALL_CATALOG_KEYS,
     CORE_ORGANIZE_FIELDS,
+    DEFAULT_FIELD_ORDER,
     FIXED_VISIBLE_FIELDS,
     OPTIONAL_ORGANIZE_FIELDS,
     OPTIONAL_VISIBLE_FIELDS,
@@ -48,7 +49,10 @@ class EffectiveOrderFieldConfig:
 def _normalize_visible_fields(raw_fields: list[str] | None) -> list[str]:
     """Fixed keys always included; optional keys only if listed in raw input."""
     allowed = set(FIXED_VISIBLE_FIELDS) | set(OPTIONAL_VISIBLE_FIELDS)
-    normalized = [f for f in (raw_fields or []) if f in allowed]
+    if raw_fields is None:
+        # First-time default: show every catalog field.
+        return list(FIXED_VISIBLE_FIELDS) + list(OPTIONAL_VISIBLE_FIELDS)
+    normalized = [f for f in raw_fields if f in allowed]
     ordered = [f for f in FIXED_VISIBLE_FIELDS]
     ordered.extend(f for f in OPTIONAL_VISIBLE_FIELDS if f in normalized)
     return ordered
@@ -57,7 +61,7 @@ def _normalize_visible_fields(raw_fields: list[str] | None) -> list[str]:
 def _normalize_field_order(raw_order: list[str] | None) -> list[str]:
     """Catalog keys only; preserve order; append any missing keys at the end."""
     if not raw_order:
-        return list(ALL_CATALOG_KEYS)
+        return list(DEFAULT_FIELD_ORDER)
 
     seen: set[str] = set()
     ordered: list[str] = []
@@ -97,7 +101,7 @@ def _load_display_settings(
             return visible, field_order
 
     visible = _normalize_visible_fields(config.visible_fields)
-    return visible, list(ALL_CATALOG_KEYS)
+    return visible, list(DEFAULT_FIELD_ORDER)
 
 
 def _persist_display_settings(
@@ -147,7 +151,7 @@ async def _get_or_create_config(db: AsyncSession, store_id: int) -> StoreOrderFi
         return config
 
     normalized_visible = _normalize_visible_fields(None)
-    field_order = list(ALL_CATALOG_KEYS)
+    field_order = list(DEFAULT_FIELD_ORDER)
     config = StoreOrderFieldConfig(
         store_id=store_id,
         visible_fields=normalized_visible,

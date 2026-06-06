@@ -66,3 +66,12 @@ def test_organize_optional_fields_are_subset_of_optional_visible() -> None:
 def test_core_organize_fields_are_catalog_keys() -> None:
     for key in CORE_ORGANIZE_FIELDS:
         assert key in FIELD_LABELS
+
+
+def test_default_field_order_matches_frontend_registry_sequence() -> None:
+    from app.domain.order_fields import DEFAULT_FIELD_ORDER
+
+    frontend = _parse_frontend_registry(FRONTEND_REGISTRY_PATH)
+    frontend_keys = list(frontend.keys())
+    assert list(DEFAULT_FIELD_ORDER) == frontend_keys
+    assert len(frontend_keys) == len(FIELD_LABELS)

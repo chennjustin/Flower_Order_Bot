@@ -53,7 +53,25 @@ CORE_ORGANIZE_FIELDS: Final[tuple[str, ...]] = (
     "total_amount",
 )
 
-ALL_CATALOG_KEYS: Final[tuple[str, ...]] = FIXED_VISIBLE_FIELDS + OPTIONAL_VISIBLE_FIELDS
+# Default display sequence for first-time / unset store config (all fields visible).
+DEFAULT_FIELD_ORDER: Final[tuple[str, ...]] = (
+    "id",
+    "order_status",
+    "customer_name",
+    "customer_phone",
+    "item",
+    "quantity",
+    "total_amount",
+    "note",
+    "send_datetime",
+    "shipment_method",
+    "pay_way",
+    "pay_status",
+    "delivery_address",
+    "order_date",
+)
+
+ALL_CATALOG_KEYS: Final[tuple[str, ...]] = DEFAULT_FIELD_ORDER
 
 # ---------------------------------------------------------------------------
 # Display labels (registry)
@@ -96,5 +114,5 @@ def build_display_config(
     """Default JSON payload for store_order_field_config.display_config."""
     return {
         "visible_fields": visible_fields,
-        "field_order": list(field_order) if field_order is not None else list(ALL_CATALOG_KEYS),
+        "field_order": list(field_order) if field_order is not None else list(DEFAULT_FIELD_ORDER),
     }

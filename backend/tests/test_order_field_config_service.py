@@ -26,6 +26,14 @@ def test_normalize_visible_fields_keeps_fixed_and_filters_invalid() -> None:
     assert "bad_field" not in fields
 
 
+def test_normalize_visible_fields_none_shows_all_catalog_fields() -> None:
+    fields = _normalize_visible_fields(None)
+    assert set(fields) == set(ALL_CATALOG_KEYS)
+    assert "quantity" in fields
+    assert "pay_status" in fields
+    assert "order_date" in fields
+
+
 def test_normalize_field_order_preserves_custom_sequence_and_appends_missing() -> None:
     order = _normalize_field_order(["item", "customer_name", "id"])
     assert order[:3] == ["item", "customer_name", "id"]
