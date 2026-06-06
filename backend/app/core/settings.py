@@ -71,12 +71,46 @@ def resolve_database_url() -> str:
     return "sqlite+aiosqlite:///messages.db"
 
 
-def resolve_database_alem_url() -> str:
-    """Alembic 用同步 driver；DATABASE_ALEM_URL 優先。"""
+def resolve_provision_database_url() -> str:
+    """
+    Async URL for one-off CLI (provision_stores).
+    Prefers DATABASE_DIRECT_URL; else auto-rewrites pooler → db.<ref>.supabase.co.
+    """
     load_dotenv()
+    from app.core.supabase_db_url import pooler_session_to_transaction, pooler_url_to_direct
+
+    direct = os.getenv("DATABASE_DIRECT_URL", "").strip()
+    if direct:
+        url = direct
+        if url.startswith("postgres://"):
+            url = url.replace("postgres://", "postgresql+asyncpg://", 1)
+        if "postgresql+asyncpg" in url:
+            url = url.replace("sslmode=require", "ssl=require")
+        return url
+
+    base = resolve_database_url()
+    return (
+        pooler_session_to_transaction(base, for_asyncpg=True)
+        or pooler_url_to_direct(base, for_asyncpg=True)
+        or base
+    )
+
+
+def resolve_database_alem_url() -> str:
+    """Alembic 用同步 driver；直連優先，否則自動將 pooler 改為 db.<ref>.supabase.co。"""
+    load_dotenv()
+    from app.core.supabase_db_url import pooler_session_to_transaction, pooler_url_to_direct
+
+    direct = os.getenv("DATABASE_ALEM_DIRECT_URL", "").strip()
+    if direct:
+        return direct
     explicit = os.getenv("DATABASE_ALEM_URL", "").strip()
     if explicit:
-        return explicit
+        return (
+            pooler_session_to_transaction(explicit, for_asyncpg=False)
+            or pooler_url_to_direct(explicit, for_asyncpg=False)
+            or explicit
+        )
     if any(
         os.getenv(k)
         for k in ("POSTGRES_USER", "POSTGRES_PASSWORD", "POSTGRES_DB", "POSTGRES_HOST", "POSTGRES_PORT")
@@ -86,9 +120,13 @@ def resolve_database_alem_url() -> str:
     if fallback.startswith("sqlite+aiosqlite"):
         return "sqlite:///" + fallback.split("sqlite+aiosqlite:///", 1)[-1]
     if fallback.startswith("postgresql+asyncpg://"):
-        return fallback.replace("postgresql+asyncpg://", "postgresql+psycopg2://", 1)
+        fallback = fallback.replace("postgresql+asyncpg://", "postgresql+psycopg2://", 1)
     if fallback:
-        return fallback
+        return (
+            pooler_session_to_transaction(fallback, for_asyncpg=False)
+            or pooler_url_to_direct(fallback, for_asyncpg=False)
+            or fallback
+        )
     return "sqlite:///messages.db"
 
 

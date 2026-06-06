@@ -12,8 +12,10 @@ from app.schemas.chat import (
     ChatMessageCreate,
 )
 from app.enums.chat import ChatMessageDirection, ChatMessageStatus
+from app.core.line_client import line_bot_api_for_store
+from app.repositories.store_repository import get_store_by_id
 from app.utils.line_send_message import LINE_push_message
-from app.services.user_service import get_user_by_line_uid, get_user_by_id
+from app.services.user_service import get_user_by_id
 from app.repositories.chat_repository import (
     create_chat_message_entry as repo_create_chat_message_entry,
     create_chat_room as repo_create_chat_room,
@@ -50,8 +52,10 @@ async def get_latest_message(db: AsyncSession, room_id: int) -> Optional[ChatMes
     )
     return message
 
-async def get_chat_room_list(db: AsyncSession) -> Optional[List[ChatRoomOut]]:
-    rooms = await list_chat_rooms(db)
+async def get_chat_room_list(
+    db: AsyncSession, store_id: int | None = None
+) -> Optional[List[ChatRoomOut]]:
+    rooms = await list_chat_rooms(db, store_id=store_id)
 
     response = []
     for room in rooms:
@@ -149,11 +153,13 @@ async def create_staff_message(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Customer has no LINE UID; cannot push message",
         )
-    user = await get_user_by_line_uid(db, room.customer.line_uid)
-    if not user:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    store = await get_store_by_id(db, room.store_id)
+    if not store:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Store not found")
 
-    push_ok = LINE_push_message(user.line_uid, payload)
+    line_uid = room.customer.line_uid
+    line_api = line_bot_api_for_store(store)
+    push_ok = LINE_push_message(line_api, line_uid, payload)
     message_status = ChatMessageStatus.SENT if push_ok else ChatMessageStatus.FAILED
 
     message = await repo_create_chat_message_entry(

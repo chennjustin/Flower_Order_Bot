@@ -33,8 +33,8 @@ async def get_line_uid_by_chatroom_id(
         return None
 
 
-async def get_user_by_line_uid(db: AsyncSession, line_uid: str) -> User:
-    return await repo_get_user_by_line_uid(db, line_uid)
+async def get_user_by_line_uid(db: AsyncSession, line_uid: str, store_id: int) -> User:
+    return await repo_get_user_by_line_uid(db, line_uid, store_id)
 
 async def get_user_by_id(db: AsyncSession, user_id: int) -> User:
     return await repo_get_user_by_id(db, user_id)

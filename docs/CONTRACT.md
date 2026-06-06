@@ -45,10 +45,14 @@ pytest backend/tests/test_contract_smoke.py
 ### LINE Webhook
 - **POST** `/callback`
   - Header: `X-Line-Signature` 必填
+  - Body: JSON 須含 top-level `destination`（對應 `store.slug`）
   - **200**: `"OK"` (PlainTextResponse)
-  - **400**: Missing signature / Invalid signature
+  - **400**: Missing signature / Invalid signature / missing destination
+  - **404**: No store for `destination`
+  - **503**: Store inactive or LINE credentials not configured
 
 ### Orders / Drafts
+- 以下端點需 Bearer token，且僅能操作登入者所屬 `store` 的資料。
 - **GET** `/orders`
   - Response model: `Optional[List[OrderOut]]`
 
@@ -78,7 +82,7 @@ pytest backend/tests/test_contract_smoke.py
   - 若整理失敗或回覆空：**404** `{"detail": "No data found"}`
 
 ### Messages (Chat Rooms)
-Base prefix: `/chat_rooms`
+Base prefix: `/chat_rooms`（需 Bearer token；列表與 room 操作限所屬 store）
 
 - **GET** `/chat_rooms`
   - Response model: `List[ChatRoomOut]`

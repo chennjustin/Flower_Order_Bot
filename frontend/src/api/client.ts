@@ -19,9 +19,14 @@ api.interceptors.request.use(async (config) => {
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
-    if (error.response?.status === 401) {
+    const status = error.response?.status
+    const hadAuth = Boolean(error.config?.headers?.Authorization)
+    const onLogin = window.location.pathname === '/login'
+
+    // Only sign out when an authenticated request was rejected (avoids reload loop on /login).
+    if (status === 401 && hadAuth && !onLogin) {
       await supabase.auth.signOut()
-      window.location.href = '/login'
+      window.location.replace('/login')
     }
     return Promise.reject(error)
   },

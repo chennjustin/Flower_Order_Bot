@@ -4,22 +4,27 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.services.order_service import get_all_orders
 from app.core.database import get_db
-from app.core.deps import get_current_user
+from app.core.auth import get_current_store, get_order_for_store
+from app.models.store import Store
 from docxtpl import DocxTemplate
 import io
 from pathlib import Path
 
-api_router = APIRouter(dependencies=[Depends(get_current_user)])
+api_router = APIRouter()
 TEMPLATE_PATH = Path(__file__).resolve().parents[2] / "docs" / "order_template.docx"
 
 @api_router.get("/orders/{order_id}.docx")
-async def export_order_docx(order_id: int, db: AsyncSession = Depends(get_db)):
-    orders = await get_all_orders(db)
+async def export_order_docx(
+    order_id: int,
+    store: Store = Depends(get_current_store),
+    db: AsyncSession = Depends(get_db),
+):
+    await get_order_for_store(db, order_id, store)
+    orders = await get_all_orders(db, store_id=store.id)
     order = next((o for o in orders if o.id == order_id), None)
     if not order:
         return {"error": "Order not found"}
 
-    # 處理 send_datetime 與中文星期
     send_datetime_str = ""
     weekday_str = ""
     if getattr(order, "send_datetime", None):

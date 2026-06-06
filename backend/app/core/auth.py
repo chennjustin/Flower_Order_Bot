@@ -7,6 +7,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.core.deps import get_current_user
+from app.models.chat import ChatRoom
+from app.models.order import Order
+from app.models.payment import PaymentMethod
 from app.models.store import Store
 
 # 放在獨立模組（非 deps.py）以避免 deps → database → deps 的循環匯入。
@@ -63,3 +66,49 @@ async def get_current_store(
         status_code=status.HTTP_403_FORBIDDEN,
         detail="Account not linked to a store. Contact your administrator.",
     )
+
+
+async def get_chat_room_for_store(
+    db: AsyncSession, room_id: int, store: Store
+) -> ChatRoom:
+    from app.services.message_service import get_chat_room_by_room_id
+
+    room = await get_chat_room_by_room_id(db, room_id)
+    if not room:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Chat room not found",
+        )
+    if room.store_id != store.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Chat room does not belong to your store",
+        )
+    return room
+
+
+async def get_order_for_store(db: AsyncSession, order_id: int, store: Store) -> Order:
+    from app.repositories.order_repository import get_order_by_id
+    from app.services.message_service import get_chat_room_by_room_id
+
+    order = await get_order_by_id(db, order_id)
+    if not order:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Order not found",
+        )
+    room = await get_chat_room_by_room_id(db, order.room_id)
+    if not room or room.store_id != store.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Order does not belong to your store",
+        )
+    return order
+
+
+def assert_payment_method_for_store(method: PaymentMethod, store: Store) -> None:
+    if method.store_id != store.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Payment method does not belong to your store",
+        )

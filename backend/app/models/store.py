@@ -17,7 +17,10 @@ class Store(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String, nullable=False)
+    # LINE webhook destination (channel user id, e.g. U4b…); must match JSON "destination"
     slug: Mapped[str | None] = mapped_column(String, unique=True, nullable=True)
+    line_channel_access_token: Mapped[str | None] = mapped_column(String, nullable=True)
+    line_channel_secret: Mapped[str | None] = mapped_column(String, nullable=True)
     timezone: Mapped[str] = mapped_column(String, nullable=False, default="Asia/Taipei")
     active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=now_taipei_naive)

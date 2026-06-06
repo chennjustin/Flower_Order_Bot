@@ -19,15 +19,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let mounted = true
 
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (mounted) {
-        setSession(session)
-        setLoading(false)
-      }
+      if (!mounted) return
+      setSession(session)
+      setLoading(false)
     })
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (mounted) {
-        setSession(session)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (!mounted) return
+      setSession(session)
+      if (event === 'INITIAL_SESSION') {
         setLoading(false)
       }
     })

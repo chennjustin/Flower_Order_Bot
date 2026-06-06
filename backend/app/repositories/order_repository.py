@@ -26,8 +26,16 @@ async def get_order_by_id(db: AsyncSession, order_id: int) -> Optional[Order]:
     return result.scalar_one_or_none()
 
 
-async def list_active_orders(db: AsyncSession) -> list[Order]:
+async def list_active_orders(
+    db: AsyncSession, store_id: int | None = None
+) -> list[Order]:
+    from app.models.chat import ChatRoom
+
     stmt = select(Order).where(Order.status != OrderStatus.CANCELLED)
+    if store_id is not None:
+        stmt = stmt.join(ChatRoom, Order.room_id == ChatRoom.id).where(
+            ChatRoom.store_id == store_id
+        )
     result = await db.execute(stmt)
     return result.scalars().all()
 

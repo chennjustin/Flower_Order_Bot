@@ -6,17 +6,13 @@ import OrdersPage from './pages/OrdersPage'
 import MessagesPage from './pages/MessagesPage'
 import StatsPage from './pages/StatsPage'
 import OrderFieldSettingsPage from './pages/OrderFieldSettingsPage'
-import { redirectIfAuthed, requireAuth } from '@/lib/auth'
-
 export const router = createBrowserRouter([
   {
     path: '/login',
-    loader: redirectIfAuthed,
     element: <LoginPage />,
   },
   {
     path: '/',
-    loader: requireAuth,
     element: <App />,
     children: [
       { index: true, element: <DashboardPage /> },

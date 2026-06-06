@@ -11,6 +11,7 @@ import {
   fetchDefaultOrderFieldConfig,
   updateDefaultOrderFieldConfig,
 } from '@/api/orderFieldConfig'
+import { useAuth } from '@/contexts/AuthContext'
 import { isFieldLockedVisible } from '@/config/orderDisplayFields'
 import { loadConfig, mergeWithRegistry, saveConfig } from '@/lib/orderDisplayStorage'
 import type { OrderDisplayConfig, OrderFieldConfigItem, OrderFieldKey } from '@/types/orderDisplay'
@@ -69,6 +70,7 @@ interface OrderDisplayConfigProviderProps {
 }
 
 export function OrderDisplayConfigProvider({ children }: OrderDisplayConfigProviderProps) {
+  const { session, loading: authLoading } = useAuth()
   const [savedConfig, setSavedConfig] = useState<OrderDisplayConfig>(() =>
     mergeWithRegistry(loadConfig()),
   )
@@ -111,7 +113,19 @@ export function OrderDisplayConfigProvider({ children }: OrderDisplayConfigProvi
   }, [])
 
   useEffect(() => {
+    if (authLoading) return
+
+    if (!session?.access_token) {
+      const local = mergeWithRegistry(loadConfig())
+      setSavedConfig(local)
+      setDraftConfig(cloneConfig(local))
+      setLoadError(null)
+      setLoading(false)
+      return
+    }
+
     let cancelled = false
+    setLoading(true)
     ;(async () => {
       try {
         const remote = await fetchDefaultOrderFieldConfig()
@@ -134,7 +148,7 @@ export function OrderDisplayConfigProvider({ children }: OrderDisplayConfigProvi
     return () => {
       cancelled = true
     }
-  }, [buildConfigFromVisibleFields])
+  }, [authLoading, session?.access_token, buildConfigFromVisibleFields])
 
   const hasChanges = useMemo(
     () => !configsEqual(savedConfig, draftConfig),
