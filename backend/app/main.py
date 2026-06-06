@@ -1,9 +1,19 @@
+import logging
+from pathlib import Path
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
+from starlette.responses import JSONResponse
 
 from app.api.v1.router import api_router
+
+logger = logging.getLogger(__name__)
+
+_uploads_root = Path(__file__).resolve().parent.parent / "uploads"
+_uploads_root.mkdir(parents=True, exist_ok=True)
 
 app = FastAPI(
     title="花店自動化系統 API Dashboard",
@@ -18,8 +28,15 @@ class EnsureCorsHeadersMiddleware(BaseHTTPMiddleware):
     """
 
     async def dispatch(self, request: Request, call_next):
-        response = await call_next(request)
         origin = request.headers.get("origin")
+        try:
+            response = await call_next(request)
+        except Exception as err:
+            logger.exception("Unhandled exception while processing request: %s", err)
+            response = JSONResponse(
+                status_code=500,
+                content={"detail": "Internal Server Error"},
+            )
         if not origin:
             return response
         if any(k.lower() == "access-control-allow-origin" for k in response.headers.keys()):
@@ -39,6 +56,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 app.add_middleware(EnsureCorsHeadersMiddleware)
+
+app.mount(
+    "/uploads",
+    StaticFiles(directory=str(_uploads_root)),
+    name="uploads",
+)
 
 # === 將 APIRouter 掛進來 =================================================
 app.include_router(api_router)

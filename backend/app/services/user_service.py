@@ -2,7 +2,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional
 from app.models.user import User
 
-from app.schemas.user import UserCreate
+from app.schemas.customer import CustomerCreate
 from app.repositories.user_repository import (
     create_user as repo_create_user,
     get_user_by_chat_room_id as repo_get_user_by_chat_room_id,
@@ -57,7 +57,7 @@ async def get_user_by_chat_room_id(
 
 async def create_user(
         db: AsyncSession, 
-        user_data: UserCreate
+        user_data: CustomerCreate
         ) -> User:
     return await repo_create_user(db, user_data)
 

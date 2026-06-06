@@ -1,10 +1,24 @@
+import { useMemo, useState } from 'react'
 import OrderTable from '@/components/orders/OrderTable'
 import PageHeader from '@/components/layout/PageHeader'
 import StatisticsCards from '@/components/stats/StatisticsCards'
 import { useStats } from '@/hooks/useStats'
+import { useOrders } from '@/hooks/useOrders'
+import { isInProgressOrder, normalizeOrderStatus } from '@/utils/orderStatus'
+
+export type QuickFilter = 'today' | 'in_progress' | null
 
 export default function DashboardPage() {
   const { data, isLoading, error } = useStats()
+  const ordersQuery = useOrders()
+  const [quickFilter, setQuickFilter] = useState<QuickFilter>(null)
+
+  const inProgressOrders = useMemo(() => {
+    const orders = ordersQuery.data ?? []
+    return orders.filter(o =>
+      isInProgressOrder(normalizeOrderStatus(o.order_status)),
+    ).length
+  }, [ordersQuery.data])
 
   return (
     <>
@@ -18,9 +32,14 @@ export default function DashboardPage() {
         {isLoading && !data && (
           <div className="text-sm text-gray-500">載入中...</div>
         )}
-        <StatisticsCards stats={data} />
+        <StatisticsCards
+          stats={data}
+          inProgressOrders={inProgressOrders}
+          quickFilter={quickFilter}
+          onQuickFilter={setQuickFilter}
+        />
         <div className="mt-8">
-          <OrderTable />
+          <OrderTable quickFilter={quickFilter} onQuickFilterClear={() => setQuickFilter(null)} pageSize={10} />
         </div>
       </div>
     </>

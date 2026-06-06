@@ -1,7 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import ChatList from '@/components/messages/ChatList'
 import ChatRoom from '@/components/messages/ChatRoom'
-import DetailPanel from '@/components/messages/DetailPanel'
+import DetailPanel, {
+  type DetailPanelSubView,
+} from '@/components/messages/DetailPanel'
+import OrderSidePanelToggle from '@/components/messages/OrderSidePanelToggle'
 import { useChatRooms } from '@/hooks/useChatRooms'
 import { useOrganizeData } from '@/hooks/useOrderDraft'
 import type { ChatRoom as ChatRoomType } from '@/types/domain'
@@ -12,8 +15,14 @@ export default function MessagesPage() {
 
   const [selectedRoomId, setSelectedRoomId] = useState<number | null>(null)
   const [showDetail, setShowDetail] = useState(false)
+  const [openDraftOnDetail, setOpenDraftOnDetail] = useState(false)
+  const [detailSubView, setDetailSubView] =
+    useState<DetailPanelSubView>('main')
 
   const organizeMutation = useOrganizeData(selectedRoomId)
+  /** Organize draft is hidden while editing a formal order (use in-panel AI instead). */
+  const showOrganizeButton =
+    !showDetail || detailSubView !== 'order-edit'
 
   useEffect(() => {
     if (rooms.length === 0) {
@@ -32,12 +41,14 @@ export default function MessagesPage() {
   function handleSelect(room: ChatRoomType) {
     setSelectedRoomId(room.room_id)
     setShowDetail(false)
+    setDetailSubView('main')
   }
 
   async function handleOrganizeOrder() {
     if (selectedRoomId == null) return
     try {
       await organizeMutation.mutateAsync()
+      setOpenDraftOnDetail(true)
       setShowDetail(true)
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err)
@@ -53,18 +64,28 @@ export default function MessagesPage() {
         onSelect={handleSelect}
         isLoading={roomsQuery.isLoading}
       />
-      <div className="flex flex-1 flex-col bg-[#f5f5f5]">
+      <div className="relative flex min-w-0 flex-1 flex-col bg-[#f5f5f5]">
         {roomsQuery.error ? (
           <div className="flex flex-1 items-center justify-center text-sm text-red-600">
             無法載入聊天室：{(roomsQuery.error as Error).message}
           </div>
         ) : selectedRoom ? (
-          <ChatRoom
-            room={selectedRoom}
-            onOpenDetail={() => setShowDetail(true)}
-            onOrganizeOrder={handleOrganizeOrder}
-            isOrganizing={organizeMutation.isPending}
-          />
+          <>
+            <ChatRoom
+              room={selectedRoom}
+              detailPanelOpen={showDetail}
+              onOpenDetail={() => setShowDetail(true)}
+              onOrganizeOrder={handleOrganizeOrder}
+              isOrganizing={organizeMutation.isPending}
+              showOrganizeButton={showOrganizeButton}
+            />
+            {!showDetail && (
+              <OrderSidePanelToggle
+                mode="open"
+                onClick={() => setShowDetail(true)}
+              />
+            )}
+          </>
         ) : (
           <div className="flex flex-1 items-center justify-center text-sm text-black/40">
             選擇左側聊天室開始檢視訊息
@@ -75,7 +96,13 @@ export default function MessagesPage() {
         <DetailPanel
           roomId={selectedRoom.room_id}
           open={showDetail}
-          onClose={() => setShowDetail(false)}
+          onClose={() => {
+            setShowDetail(false)
+            setDetailSubView('main')
+          }}
+          openDraftInitially={openDraftOnDetail}
+          onDraftViewOpened={() => setOpenDraftOnDetail(false)}
+          onSubViewChange={setDetailSubView}
         />
       )}
     </div>

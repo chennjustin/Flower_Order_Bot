@@ -1,26 +1,25 @@
-# models/__init__.py
-from app.core.database import Base  # 供 Alembic 使用
+from app.core.database import Base
 
+from .store import Store
+from .customer import Customer
 from .user import User
-from .staff import StaffUser
 from .chat import ChatRoom, ChatMessage
 from .order import Order, OrderDraft
+from .order_field_config import StoreOrderFieldConfig
 from .payment import Payment, PaymentMethod
 from .operation import Notification
-from .operation import AuditLog
-from .store_display_config import StoreDisplayConfig
 
 __all__ = (
+    "Base",
+    "Store",
+    "Customer",
     "User",
-    "StaffUser",
     "ChatRoom",
     "ChatMessage",
     "Order",
     "OrderDraft",
+    "StoreOrderFieldConfig",
     "Payment",
     "PaymentMethod",
-    "Shipment",
     "Notification",
-    "AuditLog",
-    "StoreDisplayConfig",
 )

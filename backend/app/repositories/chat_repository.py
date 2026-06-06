@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
@@ -7,7 +9,7 @@ from sqlalchemy.orm import joinedload
 
 from app.enums.chat import ChatMessageDirection, ChatMessageStatus, ChatRoomStage
 from app.models.chat import ChatMessage, ChatRoom
-from app.schemas.chat import ChatMessageBase
+from app.schemas.chat import ChatMessagePayload
 
 
 async def get_latest_chat_message(db: AsyncSession, room_id: int) -> Optional[ChatMessage]:
@@ -24,7 +26,7 @@ async def get_latest_chat_message(db: AsyncSession, room_id: int) -> Optional[Ch
 async def list_chat_rooms(db: AsyncSession) -> list[ChatRoom]:
     stmt = (
         select(ChatRoom)
-        .options(joinedload(ChatRoom.user))
+        .options(joinedload(ChatRoom.customer))
         .order_by(ChatRoom.updated_at.desc())
     )
     result = await db.execute(stmt)
@@ -34,30 +36,40 @@ async def list_chat_rooms(db: AsyncSession) -> list[ChatRoom]:
 async def get_chat_room_by_id(db: AsyncSession, room_id: int) -> Optional[ChatRoom]:
     stmt = (
         select(ChatRoom)
-        .options(joinedload(ChatRoom.user))
+        .options(joinedload(ChatRoom.customer))
         .where(ChatRoom.id == room_id)
     )
     result = await db.execute(stmt)
     return result.scalar_one_or_none()
 
 
-async def get_chat_room_by_user_id(db: AsyncSession, user_id: int) -> Optional[ChatRoom]:
+async def get_chat_room_by_user_id(db: AsyncSession, customer_id: int) -> Optional[ChatRoom]:
     stmt = (
         select(ChatRoom)
-        .options(joinedload(ChatRoom.user))
-        .where(ChatRoom.user_id == user_id)
+        .options(joinedload(ChatRoom.customer))
+        .where(ChatRoom.customer_id == customer_id)
+        .order_by(ChatRoom.id.desc())
+        .limit(1)
     )
     result = await db.execute(stmt)
     return result.scalar_one_or_none()
 
 
-async def create_chat_room(db: AsyncSession, user_id: int) -> ChatRoom:
+async def create_chat_room(db: AsyncSession, customer_id: int) -> ChatRoom:
+    from app.repositories.user_repository import get_user_by_id
+
+    customer = await get_user_by_id(db, customer_id)
+    if not customer:
+        raise ValueError(f"Customer {customer_id} not found")
+
     room = ChatRoom(
-        user_id=user_id,
+        store_id=customer.store_id,
+        customer_id=customer_id,
         stage=ChatRoomStage.WELCOME,
         bot_step=-1,
         unread_count=0,
         created_at=datetime.now(timezone(timedelta(hours=8))).replace(tzinfo=None),
+        updated_at=datetime.now(timezone(timedelta(hours=8))).replace(tzinfo=None),
     )
     db.add(room)
     await db.commit()
@@ -90,15 +102,26 @@ async def switch_chat_room_mode(db: AsyncSession, room_id: int, mode: str) -> No
 async def create_chat_message_entry(
     db: AsyncSession,
     room_id: int,
-    data: ChatMessageBase,
+    data: ChatMessagePayload,
     direction: ChatMessageDirection,
+    message_status: ChatMessageStatus = ChatMessageStatus.SENT,
 ) -> ChatMessage:
+    pkg = (data.sticker_package_id or "").strip() or None
+    sid = (data.sticker_id or "").strip() or None
+    img = (data.image_url or "").strip() or None
+    text_val = (data.text or "").strip()
+    if pkg and sid:
+        text_val = text_val or "[貼圖]"
+    elif img:
+        text_val = text_val or "[圖片]"
     message = ChatMessage(
         room_id=room_id,
         direction=direction,
-        text=data.text,
-        image_url=data.image_url,
-        status=ChatMessageStatus.SENT,
+        text=text_val,
+        image_url=img,
+        sticker_package_id=pkg,
+        sticker_id=sid,
+        status=message_status,
         processed=False,
         created_at=datetime.now(timezone(timedelta(hours=8))).replace(tzinfo=None),
         updated_at=datetime.now(timezone(timedelta(hours=8))).replace(tzinfo=None),
@@ -115,4 +138,3 @@ async def touch_chat_room_updated_at(db: AsyncSession, room: ChatRoom) -> ChatRo
     await db.commit()
     await db.refresh(room)
     return room
-

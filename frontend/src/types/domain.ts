@@ -8,22 +8,20 @@ import type {
   ChatMessageStatus,
   ChatRoomStage,
   OrderStatus,
+  PaymentStatus,
   ShipmentMethod,
 } from './enums'
 
 export interface OrderDraftBase {
   customer_name?: string | null
   customer_phone?: string | null
-  receiver_name?: string | null
-  receiver_phone?: string | null
   total_amount?: number | null
+  pay_status?: PaymentStatus | null
   item?: string | null
   quantity?: number | null
   note?: string | null
-  card_message?: string | null
   shipment_method?: ShipmentMethod | null
   send_datetime?: string | null
-  receipt_address?: string | null
   delivery_address?: string | null
 }
 
@@ -36,22 +34,18 @@ export interface OrderDraft extends OrderDraftBase {
   id: number
   order_date: string
   pay_way?: string | null
-  weekday?: string | null
 }
 
 export interface OrderBase {
   customer_name: string
   customer_phone: string
-  receiver_name?: string | null
-  receiver_phone?: string | null
   total_amount: number
+  pay_status?: PaymentStatus | null
   item: string
   quantity: number
   note?: string | null
-  card_message?: string | null
   shipment_method: ShipmentMethod
   send_datetime: string
-  receipt_address?: string | null
   delivery_address?: string | null
 }
 
@@ -60,7 +54,30 @@ export interface Order extends OrderBase {
   order_date: string
   order_status: OrderStatus
   pay_way?: string | null
-  weekday?: string | null
+}
+
+/** Partial update body for PATCH /orders/{order_id}. */
+export interface OrderPatchUpdate {
+  customer_name?: string | null
+  customer_phone?: string | null
+  total_amount?: number | null
+  pay_status?: PaymentStatus | null
+  item?: string | null
+  quantity?: number | null
+  note?: string | null
+  shipment_method?: ShipmentMethod | null
+  send_datetime?: string | null
+  delivery_address?: string | null
+  pay_way?: string | null
+  order_status?: OrderStatus | null
+  /** Mark chat messages processed after a successful save. */
+  mark_processed_message_ids?: number[] | null
+}
+
+/** LLM preview from POST /orders/{order_id}/suggest-from-chat (no DB write). */
+export interface OrderSuggestFromChatOut {
+  suggested: OrderPatchUpdate
+  source_message_ids: number[]
 }
 
 export interface LastMessage {
@@ -80,6 +97,8 @@ export interface ChatRoom {
 export interface ChatMessageBody {
   text?: string | null
   image_url?: string | null
+  sticker_package_id?: string | null
+  sticker_id?: string | null
 }
 
 export interface ChatMessage {
@@ -93,8 +112,10 @@ export interface ChatMessage {
 
 export interface Stats {
   today_orders: number
+  today_completed: number
   pending_orders: number
   monthly_income: number
+  monthly_orders: number
   total_customers: number
 }
 

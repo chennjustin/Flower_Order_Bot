@@ -6,7 +6,7 @@ export default function OrdersPage() {
     <>
       <PageHeader title="訂單管理" />
       <div className="mx-auto max-w-[1280px] px-2 pt-[160px]">
-        <OrderTable />
+        <OrderTable showTitle={false} pageSize={10} />
       </div>
     </>
   )

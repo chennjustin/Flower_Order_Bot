@@ -3,11 +3,9 @@ import os
 from linebot import LineBotApi
 from linebot.exceptions import LineBotApiError
 import logging
-from linebot.models import TextSendMessage, ImageSendMessage
+from linebot.models import TextSendMessage, ImageSendMessage, StickerSendMessage
 from app.enums.chat import ChatMessageDirection
-from app.schemas.chat import (
-    ChatMessageBase,
-)
+from app.schemas.chat import ChatMessagePayload
 from linebot.models import QuickReply, QuickReplyButton, MessageAction
 from app.core.deps import get_line_bot_api
 
@@ -17,26 +15,35 @@ from app.core.deps import get_line_bot_api
 line_bot_api = get_line_bot_api()
 
 
-def LINE_push_message(line_uid: str, data: ChatMessageBase) -> bool: 
+def LINE_push_message(line_uid: str, data: ChatMessagePayload) -> bool:
     """
     發送訊息到 LINE
     :param line_uid: 使用者的 LINE UID
-    :param data: 訊息內容
+    :param data: 訊息內容（擇一：貼圖 / 圖片 URL / 文字）
     """
+    pkg = (data.sticker_package_id or "").strip()
+    sid = (data.sticker_id or "").strip()
+    img = (data.image_url or "").strip()
+    txt = (data.text or "").strip()
     try:
-        if data.text:
+        if pkg and sid:
             line_bot_api.push_message(
-                line_uid, 
-                TextSendMessage(text=data.text)
+                line_uid,
+                StickerSendMessage(package_id=pkg, sticker_id=sid),
             )
-        elif data.image_url:
+        elif img:
             line_bot_api.push_message(
                 line_uid,
                 ImageSendMessage(
-                    original_content_url=data.image_url,
-                    preview_image_url=data.image_url,
+                    original_content_url=img,
+                    preview_image_url=img,
                 ),
             )
+        elif txt:
+            line_bot_api.push_message(line_uid, TextSendMessage(text=txt))
+        else:
+            logging.warning("[LINE PUSH] 無有效內容")
+            return False
         return True
 
     except LineBotApiError as e:

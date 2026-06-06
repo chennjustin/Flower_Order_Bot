@@ -3,19 +3,25 @@ import MessageInput from './MessageInput'
 import MessageList from './MessageList'
 import { useRoomMessages, useSendMessage } from '@/hooks/useRoomMessages'
 import type { ChatRoom as ChatRoomType } from '@/types/domain'
+import { ChatMessageStatus } from '@/types/enums'
 
 interface ChatRoomProps {
   room: ChatRoomType
+  detailPanelOpen?: boolean
   onOpenDetail: () => void
   onOrganizeOrder: () => void
   isOrganizing?: boolean
+  /** When false, hides header「整理資料」(draft-only). */
+  showOrganizeButton?: boolean
 }
 
 export default function ChatRoom({
   room,
+  detailPanelOpen,
   onOpenDetail,
   onOrganizeOrder,
   isOrganizing,
+  showOrganizeButton = true,
 }: ChatRoomProps) {
   const messagesQuery = useRoomMessages(room.room_id)
   const sendMutation = useSendMessage(room.room_id)
@@ -23,12 +29,15 @@ export default function ChatRoom({
   return (
     <div className="flex h-full flex-col overflow-hidden bg-white">
       <ChatHeader
+        roomId={room.room_id}
         roomName={room.user_name}
         avatar={room.user_avatar_url ?? null}
         status={room.status}
+        detailPanelOpen={detailPanelOpen}
         onOpenDetail={onOpenDetail}
         onOrganizeOrder={onOrganizeOrder}
         isOrganizing={isOrganizing}
+        showOrganizeButton={showOrganizeButton}
       />
       {messagesQuery.error ? (
         <div className="flex-1 overflow-y-auto bg-white px-6 py-10 text-center text-sm text-red-600">
@@ -38,10 +47,14 @@ export default function ChatRoom({
         <MessageList messages={messagesQuery.data ?? []} />
       )}
       <MessageInput
+        roomId={room.room_id}
         disabled={sendMutation.isPending}
-        onSend={async text => {
+        onSend={async body => {
           try {
-            await sendMutation.mutateAsync({ text, image_url: null })
+            const sent = await sendMutation.mutateAsync(body)
+            if (sent.status === ChatMessageStatus.FAILED) {
+              alert('訊息已建立，但 LINE 傳送失敗，請確認貼圖 ID 或圖片連結可用後重試。')
+            }
           } catch (err) {
             const msg = err instanceof Error ? err.message : String(err)
             alert(`送出訊息失敗：${msg}`)
