@@ -56,6 +56,24 @@ export interface Order extends OrderBase {
   pay_way?: string | null
 }
 
+export interface OrderListResponse {
+  items: Order[]
+  total: number
+  page: number
+  page_size: number
+}
+
+export interface OrderListParams {
+  page?: number
+  page_size?: number
+  status?: 'in_progress' | 'completed' | ''
+  pickup_date?: string
+  pickup_from?: string
+  pickup_to?: string
+  q?: string
+  include_cancelled?: boolean
+}
+
 /** Partial update body for PATCH /orders/{order_id}. */
 export interface OrderPatchUpdate {
   customer_name?: string | null
@@ -102,6 +120,20 @@ export interface ChatRoom {
   last_message?: LastMessage | null
 }
 
+export interface ChatRoomListResponse {
+  items: ChatRoom[]
+  total: number
+  total_unread: number
+  has_more: boolean
+}
+
+export interface ChatRoomListParams {
+  limit?: number
+  offset?: number
+  stage?: ChatRoomStage | 'ALL'
+  q?: string
+}
+
 export interface ChatMessageBody {
   text?: string | null
   image_url?: string | null
@@ -122,6 +154,7 @@ export interface Stats {
   today_orders: number
   today_completed: number
   pending_orders: number
+  in_progress_orders: number
   monthly_income: number
   monthly_orders: number
   total_customers: number

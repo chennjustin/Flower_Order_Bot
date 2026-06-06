@@ -1,6 +1,7 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import datetime, timedelta, timezone
 from app.repositories.stats_repository import (
+    count_in_progress_orders,
     count_monthly_orders,
     count_pending_orders,
     count_today_completed,
@@ -21,11 +22,13 @@ async def get_stats(session: AsyncSession, store_id: int):
     monthly_income = await sum_monthly_income(session, store_id, month_start)
     monthly_orders = await count_monthly_orders(session, store_id, month_start)
     pending_orders = await count_pending_orders(session, store_id)
+    in_progress_orders = await count_in_progress_orders(session, store_id)
 
     return {
         "today_orders": today_orders,
         "today_completed": today_completed,
         "pending_orders": pending_orders,
+        "in_progress_orders": in_progress_orders,
         "monthly_income": monthly_income,
         "monthly_orders": monthly_orders,
         "total_customers": total_customers

@@ -103,6 +103,13 @@ class OrderOut(OrderBase):
     pay_way: Optional[str] = None
 
 
+class OrderListOut(BaseModel):
+    items: list[OrderOut]
+    total: int
+    page: int
+    page_size: int
+
+
 class OrderStatusUpdate(BaseModel):
     """PATCH /order/{order_id}/status request body."""
 

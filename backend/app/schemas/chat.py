@@ -23,6 +23,13 @@ class ChatRoomOut(BaseModel):
     last_message: Optional[LastMessage]
 
 
+class ChatRoomListOut(BaseModel):
+    items: list[ChatRoomOut]
+    total: int
+    total_unread: int
+    has_more: bool
+
+
 class ChatMessagePayload(BaseModel):
     """API 回應與 LINE push 使用的訊息欄位（可同時含文字與貼圖欄位等舊資料）。"""
 

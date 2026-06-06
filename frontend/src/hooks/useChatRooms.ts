@@ -1,34 +1,80 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 
-import { fetchChatRooms, switchChatRoomMode } from '@/api/messages'
+import { fetchChatRoomsPage, switchChatRoomMode } from '@/api/messages'
 import { useStoreQueryGate } from '@/hooks/useStoreQuery'
 import { chatRoomsQueryKey } from '@/lib/storeQueryKeys'
-import type { ChatRoom } from '@/types/domain'
+import type { ChatRoom, ChatRoomListParams, ChatRoomListResponse } from '@/types/domain'
 import type { ChatRoomStage } from '@/types/enums'
+
+const ROOM_PAGE_SIZE = 30
 
 /** @deprecated Use chatRoomsQueryKey(storeId) from storeQueryKeys. */
 export const CHAT_ROOMS_QUERY_KEY = ['chatRooms'] as const
 
-export function useChatRooms() {
+export interface ChatRoomsFilter {
+  stage: ChatRoomStage | 'ALL'
+  q: string
+}
+
+export function useChatRooms(filters: ChatRoomsFilter) {
   const { storeId, enabled } = useStoreQueryGate()
-  return useQuery<ChatRoom[]>({
-    queryKey: storeId != null ? chatRoomsQueryKey(storeId) : ['chatRooms', 'pending'],
-    queryFn: fetchChatRooms,
+  const listParams: ChatRoomListParams = {
+    limit: ROOM_PAGE_SIZE,
+    stage: filters.stage,
+    q: filters.q || undefined,
+  }
+
+  return useInfiniteQuery<ChatRoomListResponse>({
+    queryKey:
+      storeId != null
+        ? chatRoomsQueryKey(storeId, listParams)
+        : ['chatRooms', 'pending', listParams],
+    queryFn: ({ pageParam = 0 }) =>
+      fetchChatRoomsPage({
+        ...listParams,
+        offset: pageParam as number,
+      }),
+    initialPageParam: 0,
+    getNextPageParam: (lastPage, allPages) => {
+      if (!lastPage.has_more) return undefined
+      return allPages.reduce((sum, page) => sum + page.items.length, 0)
+    },
     enabled,
     refetchOnWindowFocus: true,
   })
 }
 
-export function useSwitchChatRoomMode(roomId: number | null) {
+export function flattenChatRoomPages(
+  data: { pages: ChatRoomListResponse[] } | undefined,
+): ChatRoom[] {
+  if (!data) return []
+  return data.pages.flatMap(page => page.items)
+}
+
+export function getChatRoomsTotalUnread(
+  data: { pages: ChatRoomListResponse[] } | undefined,
+): number {
+  return data?.pages[0]?.total_unread ?? 0
+}
+
+export function useSwitchChatRoomMode(roomId: number | null, filters: ChatRoomsFilter) {
   const qc = useQueryClient()
   const { storeId } = useStoreQueryGate()
-  const listKey = storeId != null ? chatRoomsQueryKey(storeId) : null
+  const listParams: ChatRoomListParams = {
+    limit: ROOM_PAGE_SIZE,
+    stage: filters.stage,
+    q: filters.q || undefined,
+  }
+  const listKey = storeId != null ? chatRoomsQueryKey(storeId, listParams) : null
 
-  function patchRoomStage(rooms: ChatRoom[] | undefined, stage: ChatRoomStage) {
-    if (roomId == null || !rooms) return rooms
-    return rooms.map(room =>
-      room.room_id === roomId ? { ...room, status: stage } : room,
-    )
+  function patchRoomStage(pages: ChatRoomListResponse[] | undefined, stage: ChatRoomStage) {
+    if (roomId == null || !pages) return pages
+    return pages.map(page => ({
+      ...page,
+      items: page.items.map(room =>
+        room.room_id === roomId ? { ...room, status: stage } : room,
+      ),
+    }))
   }
 
   return useMutation({
@@ -43,19 +89,37 @@ export function useSwitchChatRoomMode(roomId: number | null) {
 
       await qc.cancelQueries({ queryKey: listKey })
 
-      const previousRooms = qc.getQueryData<ChatRoom[]>(listKey)
-      qc.setQueryData<ChatRoom[]>(listKey, rooms => patchRoomStage(rooms, stage) ?? [])
+      const previous = qc.getQueryData<{ pages: ChatRoomListResponse[] }>(listKey)
+      qc.setQueryData<{ pages: ChatRoomListResponse[]; pageParams: unknown[] }>(
+        listKey,
+        old => {
+          if (!old) return old
+          return {
+            ...old,
+            pages: patchRoomStage(old.pages, stage) ?? [],
+          }
+        },
+      )
 
-      return { previousRooms }
+      return { previous }
     },
     onError: (_err, _stage, context) => {
-      if (listKey != null && context?.previousRooms !== undefined) {
-        qc.setQueryData(listKey, context.previousRooms)
+      if (listKey != null && context?.previous !== undefined) {
+        qc.setQueryData(listKey, context.previous)
       }
     },
     onSuccess: (_data, stage) => {
       if (listKey != null) {
-        qc.setQueryData<ChatRoom[]>(listKey, rooms => patchRoomStage(rooms, stage) ?? [])
+        qc.setQueryData<{ pages: ChatRoomListResponse[]; pageParams: unknown[] }>(
+          listKey,
+          old => {
+            if (!old) return old
+            return {
+              ...old,
+              pages: patchRoomStage(old.pages, stage) ?? [],
+            }
+          },
+        )
       }
     },
     onSettled: () => {

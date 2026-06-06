@@ -28,6 +28,7 @@ async def test_openapi_contains_frozen_core_paths():
         "/callback",
         "/stores",
         "/orders",
+        "/orders/export.csv",
         "/orders/{order_id}",
         "/orders/{order_id}/suggest-from-chat",
         "/orders/room/{room_id}",
