@@ -25,6 +25,13 @@ export default function OrdersPage() {
     }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Clear the leave guard when the create dialog closes (form data may still be dirty briefly on unmount).
+  useEffect(() => {
+    if (!showCreate) {
+      isDirtyRef.current = false
+    }
+  }, [showCreate])
+
   useEffect(() => {
     function onBeforeUnload(e: BeforeUnloadEvent) {
       if (isDirtyRef.current) e.preventDefault()

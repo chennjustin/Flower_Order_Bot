@@ -14,6 +14,7 @@ import {
   type FieldKey,
   type FormState,
   formStateToOrderPatch,
+  isSendDatetimeMissing,
 } from '@/components/messages/orderDraftForm'
 
 const REQUIRED_KEYS: (keyof FormState)[] = [
@@ -68,6 +69,7 @@ export default function OrderCreatePanel({
 
   function isMissing(key: FieldKey): boolean {
     if (!attempted) return false
+    if (key === 'send_datetime') return isSendDatetimeMissing(form)
     if (!REQUIRED_KEYS.includes(key as keyof FormState)) return false
     return !String(form[key as keyof FormState] ?? '').trim()
   }
@@ -83,7 +85,7 @@ export default function OrderCreatePanel({
   async function handleSave() {
     setAttempted(true)
     const hasEmpty = REQUIRED_KEYS.some(k => !String(form[k] ?? '').trim())
-    if (hasEmpty) return
+    if (hasEmpty || isSendDatetimeMissing(form)) return
 
     try {
       const patch = formStateToOrderPatch(form)

@@ -17,6 +17,7 @@ import {
   formStateToOrderPatch,
   formStateToOrderPatchForOrder,
   isOrderFormDirty,
+  isSendDatetimeMissing,
   type FormState,
 } from '@/components/messages/orderDraftForm'
 import {
@@ -80,12 +81,21 @@ export default function OrderFormCard({
     onDirtyChange?.(isDirty)
   }, [isDirty, onDirtyChange])
 
+  // Re-sync form when the loaded order changes (e.g. after a successful edit save).
+  useEffect(() => {
+    if (isEdit && order) {
+      setForm(formStateFromOrder(order))
+      setAttempted(false)
+    }
+  }, [order, isEdit])
+
   function setField<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm(prev => ({ ...prev, [key]: value }))
   }
 
-  function isMissing(key: keyof FormState): boolean {
+  function isMissing(key: keyof FormState | 'send_datetime'): boolean {
     if (!attempted || !isEditing) return false
+    if (key === 'send_datetime') return isSendDatetimeMissing(form)
     if (!REQUIRED_KEYS.includes(key)) return false
     return !String(form[key] ?? '').trim()
   }
@@ -101,12 +111,19 @@ export default function OrderFormCard({
   async function handleSave() {
     setAttempted(true)
     if (REQUIRED_KEYS.some(k => !String(form[k] ?? '').trim())) return
+    if (isSendDatetimeMissing(form)) return
     setSaving(true)
     try {
       const patch = isEdit && order
         ? formStateToOrderPatchForOrder(form, order)
         : formStateToOrderPatch(form)
       await onSave?.(patch, form)
+      if (isCreate) {
+        // Clear the form so isDirty does not re-trigger the page leave guard.
+        setForm(EMPTY_FORM)
+        setAttempted(false)
+        onDirtyChange?.(false)
+      }
     } finally {
       setSaving(false)
     }
@@ -274,20 +291,22 @@ export default function OrderFormCard({
               }
 
               if (field.key === 'send_datetime') {
+                const datetimeMissing = isMissing('send_datetime')
                 return (
                   <div key={field.key} className="flex h-[30px] items-center gap-1">
                     <input
                       type="date"
                       value={form.send_datetime_date}
+                      title={datetimeMissing ? '此欄位不可為空' : undefined}
                       onChange={e => setField('send_datetime_date', e.target.value)}
-                      className={cn(inputClass, 'w-[110px] shrink-0 px-1 text-sm')}
+                      className={cn(inputClass, 'w-[110px] shrink-0 px-1 text-sm', datetimeMissing && missingInputClass)}
                     />
                     <input
                       type="time"
                       step={300}
                       value={form.send_datetime_time}
                       onChange={e => setField('send_datetime_time', e.target.value)}
-                      className={cn(inputClass, 'flex-1 px-1 text-sm')}
+                      className={cn(inputClass, 'flex-1 px-1 text-sm', datetimeMissing && missingInputClass)}
                     />
                   </div>
                 )
