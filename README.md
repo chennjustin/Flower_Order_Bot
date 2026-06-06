@@ -387,7 +387,7 @@ ngrok http 8000
 https://your-domain.example.com/callback
 ```
 
-本機除錯請配合 ngrok；開發用重置指令可設 `LINE_TEST_RESET_PHRASE`（傳入完全相同文字會刪除該聊天室與顧客相關資料）。
+本機除錯請配合 ngrok。
 
 ---
 

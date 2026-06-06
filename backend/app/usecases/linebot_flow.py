@@ -15,7 +15,6 @@ from app.models.chat import ChatMessage, ChatRoom
 from app.models.store import Store
 from app.models.user import User
 from app.schemas.customer import CustomerCreate
-from app.services.dev_room_reset import wipe_line_customer_for_dev
 from app.services.message_service import (
     create_chat_room,
     get_chat_room_by_user_id,
@@ -91,24 +90,8 @@ async def handle_incoming_text_message(
 ) -> None:
     user_line_id = event.source.user_id
     user_message = event.message.text
-    line_api = line_bot_api_for_store(store)
 
     user, chat_room = await resolve_line_user_and_room(db, user_line_id, store)
-
-    settings = get_settings()
-    if settings.line_test_reset_phrase and user_message.strip() == settings.line_test_reset_phrase:
-        await wipe_line_customer_for_dev(db, chat_room.id, user.id)
-        print(f"[dev] LINE_TEST_RESET_PHRASE matched; wiped room={chat_room.id} user={user.id}")
-        try:
-            line_api.reply_message(
-                event.reply_token,
-                TextSendMessage(
-                    text="【開發用】已清除此聊天室與顧客資料，可重新傳訊開始。"
-                ),
-            )
-        except LineBotApiError as e:
-            print(f"[dev] LINE_TEST_RESET_PHRASE 回覆提示失敗：{e.status_code} {e.error.message}")
-        return
 
     message = ChatMessage(
         room_id=chat_room.id,

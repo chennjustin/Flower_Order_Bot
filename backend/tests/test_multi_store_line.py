@@ -74,7 +74,6 @@ async def test_resolve_store_unknown_destination_404(monkeypatch):
             line_channel_access_token=None,
             line_channel_secret=None,
             database_url="sqlite+aiosqlite:///",
-            line_test_reset_phrase=None,
             public_base_url="http://localhost:8000",
             supabase_url=None,
             supabase_anon_key=None,
