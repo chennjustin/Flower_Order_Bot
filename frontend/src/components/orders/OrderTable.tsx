@@ -14,10 +14,14 @@ import {
   type OrderTableColumnKey,
 } from '@/lib/orderFieldPresentation'
 import {
-  type ChatStatus,
-  normalizeStatus,
-  statusBadgeClasses,
-  statusText,
+  type OrderFilterTab,
+  ORDER_FILTER_TABS,
+  ORDER_STATUS_OPTIONS,
+  isInProgressOrder,
+  isCancelledOrder,
+  normalizeOrderStatus,
+  orderStatusBadgeClasses,
+  orderStatusLabel,
 } from '@/utils/orderStatus'
 import { toLocalDateKey } from '@/utils/datetime'
 import { rowsToCsvBlob } from '@/utils/csv'
@@ -42,13 +46,6 @@ interface OrderTableProps {
   /** Number of rows per page. Default 20. Dashboard uses 10. */
   pageSize?: number
 }
-
-const FILTER_TABS: ReadonlyArray<{ value: FilterTab; label: string }> = [
-  { value: '', label: '所有訂單' },
-  { value: 'WAITING_OWNER', label: '人工溝通' },
-  { value: 'today', label: '今日訂單' },
-  { value: 'ORDER_CONFIRM', label: '討論完成' },
-]
 
 interface NormalizedOrder extends Order {
   display_status: OrderStatus
@@ -83,10 +80,9 @@ export default function OrderTable({
 
   const orders = useMemo(() => ordersQuery.data ?? [], [ordersQuery.data])
 
-  const effectiveStatusTab: FilterTab =
-    quickFilter === 'pending' ? 'WAITING_OWNER' : activeTab
+  const pendingStatusOrderId =
+    updateStatusMutation.isPending ? updateStatusMutation.variables?.orderId ?? null : null
 
-  // Status-only tabs; "today" is handled separately via activeTab / date picker.
   const effectiveStatusTab: '' | 'in_progress' | 'completed' =
     quickFilter === 'in_progress' || activeTab === 'in_progress'
       ? 'in_progress'
@@ -125,7 +121,6 @@ export default function OrderTable({
       rows = filterOrdersByPickupDate(rows, filterDate)
     }
 
-    // Cancelled orders only appear under「所有訂單」.
     const showCancelledOrders = activeTab === '' && effectiveStatusTab === ''
     if (!showCancelledOrders) {
       rows = rows.filter(r => !isCancelledOrder(r.display_status))
@@ -140,6 +135,17 @@ export default function OrderTable({
 
     return rows
   }, [orders, effectiveStatusTab, dateFilterActive, currentDate, searchText, activeTab, quickFilter])
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize))
+
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [effectiveStatusTab, dateFilterActive, currentDate, searchText, quickFilter])
+
+  const pagedRows = useMemo(
+    () => filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize),
+    [filtered, currentPage, pageSize],
+  )
 
   const visibleColumns = useMemo(
     () => buildOrderTableColumns(savedConfig),
@@ -208,7 +214,7 @@ export default function OrderTable({
   }
 
   return (
-    <section className="rounded-lg bg-white px-8 py-6 mt-6 mb-8 border-b-[1.5px] border-[#e9e9e9]">
+    <section className="w-full rounded-lg bg-white px-8 py-6 mt-6 mb-8 border-b-[1.5px] border-[#e9e9e9]">
       <div className="mb-4 flex flex-wrap items-center gap-4">
         {showTitle && (
           <span className="text-[22px] font-bold tracking-wider whitespace-nowrap text-[#6168FC]">
@@ -310,7 +316,6 @@ export default function OrderTable({
           </button>
         </div>
 
-        {/* Pagination — top, right-aligned */}
         {totalPages > 1 && (
           <div className="ml-auto flex items-center gap-3">
             <button
@@ -360,7 +365,7 @@ export default function OrderTable({
             ) : (
               <>
                 <table
-                  className="border-separate w-full table-fixed"
+                  className="border-separate w-max min-w-full"
                   style={{ borderSpacing: '0 8px' }}
                 >
                   <thead className="sticky top-0 z-10">
@@ -373,13 +378,14 @@ export default function OrderTable({
                             "bg-[#F7F7F7] px-5 py-3 text-left align-middle font-['Noto_Sans_TC',sans-serif] text-base font-bold leading-[140%] text-black/[0.87] whitespace-nowrap relative",
                             'border-y-[0.5px] border-[rgba(175,175,175,0.6)]',
                             idx === 0 && 'rounded-l-xl border-l-[0.5px] border-r-0',
-                            idx !== 0 && 'border-x-0',
+                            idx === visibleColumns.length - 1 &&
+                              'rounded-r-xl border-r-[0.5px] border-l-0',
+                            idx !== 0 && idx !== visibleColumns.length - 1 && 'border-x-0',
                           )}
                         >
                           {col.label}
                         </th>
                       ))}
-                      <th className="bg-[#F7F7F7] rounded-r-xl border-y-[0.5px] border-r-[0.5px] border-[rgba(175,175,175,0.6)]" />
                     </tr>
                   </thead>
                   <tbody>
@@ -397,18 +403,20 @@ export default function OrderTable({
                               "bg-white px-5 py-3 align-middle font-['Noto_Sans_TC',sans-serif] text-base font-bold leading-[140%] text-black/60 break-words transition-colors group-hover:bg-[#f0f6ff]",
                               'border-y-[0.5px] border-[rgba(175,175,175,0.6)]',
                               idx === 0 && 'rounded-l-xl border-l-[0.5px] border-r-0',
-                              idx !== 0 && 'border-x-0',
+                              idx === visibleColumns.length - 1 &&
+                                'rounded-r-xl border-r-[0.5px] border-l-0',
+                              idx !== 0 && idx !== visibleColumns.length - 1 && 'border-x-0',
                             )}
                           >
                             <Cell
                               column={col.key}
                               row={row}
                               onExport={handleExportDocx}
-                              onDelete={setPendingDelete}
+                              onStatusChange={handleStatusChange}
+                              isStatusUpdating={pendingStatusOrderId === row.id}
                             />
                           </td>
                         ))}
-                        <td className="bg-white rounded-r-xl border-y-[0.5px] border-r-[0.5px] border-[rgba(175,175,175,0.6)] transition-colors group-hover:bg-[#f0f6ff]" />
                       </tr>
                     ))}
                   </tbody>
@@ -467,7 +475,7 @@ interface CellProps {
   isStatusUpdating: boolean
 }
 
-function Cell({ column, row, onExport, onDelete }: CellProps) {
+function Cell({ column, row, onExport, onStatusChange, isStatusUpdating }: CellProps) {
   if (column === 'export') {
     return (
       <button
@@ -489,9 +497,10 @@ function Cell({ column, row, onExport, onDelete }: CellProps) {
         type="button"
         onClick={e => {
           e.stopPropagation()
-          onDelete(row.id)
+          onStatusChange(row.id, 'CANCELLED')
         }}
-        className="flex h-7 w-[60px] max-w-[92px] items-center justify-center rounded-lg border-0 bg-[#AE1914] px-4 py-1.5 text-sm font-bold text-[#EBCDCC] transition hover:opacity-80 font-['Noto_Sans_TC',sans-serif]"
+        disabled={isStatusUpdating}
+        className="flex h-7 w-[60px] max-w-[92px] items-center justify-center rounded-lg border-0 bg-[#AE1914] px-4 py-1.5 text-sm font-bold text-[#EBCDCC] transition hover:opacity-80 disabled:opacity-50 font-['Noto_Sans_TC',sans-serif]"
       >
         刪除
       </button>
@@ -500,15 +509,12 @@ function Cell({ column, row, onExport, onDelete }: CellProps) {
 
   if (column === 'order_status') {
     return (
-      <span
-        className={cn(
-          'inline-flex h-7 items-center justify-center gap-2.5 whitespace-nowrap rounded-lg px-4 py-1.5 text-center text-sm font-bold leading-[112.5%]',
-          "font-['Noto_Sans_TC',sans-serif]",
-          statusBadgeClasses(row.status_bucket),
-        )}
-      >
-        {statusText(row.status_bucket)}
-      </span>
+      <OrderStatusToggle
+        orderId={row.id}
+        status={row.display_status}
+        disabled={isStatusUpdating}
+        onChange={onStatusChange}
+      />
     )
   }
 

@@ -3,7 +3,11 @@ import type { Order, OrderDraft } from '@/types/domain'
 import type { PaymentStatus } from '@/types/enums'
 import type { OrderDisplayConfig, OrderFieldKey } from '@/types/orderDisplay'
 import { formatCellDateTime } from '@/utils/datetime'
-import { normalizeStatus, shipmentLabel, statusText } from '@/utils/orderStatus'
+import {
+  normalizeOrderStatus,
+  orderStatusLabel,
+  shipmentLabel,
+} from '@/utils/orderStatus'
 
 /** Draft form control kind (labels come from ORDER_FIELD_REGISTRY). */
 export type DraftFieldVariant = 'text' | 'number' | 'amount' | 'select' | 'datetime'
@@ -194,7 +198,7 @@ export function formatOrderFieldValue(key: OrderFieldKey, order: Order): string 
     case 'id':
       return order.id
     case 'order_status':
-      return statusText(normalizeStatus(order.order_status as unknown as string))
+      return orderStatusLabel(normalizeOrderStatus(order.order_status))
     case 'send_datetime':
       return formatCellDateTime(order.send_datetime)
     case 'order_date':

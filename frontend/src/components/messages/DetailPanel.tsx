@@ -1,136 +1,13 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Check, ChevronsRight, Pencil, Plus, Upload } from 'lucide-react'
-import {
-  useCreateOrder,
-  useOrderDraft,
-  useUpdateOrder,
-  useUpdateOrderDraft,
-} from '@/hooks/useOrderDraft'
-import type { OrderDraft, OrderDraftUpdate } from '@/types/domain'
-import type { PaymentStatus, ShipmentMethod } from '@/types/enums'
-import { useOrderDisplayConfig } from '@/context/OrderDisplayConfigContext'
-import {
-  formatDraftFieldValue,
-  getVisibleDraftFields,
-  type DraftFieldDef,
-} from '@/lib/orderFieldPresentation'
-import type { OrderFieldKey } from '@/types/orderDisplay'
+import { ChevronRight } from 'lucide-react'
+import OrderSidePanelToggle from './OrderSidePanelToggle'
+import { useOrderDraft } from '@/hooks/useOrderDraft'
+import { useRoomOrders } from '@/hooks/useRoomOrders'
+import OrderDraftPanel from './OrderDraftPanel'
+import OrderEditPanel from './OrderEditPanel'
+import RoomOrderList from './RoomOrderList'
+import type { Order } from '@/types/domain'
 import { cn } from '@/lib/utils'
-
-/**
- * Backend missing-field keys (from POST /order/:roomId) don't always match
- * the frontend column keys. This table folds every backend variant into the
- * relevant editable column so the UI can flag the right row in red.
- */
-const MISSING_KEY_TO_FIELD: Record<string, OrderFieldKey> = {
-  user_id: 'customer_name',
-  user: 'customer_name',
-  user_name: 'customer_name',
-  customer_name: 'customer_name',
-  user_phone: 'customer_phone',
-  customer_phone: 'customer_phone',
-  item_type: 'item',
-  item: 'item',
-  quantity: 'quantity',
-  total_amount: 'total_amount',
-  shipment_method: 'shipment_method',
-  send_datetime: 'send_datetime',
-  delivery_address: 'delivery_address',
-  pay_way: 'pay_way',
-  note: 'note',
-}
-
-interface FormState {
-  customer_name: string
-  customer_phone: string
-  total_amount: string
-  item: string
-  quantity: string
-  note: string
-  shipment_method: ShipmentMethod
-  send_datetime_date: string
-  send_datetime_time: string
-  delivery_address: string
-  pay_way: string
-  pay_status: PaymentStatus
-}
-
-const EMPTY_FORM: FormState = {
-  customer_name: '',
-  customer_phone: '',
-  total_amount: '',
-  item: '',
-  quantity: '',
-  note: '',
-  shipment_method: 'STORE_PICKUP',
-  send_datetime_date: '',
-  send_datetime_time: '',
-  delivery_address: '',
-  pay_way: '',
-  pay_status: 'PENDING',
-}
-
-function pad2(n: number) {
-  return n.toString().padStart(2, '0')
-}
-
-function splitDateTime(iso: string | null | undefined): {
-  date: string
-  time: string
-} {
-  if (!iso) return { date: '', time: '' }
-  const d = new Date(iso)
-  if (Number.isNaN(d.getTime())) return { date: '', time: '' }
-  return {
-    date: `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`,
-    time: `${pad2(d.getHours())}:${pad2(d.getMinutes())}`,
-  }
-}
-
-function combineDateTimeIso(date: string, time: string): string | null {
-  if (!date) return null
-  const stamp = `${date}T${time || '00:00'}:00`
-  const d = new Date(stamp)
-  if (Number.isNaN(d.getTime())) return null
-  return d.toISOString()
-}
-
-function formStateFromDraft(draft: OrderDraft | null | undefined): FormState {
-  if (!draft) return EMPTY_FORM
-  const { date, time } = splitDateTime(draft.send_datetime)
-  return {
-    customer_name: draft.customer_name ?? '',
-    customer_phone: draft.customer_phone ?? '',
-    total_amount: draft.total_amount != null ? String(draft.total_amount) : '',
-    item: draft.item ?? '',
-    quantity: draft.quantity != null ? String(draft.quantity) : '',
-    note: draft.note ?? '',
-    shipment_method: (draft.shipment_method as ShipmentMethod) ?? 'STORE_PICKUP',
-    send_datetime_date: date,
-    send_datetime_time: time,
-    delivery_address: draft.delivery_address ?? '',
-    pay_way: draft.pay_way ?? '',
-    pay_status: draft.pay_status ?? 'PENDING',
-  }
-}
-
-function formStateToUpdate(form: FormState): OrderDraftUpdate {
-  const total = Number.parseFloat(form.total_amount)
-  const qty = Number.parseInt(form.quantity, 10)
-  return {
-    customer_name: form.customer_name || null,
-    customer_phone: form.customer_phone || null,
-    total_amount: Number.isFinite(total) ? total : null,
-    item: form.item || null,
-    quantity: Number.isFinite(qty) ? qty : null,
-    note: form.note || null,
-    shipment_method: form.shipment_method,
-    send_datetime: combineDateTimeIso(form.send_datetime_date, form.send_datetime_time),
-    delivery_address: form.delivery_address || null,
-    pay_way: form.pay_way || null,
-    pay_status: form.pay_status,
-  }
-}
 
 interface DetailPanelProps {
   roomId: number
@@ -161,29 +38,10 @@ export default function DetailPanel({
     setEditingOrder(null)
   }, [roomId])
 
-  const visibleFields = useMemo(
-    () => getVisibleDraftFields(savedConfig),
-    [savedConfig],
-  )
-
-  function setField<K extends keyof FormState>(key: K, value: FormState[K]) {
-    setForm(prev => ({ ...prev, [key]: value }))
-  }
-
-  async function startEditing() {
-    setForm(formStateFromDraft(draft))
-    setIsEditing(true)
-  }
-
-  async function confirmEditing(): Promise<boolean> {
-    try {
-      await updateDraft.mutateAsync(formStateToUpdate(form))
-      setIsEditing(false)
-      return true
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err)
-      alert(`更新訂單草稿失敗：${message}`)
-      return false
+  useEffect(() => {
+    if (open && openDraftInitially) {
+      setShowDraftPanel(true)
+      onDraftViewOpened?.()
     }
   }, [open, openDraftInitially, onDraftViewOpened, roomId])
 
@@ -206,62 +64,27 @@ export default function DetailPanel({
     )
   }
 
-  const missingFieldSet = useMemo(() => {
-    const set = new Set<OrderFieldKey>()
-    for (const raw of missing) {
-      const mapped = MISSING_KEY_TO_FIELD[raw]
-      if (mapped) set.add(mapped)
-    }
-    return set
-  }, [missing])
-
-  function isFieldMissing(key: OrderFieldKey): boolean {
-    return missingFieldSet.has(key)
+  if (editingOrder) {
+    return (
+      <OrderEditPanel
+        roomId={roomId}
+        order={editingOrder}
+        onBack={() => setEditingOrder(null)}
+        onClosePanel={onClose}
+        onOrderUpdated={setEditingOrder}
+      />
+    )
   }
 
   return (
     <aside className="relative flex h-full w-[336px] flex-shrink-0 flex-col border-l border-[#B3B3B3] bg-white">
       <OrderSidePanelToggle mode="close" onClick={onClose} />
 
-      <div className="flex-1 overflow-y-auto px-6 pt-6 pb-32">
-        {draftQuery.isLoading ? (
-          <div className="py-10 text-center text-sm text-black/40">載入中...</div>
-        ) : draftQuery.error ? (
-          <div className="py-10 text-center text-sm text-red-600">
-            無法載入訂單草稿：{(draftQuery.error as Error).message}
-          </div>
-        ) : !draft && !isEditing ? (
-          <div className="py-10 text-center text-sm text-black/40">
-            尚未產生訂單草稿，請先點上方「整理資料」。
-          </div>
-        ) : (
-          <div className="flex flex-col gap-4">
-            {visibleFields.map(field =>
-              field.key === 'send_datetime' && isEditing ? (
-                <DateTimeRow
-                  key={field.key}
-                  label={field.label}
-                  date={form.send_datetime_date}
-                  time={form.send_datetime_time}
-                  onDateChange={v => setField('send_datetime_date', v)}
-                  onTimeChange={v => setField('send_datetime_time', v)}
-                  missing={isFieldMissing('send_datetime')}
-                />
-              ) : (
-                <FormRow
-                  key={field.key}
-                  field={field}
-                  isEditing={isEditing && field.editable}
-                  form={form}
-                  setField={setField}
-                  draft={draft}
-                  missing={isFieldMissing(field.key)}
-                />
-              ),
-            )}
-          </div>
-        )}
-      </div>
+      <header className="flex h-20 flex-shrink-0 items-center border-b-[1.5px] border-[#e9e9e9] px-6">
+        <span className="text-lg font-bold text-black font-['Noto_Sans_TC',sans-serif]">
+          訂單詳情
+        </span>
+      </header>
 
       <div className="flex-1 overflow-y-auto px-6 pt-6 pb-6">
         <button
@@ -295,187 +118,14 @@ export default function DetailPanel({
             aria-hidden
           />
         </button>
+
+        <RoomOrderList
+          orders={roomOrdersQuery.data ?? []}
+          isLoading={roomOrdersQuery.isLoading}
+          error={roomOrdersQuery.error as Error | null}
+          onSelectOrder={setEditingOrder}
+        />
       </div>
     </aside>
-  )
-}
-
-interface FormRowProps {
-  field: DraftFieldDef
-  isEditing: boolean
-  form: FormState
-  setField: <K extends keyof FormState>(key: K, value: FormState[K]) => void
-  draft: OrderDraft | null
-  missing: boolean
-}
-
-function FormRow({ field, isEditing, form, setField, draft, missing }: FormRowProps) {
-  const displayValue =
-    draft != null ? formatDraftFieldValue(field.key, draft) : '—'
-  const labelClasses = cn(
-    'w-[110px] flex-shrink-0 font-bold font-["Noto_Sans_TC",sans-serif] text-base text-black/[0.87]',
-    missing && 'text-red-600',
-  )
-
-  return (
-    <div className="flex min-h-8 items-center gap-2">
-      <div className={labelClasses}>{field.label}</div>
-      <div className="flex-1">
-        {isEditing ? (
-          renderEditor(field, form, setField, missing)
-        ) : missing ? (
-          <span
-            className={cn(
-              "block w-full rounded-md border-[1.5px] border-red-500 bg-red-50 px-3 py-1.5 font-bold text-red-600",
-              "font-['Noto_Sans_TC',sans-serif] text-base",
-            )}
-          >
-            {displayValue === '—' ? '請填寫' : displayValue}
-          </span>
-        ) : (
-          <span
-            className={cn(
-              "font-bold font-['Noto_Sans_TC',sans-serif] text-base text-black",
-            )}
-          >
-            {displayValue}
-          </span>
-        )}
-      </div>
-    </div>
-  )
-}
-
-function renderEditor(
-  field: DraftFieldDef,
-  form: FormState,
-  setField: <K extends keyof FormState>(key: K, value: FormState[K]) => void,
-  missing: boolean,
-) {
-  const inputClasses = cn(
-    'w-full rounded-md border-[1.5px] border-[#e0e3ed] bg-[#fafbff] px-3 py-2 text-[15px] text-black outline-none transition',
-    "font-['Noto_Sans_TC',sans-serif]",
-    'focus:border-[#6168FC] focus:shadow-[0_0_0_2px_#e4e7ff]',
-    missing && 'border-red-500 bg-red-50 focus:shadow-[0_0_0_2px_rgba(220,53,69,0.25)]',
-  )
-
-  if (field.variant === 'select' && field.key === 'shipment_method') {
-    return (
-      <select
-        value={form.shipment_method}
-        onChange={e => setField('shipment_method', e.target.value as ShipmentMethod)}
-        className={cn(inputClasses, 'cursor-pointer appearance-none')}
-      >
-        <option value="STORE_PICKUP">店取</option>
-        <option value="DELIVERY">外送</option>
-      </select>
-    )
-  }
-
-  if (field.variant === 'select' && field.key === 'pay_status') {
-    return (
-      <select
-        value={form.pay_status}
-        onChange={e => setField('pay_status', e.target.value as PaymentStatus)}
-        className={cn(inputClasses, 'cursor-pointer appearance-none')}
-      >
-        <option value="PENDING">待付款</option>
-        <option value="PAID">已付款</option>
-        <option value="FAILED">付款失敗</option>
-        <option value="REFUNDED">已退款</option>
-      </select>
-    )
-  }
-
-  if (field.variant === 'number' && field.key === 'quantity') {
-    return (
-      <input
-        type="number"
-        min="0"
-        value={form.quantity}
-        onChange={e => setField('quantity', e.target.value)}
-        className={inputClasses}
-      />
-    )
-  }
-
-  if (field.variant === 'amount' && field.key === 'total_amount') {
-    return (
-      <input
-        type="number"
-        min="0"
-        step="0.01"
-        value={form.total_amount}
-        onChange={e => setField('total_amount', e.target.value)}
-        className={inputClasses}
-      />
-    )
-  }
-
-  const key = field.key as keyof FormState
-  return (
-    <input
-      type="text"
-      value={form[key] as string}
-      onChange={e => setField(key, e.target.value as FormState[typeof key])}
-      className={inputClasses}
-    />
-  )
-}
-
-interface DateTimeRowProps {
-  label: string
-  date: string
-  time: string
-  onDateChange: (v: string) => void
-  onTimeChange: (v: string) => void
-  missing: boolean
-}
-
-function DateTimeRow({
-  label,
-  date,
-  time,
-  onDateChange,
-  onTimeChange,
-  missing,
-}: DateTimeRowProps) {
-  const inputClasses = cn(
-    'w-full rounded-md border-[1.5px] border-[#e0e3ed] bg-[#fafbff] px-3 py-2 text-[15px] text-black outline-none transition',
-    "font-['Noto_Sans_TC',sans-serif]",
-    'focus:border-[#6168FC] focus:shadow-[0_0_0_2px_#e4e7ff]',
-    missing && 'border-red-500 bg-red-50 focus:shadow-[0_0_0_2px_rgba(220,53,69,0.25)]',
-  )
-  const labelClasses = cn(
-    'w-[110px] flex-shrink-0 font-bold font-["Noto_Sans_TC",sans-serif] text-base text-black/[0.87]',
-    missing && 'text-red-600',
-  )
-
-  return (
-    <>
-      <div className="flex min-h-8 items-center gap-2">
-        <div className={labelClasses}>{label}</div>
-        <div className="flex-1">
-          <input
-            type="date"
-            value={date}
-            onChange={e => onDateChange(e.target.value)}
-            className={inputClasses}
-          />
-        </div>
-      </div>
-      <div className="flex min-h-8 items-center gap-2">
-        <div className="w-[110px] flex-shrink-0" />
-        <div className="flex-1">
-          <input
-            type="time"
-            step={300}
-            value={time}
-            onChange={e => onTimeChange(e.target.value)}
-            className={inputClasses}
-          />
-        </div>
-      </div>
-    </>
   )
 }
