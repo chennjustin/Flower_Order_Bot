@@ -8,6 +8,7 @@ import {
   ShoppingBag,
   type LucideIcon,
 } from 'lucide-react'
+import { useEffect, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import BrandLogo from './BrandLogo'
 import SidebarMenuIcon from './SidebarMenuIcon'
@@ -75,6 +76,11 @@ export default function Sidebar({ show, onClose }: SidebarProps) {
   const navigate = useNavigate()
   const location = useLocation()
   const { session, avatarUrl, signOut } = useAuth()
+  const [isAvatarBroken, setIsAvatarBroken] = useState(false)
+
+  useEffect(() => {
+    setIsAvatarBroken(false)
+  }, [avatarUrl])
 
   function isActive(route: string) {
     return route === '/'
@@ -148,11 +154,14 @@ export default function Sidebar({ show, onClose }: SidebarProps) {
         {session && (
           <div className="shrink-0 border-t border-black/[0.38] px-4 py-3">
             <div className="flex items-center gap-3">
-              {avatarUrl ? (
+              {avatarUrl && !isAvatarBroken ? (
                 <img
                   src={avatarUrl}
                   alt={session.displayName}
                   className="h-9 w-9 shrink-0 rounded-full object-cover"
+                  onError={() => {
+                    setIsAvatarBroken(true)
+                  }}
                 />
               ) : (
                 <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#C5C7FF] text-sm font-bold text-[#6168FC] font-['Noto_Sans_TC',sans-serif]">
