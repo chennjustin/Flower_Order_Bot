@@ -74,9 +74,17 @@ export interface OrderPatchUpdate {
   mark_processed_message_ids?: number[] | null
 }
 
+/** LLM organize from PATCH /organize_data/{room_id}. */
+export interface OrganizeOrderDraftOut {
+  draft: OrderDraft
+  changed_fields: string[]
+  source_message_ids: number[]
+}
+
 /** LLM preview from POST /orders/{order_id}/suggest-from-chat (no DB write). */
 export interface OrderSuggestFromChatOut {
   suggested: OrderPatchUpdate
+  changed_fields: string[]
   source_message_ids: number[]
 }
 

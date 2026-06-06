@@ -5,6 +5,7 @@ import type {
   OrderDraft,
   OrderDraftUpdate,
   OrderPatchUpdate,
+  OrganizeOrderDraftOut,
   OrderSuggestFromChatOut,
 } from '@/types/domain'
 
@@ -92,8 +93,8 @@ export async function updateOrderDraft(
  * resulting draft.
  */
 export async function organizeData(roomId: number): Promise<OrderDraft> {
-  const { data } = await api.patch<OrderDraft>(`/organize_data/${roomId}`)
-  return data
+  const { data } = await api.patch<OrganizeOrderDraftOut>(`/organize_data/${roomId}`)
+  return data.draft
 }
 
 export async function exportDocx(orderId: number): Promise<Blob> {
