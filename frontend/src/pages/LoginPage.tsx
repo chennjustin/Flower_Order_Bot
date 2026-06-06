@@ -23,6 +23,7 @@ export default function LoginPage() {
     }
 
     let cancelled = false
+    const activeSession = session
 
     async function verifyAccessAndNavigate() {
       setIsCheckingAccess(true)
@@ -32,7 +33,9 @@ export default function LoginPage() {
           return
         }
         const target =
-          session.onboardingStep === 'DONE' ? '/' : getOnboardingPath(session.onboardingStep)
+          activeSession.onboardingStep === 'DONE'
+            ? '/'
+            : getOnboardingPath(activeSession.onboardingStep)
         navigate(target, { replace: true })
       } catch (error) {
         if (cancelled) {

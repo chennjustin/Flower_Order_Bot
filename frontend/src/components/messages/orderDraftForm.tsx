@@ -120,7 +120,7 @@ export function filterResolvedMissingKeys(
 
 /** Side-panel control metadata only — labels come from ORDER_FIELD_REGISTRY. */
 const FIELD_UI_META: Partial<
-  Record<FieldKey, Pick<FieldDef, 'editable' | 'variant'>>
+  Record<FieldKey, Partial<Pick<FieldDef, 'editable' | 'variant'>>>
 > = {
   total_amount: { variant: 'amount' },
   quantity: { variant: 'number' },
