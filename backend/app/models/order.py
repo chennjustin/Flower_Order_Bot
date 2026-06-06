@@ -47,8 +47,9 @@ class Order(Base):
     __tablename__ = "order"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    room_id: Mapped[int] = mapped_column(ForeignKey("chat_room.id", ondelete="RESTRICT"), nullable=False)
-    customer_id: Mapped[int] = mapped_column(ForeignKey("customer.id", ondelete="RESTRICT"), nullable=False)
+    room_id: Mapped[int | None] = mapped_column(ForeignKey("chat_room.id", ondelete="RESTRICT"), nullable=True)
+    customer_id: Mapped[int | None] = mapped_column(ForeignKey("customer.id", ondelete="RESTRICT"), nullable=True)
+    store_id: Mapped[int | None] = mapped_column(ForeignKey("store.id", ondelete="RESTRICT"), nullable=True)
 
     status: Mapped[OrderStatus] = mapped_column(
         SAEnum(OrderStatus, name="order_status", validate_strings=True),

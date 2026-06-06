@@ -33,11 +33,15 @@ async def list_active_orders(
     db: AsyncSession, store_id: int | None = None
 ) -> list[Order]:
     from app.models.chat import ChatRoom
+    from sqlalchemy import or_, and_
 
     stmt = select(Order).where(Order.status != OrderStatus.CANCELLED)
     if store_id is not None:
-        stmt = stmt.join(ChatRoom, Order.room_id == ChatRoom.id).where(
-            ChatRoom.store_id == store_id
+        stmt = stmt.outerjoin(ChatRoom, Order.room_id == ChatRoom.id).where(
+            or_(
+                and_(Order.room_id != None, ChatRoom.store_id == store_id),  # noqa: E711
+                and_(Order.room_id == None, Order.store_id == store_id),  # noqa: E711
+            )
         )
     result = await db.execute(stmt)
     return result.scalars().all()
@@ -48,11 +52,15 @@ async def list_all_orders(
 ) -> list[Order]:
     """All orders including CANCELLED (for dashboard「所有訂單」)."""
     from app.models.chat import ChatRoom
+    from sqlalchemy import or_, and_
 
     stmt = select(Order)
     if store_id is not None:
-        stmt = stmt.join(ChatRoom, Order.room_id == ChatRoom.id).where(
-            ChatRoom.store_id == store_id
+        stmt = stmt.outerjoin(ChatRoom, Order.room_id == ChatRoom.id).where(
+            or_(
+                and_(Order.room_id != None, ChatRoom.store_id == store_id),  # noqa: E711
+                and_(Order.room_id == None, Order.store_id == store_id),  # noqa: E711
+            )
         )
     result = await db.execute(stmt)
     return result.scalars().all()

@@ -6,6 +6,7 @@ from app.core.auth import get_chat_room_for_store, get_current_store, get_order_
 from app.models.store import Store
 from app.services.order_service import (
     create_order_by_room,
+    create_order_direct,
     delete_order_by_id,
     get_all_orders,
     get_order_draft_out_by_room,
@@ -35,6 +36,15 @@ async def get_orders(
     db: AsyncSession = Depends(get_db),
 ):
     return await get_all_orders(db, store_id=store.id)
+
+
+@api_router.post("/orders/direct", response_model=OrderOut)
+async def create_order_direct_route(
+    body: OrderPatchUpdate,
+    store: Store = Depends(get_current_store),
+    db: AsyncSession = Depends(get_db),
+):
+    return await create_order_direct(db, store.id, body)
 
 
 @api_router.get("/orders/room/{room_id}", response_model=List[OrderOut])
