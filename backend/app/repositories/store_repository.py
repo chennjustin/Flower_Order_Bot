@@ -99,7 +99,7 @@ async def resolve_store_for_webhook(db: AsyncSession, body_str: str) -> Store:
     if store is not None:
         if not store.active:
             raise HTTPException(
-                status_code=status.HTTP_503_FORBIDDEN,
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                 detail="Store is inactive",
             )
         settings = load_settings()
