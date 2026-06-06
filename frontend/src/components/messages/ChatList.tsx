@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { MessageSquare } from 'lucide-react'
+import { MessageSquare, Search } from 'lucide-react'
 import type { ChatRoom } from '@/types/domain'
 import type { ChatRoomStage } from '@/types/enums'
 import {
@@ -30,11 +30,19 @@ export default function ChatList({
   isLoading,
 }: ChatListProps) {
   const [currentTab, setCurrentTab] = useState<(typeof FILTER_TABS)[number]['key']>('ALL')
+  const [searchText, setSearchText] = useState('')
 
   const filteredRooms = useMemo(() => {
-    if (currentTab === 'ALL') return rooms
-    return rooms.filter(r => r.status === currentTab)
-  }, [rooms, currentTab])
+    let rows =
+      currentTab === 'ALL' ? rooms : rooms.filter(r => r.status === currentTab)
+
+    const q = searchText.trim().toLowerCase()
+    if (q) {
+      rows = rows.filter(r => r.user_name.toLowerCase().includes(q))
+    }
+
+    return rows
+  }, [rooms, currentTab, searchText])
 
   const totalUnread = useMemo(
     () =>
@@ -80,11 +88,24 @@ export default function ChatList({
           ))}
         </div>
 
+        <div className="flex-shrink-0 px-3 py-2">
+          <div className="relative flex h-[46px] w-full items-center rounded-[36px] bg-[#D8EAFF] px-6 py-[11px]">
+            <input
+              type="text"
+              value={searchText}
+              onChange={e => setSearchText(e.target.value)}
+              placeholder="搜尋顧客姓名"
+              className="w-full border-0 bg-transparent p-0 text-base leading-[140%] text-black/[0.38] outline-none placeholder:text-black/[0.38] font-['Noto_Sans_TC',sans-serif]"
+            />
+            <Search className="absolute right-6 top-1/2 h-5 w-5 -translate-y-1/2 text-black/[0.38]" />
+          </div>
+        </div>
+
         {isLoading && rooms.length === 0 ? (
           <div className="px-6 py-10 text-center text-sm text-black/40">載入中...</div>
         ) : filteredRooms.length === 0 ? (
           <div className="px-6 py-10 text-center text-sm text-black/40">
-            目前沒有聊天室
+            {rooms.length > 0 ? '找不到符合的聊天室' : '目前沒有聊天室'}
           </div>
         ) : (
           <ul>
