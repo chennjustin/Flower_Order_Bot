@@ -13,6 +13,11 @@ export async function fetchOrders(): Promise<Order[]> {
   return data ?? []
 }
 
+export async function createOrderDirect(patch: OrderPatchUpdate): Promise<Order> {
+  const { data } = await api.post<Order>('/orders/direct', patch)
+  return data
+}
+
 /** All orders for the chat room's customer (includes cancelled). */
 export async function fetchOrdersByRoom(roomId: number): Promise<Order[]> {
   const { data } = await api.get<Order[]>(`/orders/room/${roomId}`)

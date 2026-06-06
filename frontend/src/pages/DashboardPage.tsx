@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import OrderTable from '@/components/orders/OrderTable'
 import PageHeader from '@/components/layout/PageHeader'
 import StatisticsCards from '@/components/stats/StatisticsCards'
@@ -9,6 +10,7 @@ import { isInProgressOrder, normalizeOrderStatus } from '@/utils/orderStatus'
 export type QuickFilter = 'today' | 'in_progress' | null
 
 export default function DashboardPage() {
+  const navigate = useNavigate()
   const { data, isLoading, error } = useStats()
   const ordersQuery = useOrders()
   const [quickFilter, setQuickFilter] = useState<QuickFilter>(null)
@@ -39,7 +41,12 @@ export default function DashboardPage() {
           onQuickFilter={setQuickFilter}
         />
         <div className="mt-8">
-          <OrderTable quickFilter={quickFilter} onQuickFilterClear={() => setQuickFilter(null)} pageSize={10} />
+          <OrderTable
+            quickFilter={quickFilter}
+            onQuickFilterClear={() => setQuickFilter(null)}
+            pageSize={10}
+            onCreateOrder={() => navigate('/orders?create=1')}
+          />
         </div>
       </div>
     </>

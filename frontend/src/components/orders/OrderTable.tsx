@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { ChevronLeft, ChevronRight, ChevronDown, Download, Search, List, Calendar } from 'lucide-react'
+import { ChevronLeft, ChevronRight, ChevronDown, Download, Plus, Search, List, Calendar } from 'lucide-react'
 import {
   Popover,
   PopoverContent,
@@ -45,6 +45,10 @@ interface OrderTableProps {
   showTitle?: boolean
   /** Number of rows per page. Default 20. Dashboard uses 10. */
   pageSize?: number
+  /** When provided, clicking a row calls this instead of opening the inline dialog. */
+  onSelectOrder?: (order: Order) => void
+  /** When provided, shows a「新增訂單」button and calls this on click. */
+  onCreateOrder?: () => void
 }
 
 interface NormalizedOrder extends Order {
@@ -65,6 +69,8 @@ export default function OrderTable({
   onQuickFilterClear,
   showTitle = true,
   pageSize = 20,
+  onSelectOrder,
+  onCreateOrder,
 }: OrderTableProps) {
   const ordersQuery = useOrders()
   const updateStatusMutation = useUpdateOrderStatus()
@@ -261,6 +267,18 @@ export default function OrderTable({
             <Search className="absolute right-6 top-1/2 h-5 w-5 -translate-y-1/2 text-black/[0.38]" />
           </div>
 
+          {onCreateOrder && (
+            <button
+              type="button"
+              onClick={onCreateOrder}
+              className="flex h-[46px] shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-xl border-0 bg-[#6168FC] px-4 py-3 text-white shadow-[2px_2px_2px_rgba(0,0,0,0.25)] transition hover:bg-[#4F51FF]"
+            >
+              <Plus className="h-5 w-5" strokeWidth={2.5} />
+              <span className="text-base font-bold leading-[112.5%] font-['Noto_Sans_TC',sans-serif]">
+                新增訂單
+              </span>
+            </button>
+          )}
           <button
             type="button"
             onClick={handleDownloadCsv}
@@ -353,7 +371,7 @@ export default function OrderTable({
             setCurrentDate(d)
             setDateFilterActive(false)
           }}
-          onOrderClick={setSelectedOrder}
+          onOrderClick={order => onSelectOrder ? onSelectOrder(order) : setSelectedOrder(order)}
         />
       ) : (
         <div className="w-full overflow-hidden">
@@ -395,7 +413,7 @@ export default function OrderTable({
                       <tr
                         key={row.id}
                         className="group cursor-pointer bg-white"
-                        onClick={() => setSelectedOrder(row)}
+                        onClick={() => onSelectOrder ? onSelectOrder(row) : setSelectedOrder(row)}
                       >
                         {visibleColumns.map((col, idx) => (
                           <td
@@ -460,11 +478,13 @@ export default function OrderTable({
         </div>
       )}
 
-      <OrderDetailDialog
-        order={selectedOrder}
-        open={selectedOrder !== null}
-        onOpenChange={open => !open && setSelectedOrder(null)}
-      />
+      {!onSelectOrder && (
+        <OrderDetailDialog
+          order={selectedOrder}
+          open={selectedOrder !== null}
+          onOpenChange={open => !open && setSelectedOrder(null)}
+        />
+      )}
     </section>
   )
 }

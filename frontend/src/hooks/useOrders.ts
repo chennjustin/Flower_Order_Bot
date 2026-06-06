@@ -1,8 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { deleteOrder, fetchOrders, updateOrderStatus } from '@/api/orders'
+import { createOrderDirect, deleteOrder, fetchOrders, updateOrderById, updateOrderStatus } from '@/api/orders'
 import { useStoreQueryGate } from '@/hooks/useStoreQuery'
 import { ordersQueryKey, statsQueryKey } from '@/lib/storeQueryKeys'
-import type { Order } from '@/types/domain'
+import type { Order, OrderPatchUpdate } from '@/types/domain'
 import type { OrderStatus } from '@/types/enums'
 
 /** @deprecated Use ordersQueryKey(storeId) from storeQueryKeys. */
@@ -14,6 +14,35 @@ export function useOrders() {
     queryKey: storeId != null ? ordersQueryKey(storeId) : ['orders', 'pending'],
     queryFn: fetchOrders,
     enabled,
+  })
+}
+
+export function useUpdateOrder() {
+  const qc = useQueryClient()
+  const { storeId } = useStoreQueryGate()
+  return useMutation({
+    mutationFn: ({ orderId, patch }: { orderId: number; patch: OrderPatchUpdate }) =>
+      updateOrderById(orderId, patch),
+    onSuccess: () => {
+      if (storeId != null) {
+        qc.invalidateQueries({ queryKey: ordersQueryKey(storeId) })
+        qc.invalidateQueries({ queryKey: statsQueryKey(storeId) })
+      }
+    },
+  })
+}
+
+export function useCreateOrderDirect() {
+  const qc = useQueryClient()
+  const { storeId } = useStoreQueryGate()
+  return useMutation({
+    mutationFn: (patch: OrderPatchUpdate) => createOrderDirect(patch),
+    onSuccess: () => {
+      if (storeId != null) {
+        qc.invalidateQueries({ queryKey: ordersQueryKey(storeId) })
+        qc.invalidateQueries({ queryKey: statsQueryKey(storeId) })
+      }
+    },
   })
 }
 
