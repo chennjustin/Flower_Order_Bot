@@ -6,7 +6,7 @@ export const SUPPORT_CONTACT = {
   title: '官方帳號顯示不對',
   description:
     '若畫面上的 LINE 官方帳號名稱或圖示與您店家實際使用的不符，請聯絡技術支援，我們會協助檢查 Channel 設定。',
-  email: 'support@example.com',
-  lineId: '@example-support',
+  email: 'b12705017@g.ntu.edu.tw',
+  lineId: '@207ahdlh',
   hours: '週一至週五 09:00–18:00',
 } as const
