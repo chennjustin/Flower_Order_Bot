@@ -46,12 +46,17 @@ export function useChatRealtime(
       const payload = parseStreamPayload(ev.data)
       const activeStoreId = storeRef.current
       if (!payload || activeStoreId == null) return
+      const selectedId = selectedRef.current
       applyStreamMessageToCache(
         qc,
         activeStoreId,
         payload.room_id,
         payload.message,
-        selectedRef.current,
+        selectedId,
+        {
+          // Room stream handles message list for the open chat; avoid double-merge.
+          updateMessages: payload.room_id !== selectedId,
+        },
       )
     }
 

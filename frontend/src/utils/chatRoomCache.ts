@@ -23,6 +23,17 @@ export function previewTextFromMessage(msg: ChatMessage): string {
   return previewTextFromBody(msg.message)
 }
 
+function isStaffOutgoing(direction: ChatMessage['direction']): boolean {
+  return (
+    direction === ChatMessageDirection.OUTGOING_BY_STAFF ||
+    direction === ChatMessageDirection.OUTGOING_BY_STORE
+  )
+}
+
+function withoutOptimisticMessages(messages: ChatMessage[]): ChatMessage[] {
+  return messages.filter(m => m.id >= 0)
+}
+
 export function sortChatRoomsByLastMessage(rooms: ChatRoom[]): ChatRoom[] {
   return [...rooms].sort((a, b) => {
     const ta = a.last_message?.timestamp
@@ -35,13 +46,18 @@ export function sortChatRoomsByLastMessage(rooms: ChatRoom[]): ChatRoom[] {
   })
 }
 
+/** Room list infinite queries use string stage at index 2; message/draft keys use numeric room_id. */
+function isChatRoomListQueryKey(queryKey: readonly unknown[]): boolean {
+  return typeof queryKey[2] === 'string'
+}
+
 function patchInfiniteChatRooms(
   data: ChatRoomsInfinite | undefined,
   roomId: number,
   patch: { text: string; timestamp: string },
   options?: { bumpUnread?: boolean; selectedRoomId?: number | null },
 ): ChatRoomsInfinite | undefined {
-  if (!data) return data
+  if (!data?.pages) return data
   return {
     ...data,
     pages: data.pages.map((page, pageIndex) => ({
@@ -76,7 +92,10 @@ export function patchChatRoomLastMessage(
   options?: { bumpUnread?: boolean; selectedRoomId?: number | null },
 ): void {
   qc.setQueriesData<ChatRoomsInfinite>(
-    { queryKey: ['chatRooms', storeId] },
+    {
+      queryKey: ['chatRooms', storeId],
+      predicate: query => isChatRoomListQueryKey(query.queryKey),
+    },
     data => patchInfiniteChatRooms(data, roomId, patch, options),
   )
 }
@@ -85,8 +104,15 @@ export function mergeRoomMessages(
   cached: ChatMessage[] | undefined,
   delta: ChatMessage[],
 ): ChatMessage[] {
+  const hasConfirmedStaffOutgoing = delta.some(
+    m => m.id > 0 && isStaffOutgoing(m.direction),
+  )
+  const base = hasConfirmedStaffOutgoing
+    ? withoutOptimisticMessages(cached ?? [])
+    : (cached ?? [])
+
   const map = new Map<number, ChatMessage>()
-  for (const m of cached ?? []) {
+  for (const m of base) {
     map.set(m.id, m)
   }
   for (const m of delta) {
@@ -101,8 +127,7 @@ export function replaceOptimisticMessage(
   messages: ChatMessage[],
   sent: ChatMessage,
 ): ChatMessage[] {
-  const withoutOptimistic = messages.filter(m => m.id >= 0)
-  return mergeRoomMessages(withoutOptimistic, [sent])
+  return mergeRoomMessages(withoutOptimisticMessages(messages), [sent])
 }
 
 export function createOptimisticOutgoingMessage(body: ChatMessageBody): ChatMessage {
@@ -150,6 +175,7 @@ export function applyStreamMessageToCache(
   roomId: number,
   message: ChatMessage,
   selectedRoomId: number | null,
+  options?: { updateMessages?: boolean },
 ): void {
   patchChatRoomLastMessage(
     qc,
@@ -165,15 +191,19 @@ export function applyStreamMessageToCache(
     },
   )
 
+  if (options?.updateMessages === false) return
+
   const key = roomMessagesQueryKey(storeId, roomId)
   const hasCache =
     qc.getQueryData<ChatMessage[]>(key) !== undefined || roomId === selectedRoomId
   if (!hasCache) return
 
   qc.setQueryData<ChatMessage[]>(key, msgs => {
-    let base = msgs ?? []
-    if (message.direction === ChatMessageDirection.OUTGOING_BY_STAFF) {
-      base = base.filter(m => m.id >= 0)
+    const base = msgs ?? []
+    if (message.id > 0 && base.some(m => m.id === message.id)) {
+      return isStaffOutgoing(message.direction)
+        ? withoutOptimisticMessages(base)
+        : base
     }
     return mergeRoomMessages(base, [message])
   })
