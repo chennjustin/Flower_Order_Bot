@@ -15,6 +15,41 @@ async def get_first_store_id(db: AsyncSession) -> int | None:
     return result.scalar_one_or_none()
 
 
+async def get_seed_store_id(db: AsyncSession) -> int | None:
+    """Fake data default store: match env LINE credentials, else real slug from token, else smallest id."""
+    settings = load_settings()
+
+    secret = (settings.line_channel_secret or "").strip()
+    if secret:
+        result = await db.execute(
+            select(Store.id).where(Store.line_channel_secret == secret).limit(1)
+        )
+        store_id = result.scalar_one_or_none()
+        if store_id is not None:
+            return store_id
+
+    token = (settings.line_channel_access_token or "").strip()
+    if token:
+        result = await db.execute(
+            select(Store.id).where(Store.line_channel_access_token == token).limit(1)
+        )
+        store_id = result.scalar_one_or_none()
+        if store_id is not None:
+            return store_id
+
+        from app.utils.line_bot_info import fetch_line_bot_user_id
+
+        try:
+            slug = await fetch_line_bot_user_id(token)
+            store = await get_store_by_slug(db, slug)
+            if store is not None:
+                return store.id
+        except ValueError:
+            pass
+
+    return await get_first_store_id(db)
+
+
 async def get_store_by_id(db: AsyncSession, store_id: int) -> Store | None:
     result = await db.execute(select(Store).where(Store.id == store_id))
     return result.scalar_one_or_none()

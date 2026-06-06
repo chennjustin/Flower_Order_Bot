@@ -2,6 +2,8 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List, Optional
 
+from app.core.auth import get_chat_room_for_store, get_current_store, get_order_for_store
+from app.models.store import Store
 from app.services.order_service import (
     create_order_by_room,
     delete_order_by_id,
