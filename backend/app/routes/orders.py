@@ -20,6 +20,7 @@ from app.schemas.order import (
 from app.services.order_service import (
     build_order_list_filters,
     create_order_by_room,
+    create_order_direct,
     delete_order_by_id,
     export_orders_csv,
     get_order_draft_out_by_room,
@@ -86,6 +87,15 @@ async def export_orders(
         media_type="text/csv; charset=utf-8",
         headers={"Content-Disposition": 'attachment; filename="orders.csv"'},
     )
+
+
+@api_router.post("/orders/direct", response_model=OrderOut)
+async def create_order_direct_route(
+    body: OrderPatchUpdate,
+    store: Store = Depends(get_current_store),
+    db: AsyncSession = Depends(get_db),
+):
+    return await create_order_direct(db, store.id, body)
 
 
 @api_router.get("/orders/room/{room_id}", response_model=List[OrderOut])

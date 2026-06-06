@@ -53,6 +53,7 @@ export type ChatMessageStatus =
 export const ChatMessageDirection = {
   INCOMING: 'INCOMING',
   OUTGOING_BY_BOT: 'OUTGOING_BY_BOT',
+  OUTGOING_BY_STORE: 'OUTGOING_BY_STORE',
   OUTGOING_BY_STAFF: 'OUTGOING_BY_STAFF',
 } as const
 export type ChatMessageDirection =

@@ -1,12 +1,17 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import OrderTable from '@/components/orders/OrderTable'
 import PageHeader from '@/components/layout/PageHeader'
 import StatisticsCards from '@/components/stats/StatisticsCards'
 import { useStats } from '@/hooks/useStats'
+import { useStore } from '@/context/StoreContext'
 
 export type QuickFilter = 'today' | 'in_progress' | null
 
 export default function DashboardPage() {
+  const navigate = useNavigate()
+  const { stores, currentStoreId } = useStore()
+  const storeName = stores.find(s => s.id === currentStoreId)?.name ?? '訂單管理平台'
   const { data, isLoading, error } = useStats()
   const [quickFilter, setQuickFilter] = useState<QuickFilter>(null)
 
@@ -14,7 +19,7 @@ export default function DashboardPage() {
 
   return (
     <>
-      <PageHeader title="訂單管理平台" />
+      <PageHeader title={storeName} />
       <div className="mx-auto max-w-[1280px] px-2 pt-[160px]">
         {error && (
           <div className="mb-4 rounded-md bg-red-50 px-4 py-3 text-sm text-red-600">
@@ -31,7 +36,12 @@ export default function DashboardPage() {
           onQuickFilter={setQuickFilter}
         />
         <div className="mt-8">
-          <OrderTable quickFilter={quickFilter} onQuickFilterClear={() => setQuickFilter(null)} pageSize={10} />
+          <OrderTable
+            quickFilter={quickFilter}
+            onQuickFilterClear={() => setQuickFilter(null)}
+            pageSize={10}
+            onCreateOrder={() => navigate('/orders?create=1')}
+          />
         </div>
       </div>
     </>

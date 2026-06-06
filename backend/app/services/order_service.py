@@ -393,6 +393,43 @@ async def _mark_chat_messages_processed(
     await db.execute(stmt)
 
 
+async def create_order_direct(
+    db: AsyncSession, store_id: int, patch: OrderPatchUpdate
+) -> OrderOut:
+    """Create a standalone order not tied to a chat room draft."""
+    order = Order(
+        room_id=None,
+        customer_id=None,
+        store_id=store_id,
+        status=patch.order_status or OrderStatus.CONFIRMED,
+        customer_name=patch.customer_name,
+        customer_phone=patch.customer_phone,
+        item_type=patch.item or "",
+        quantity=patch.quantity,
+        total_amount=patch.total_amount or 0,
+        notes=patch.note,
+        shipment_method=patch.shipment_method,
+        pay_way=patch.pay_way,
+        pay_status=patch.pay_status or PaymentStatus.PENDING,
+        delivery_address=patch.delivery_address,
+        delivery_datetime=(
+            to_taipei_naive(patch.send_datetime) if patch.send_datetime else None
+        ),
+        created_at=now_taipei_naive(),
+        updated_at=now_taipei_naive(),
+    )
+    db.add(order)
+    await db.commit()
+    await db.refresh(order)
+    out = await _build_order_out(db, order)
+    if not out:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to build order response.",
+        )
+    return out
+
+
 async def update_order_fields_by_id(
     db: AsyncSession, order_id: int, patch: OrderPatchUpdate
 ) -> OrderOut:

@@ -1,10 +1,16 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/api/client'
-import { deleteOrder, fetchOrdersPage, updateOrderStatus } from '@/api/orders'
+import {
+  createOrderDirect,
+  deleteOrder,
+  fetchOrdersPage,
+  updateOrderById,
+  updateOrderStatus,
+} from '@/api/orders'
 import { downloadBlob } from '@/utils/download'
 import { useStoreQueryGate } from '@/hooks/useStoreQuery'
 import { ordersPageQueryKey, statsQueryKey } from '@/lib/storeQueryKeys'
-import type { Order, OrderListParams, OrderListResponse } from '@/types/domain'
+import type { Order, OrderListParams, OrderListResponse, OrderPatchUpdate } from '@/types/domain'
 import type { OrderStatus } from '@/types/enums'
 
 /** @deprecated Use ordersPageQueryKey(storeId, params) from storeQueryKeys. */
@@ -20,6 +26,35 @@ export function useOrdersPage(params: OrderListParams, enabled = true) {
     queryFn: () => fetchOrdersPage(params),
     enabled: storeReady && enabled,
     placeholderData: previous => previous,
+  })
+}
+
+export function useUpdateOrder() {
+  const qc = useQueryClient()
+  const { storeId } = useStoreQueryGate()
+  return useMutation({
+    mutationFn: ({ orderId, patch }: { orderId: number; patch: OrderPatchUpdate }) =>
+      updateOrderById(orderId, patch),
+    onSuccess: () => {
+      if (storeId != null) {
+        qc.invalidateQueries({ queryKey: ['orders', storeId] })
+        qc.invalidateQueries({ queryKey: statsQueryKey(storeId) })
+      }
+    },
+  })
+}
+
+export function useCreateOrderDirect() {
+  const qc = useQueryClient()
+  const { storeId } = useStoreQueryGate()
+  return useMutation({
+    mutationFn: (patch: OrderPatchUpdate) => createOrderDirect(patch),
+    onSuccess: () => {
+      if (storeId != null) {
+        qc.invalidateQueries({ queryKey: ['orders', storeId] })
+        qc.invalidateQueries({ queryKey: statsQueryKey(storeId) })
+      }
+    },
   })
 }
 
