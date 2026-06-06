@@ -2,7 +2,7 @@ import { cn } from '@/lib/utils'
 
 /** Shared card shell for column-settings panels (Figma edit-columns). */
 export const settingsCardClass = cn(
-  'flex w-full max-w-[370px] min-h-[619px] flex-col',
+  'flex w-full min-h-[619px] flex-col md:max-w-[370px]',
   'rounded-[24px] border border-[#B3B3B3] bg-white',
   'shadow-[0_4px_4px_rgba(0,0,0,0.25)]',
 )
