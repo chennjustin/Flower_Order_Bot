@@ -29,6 +29,7 @@ export interface AuthContextValue {
   signInWithGoogle: () => Promise<void>
   signOut: () => Promise<void>
   updateDisplayName: (name: string) => StaffSession
+  completeStoreNameStep: () => StaffSession
   confirmLineOfficial: () => StaffSession
   completeOnboarding: () => StaffSession
   rejectWrongAccount: () => Promise<void>
@@ -51,7 +52,7 @@ function createStaffSessionFromUser(user: User): StaffSession {
     storeKey: DEFAULT_STORE_KEY,
     displayName,
     avatarUrl,
-    onboardingStep: 'NAME',
+    onboardingStep: 'LINE_OA',
     role: 'OWNER',
   }
   setStaffSession(session)
@@ -140,6 +141,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
     return next
   }, [])
 
+  const completeStoreNameStep = useCallback(() => {
+    const next = authApi.completeStoreNameStep()
+    setSession(next)
+    return next
+  }, [])
+
   const confirmLineOfficial = useCallback(() => {
     const next = authApi.confirmLineOfficial()
     setSession(next)
@@ -178,6 +185,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       signInWithGoogle,
       signOut,
       updateDisplayName,
+      completeStoreNameStep,
       confirmLineOfficial,
       completeOnboarding,
       rejectWrongAccount,
@@ -192,6 +200,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       signInWithGoogle,
       signOut,
       updateDisplayName,
+      completeStoreNameStep,
       confirmLineOfficial,
       completeOnboarding,
       rejectWrongAccount,
