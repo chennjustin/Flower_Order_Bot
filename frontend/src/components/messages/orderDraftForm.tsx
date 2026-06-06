@@ -288,6 +288,22 @@ export function formStateToOrderPatch(form: FormState) {
   }
 }
 
+/**
+ * Formal-order PATCH: nullable fields may send null; NOT NULL fields (item,
+ * total_amount) revert to the loaded order snapshot when the user clears them.
+ */
+export function formStateToOrderPatchForOrder(form: FormState, order: Order) {
+  const patch = formStateToOrderPatch(form)
+  const total = Number.parseFloat(form.total_amount)
+  if (!form.item.trim()) {
+    patch.item = order.item
+  }
+  if (!Number.isFinite(total)) {
+    patch.total_amount = order.total_amount
+  }
+  return patch
+}
+
 export function formStateToUpdate(form: FormState): OrderDraftUpdate {
   const total = Number.parseFloat(form.total_amount)
   const qty = Number.parseInt(form.quantity, 10)

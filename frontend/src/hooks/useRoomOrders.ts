@@ -38,7 +38,6 @@ export function useUpdateRoomOrder(roomId: number | null) {
         qc.setQueryData<Order[]>(roomOrdersQueryKey(roomId), orders =>
           orders?.map(o => (o.id === updated.id ? updated : o)) ?? [],
         )
-        qc.invalidateQueries({ queryKey: roomOrdersQueryKey(roomId) })
       }
       qc.invalidateQueries({ queryKey: ORDERS_QUERY_KEY })
       qc.invalidateQueries({ queryKey: ['stats'] })

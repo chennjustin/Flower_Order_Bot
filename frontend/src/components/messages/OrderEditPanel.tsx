@@ -20,7 +20,7 @@ import {
   FormRow,
   formatReadOnly,
   formStateFromOrder,
-  formStateToOrderPatch,
+  formStateToOrderPatchForOrder,
   isOrderFormDirty,
   orderPatchToFormState,
   type FieldDef,
@@ -123,7 +123,7 @@ export default function OrderEditPanel({
     if (!isDirty) return false
     try {
       const patch: OrderPatchUpdate = {
-        ...formStateToOrderPatch(form),
+        ...formStateToOrderPatchForOrder(form, order),
         ...(pendingMessageIds.length > 0
           ? { mark_processed_message_ids: pendingMessageIds }
           : {}),

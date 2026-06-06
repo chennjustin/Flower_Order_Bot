@@ -287,26 +287,33 @@ async def update_order_fields_by_id(
 
     message_ids_to_mark = patch.mark_processed_message_ids or []
 
-    if patch.customer_name is not None:
+    # Nullable columns: explicit null clears the stored value.
+    if _patch_field_was_sent(patch, "customer_name"):
         order.customer_name = patch.customer_name
-    if patch.customer_phone is not None:
+    if _patch_field_was_sent(patch, "customer_phone"):
         order.customer_phone = patch.customer_phone
-    if patch.item is not None:
-        order.item_type = patch.item
-    if patch.quantity is not None:
+    if _patch_field_was_sent(patch, "quantity"):
         order.quantity = patch.quantity
-    if patch.total_amount is not None:
-        order.total_amount = patch.total_amount
-    if patch.note is not None:
+    if _patch_field_was_sent(patch, "note"):
         order.notes = patch.note
+    if _patch_field_was_sent(patch, "send_datetime"):
+        order.delivery_datetime = (
+            to_taipei_naive(patch.send_datetime) if patch.send_datetime else None
+        )
+    if _patch_field_was_sent(patch, "delivery_address"):
+        order.delivery_address = patch.delivery_address
+    if _patch_field_was_sent(patch, "pay_way"):
+        order.pay_way = patch.pay_way
+
+    # NOT NULL columns: ignore explicit null — keep the existing value.
+    if _patch_field_was_sent(patch, "item") and patch.item is not None:
+        order.item_type = patch.item
+    if _patch_field_was_sent(patch, "total_amount") and patch.total_amount is not None:
+        order.total_amount = patch.total_amount
+
+    # Enums / status: only apply when a concrete value is sent.
     if patch.shipment_method is not None:
         order.shipment_method = patch.shipment_method
-    if patch.send_datetime is not None:
-        order.delivery_datetime = to_taipei_naive(patch.send_datetime)
-    if patch.delivery_address is not None:
-        order.delivery_address = patch.delivery_address
-    if patch.pay_way is not None:
-        order.pay_way = patch.pay_way
     if patch.pay_status is not None:
         order.pay_status = patch.pay_status
     if patch.order_status is not None:
@@ -405,9 +412,13 @@ async def create_order_draft_by_room_id(db: AsyncSession, room_id: int) -> Order
     return order_draft
 
 
-def _draft_field_was_sent(draft_in: OrderDraftUpdate, field: str) -> bool:
+def _patch_field_was_sent(patch: OrderDraftUpdate | OrderPatchUpdate, field: str) -> bool:
     """True when the client included this key in the PATCH body (null means clear)."""
-    return field in draft_in.model_fields_set
+    return field in patch.model_fields_set
+
+
+def _draft_field_was_sent(draft_in: OrderDraftUpdate, field: str) -> bool:
+    return _patch_field_was_sent(draft_in, field)
 
 
 async def update_order_draft_by_room_id(
