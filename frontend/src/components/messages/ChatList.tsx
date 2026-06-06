@@ -1,10 +1,7 @@
 import { useQueryClient } from '@tanstack/react-query'
 import { useMemo, useState } from 'react'
-<<<<<<< HEAD
 import { MessageSquare, Search, X } from 'lucide-react'
 import { prefetchRoomMessages } from '@/hooks/useRoomMessages'
->>>>>>> origin/main
-
 import type { ChatRoom } from '@/types/domain'
 import type { ChatRoomStage } from '@/types/enums'
 import {

@@ -143,11 +143,13 @@ def load_settings() -> Settings:
     public_base_url = pub if pub else "http://localhost:8000"
     # deps 會組 f"{supabase_url}/auth/v1/user"，故去掉尾端斜線避免雙斜線
     supabase_url = (os.getenv("SUPABASE_URL") or "").strip().rstrip("/") or None
+    redis_url = (os.getenv("REDIS_URL") or "").strip() or None
     return Settings(
         openai_api_key=os.getenv("OPENAI_API_KEY"),
         line_channel_access_token=os.getenv("LINE_CHANNEL_ACCESS_TOKEN"),
         line_channel_secret=os.getenv("LINE_CHANNEL_SECRET"),
         database_url=database_url,
+        redis_url=redis_url,
         public_base_url=public_base_url,
         supabase_url=supabase_url,
         supabase_anon_key=os.getenv("SUPABASE_ANON_KEY") or None,
