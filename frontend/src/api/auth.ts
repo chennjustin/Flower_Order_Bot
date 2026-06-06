@@ -16,6 +16,7 @@ export interface AuthApi {
   getSession(): StaffSession | null
   loginWithGoogleMock(): StaffSession
   updateDisplayName(name: string): StaffSession
+  completeStoreNameStep(): StaffSession
   confirmLineOfficial(): StaffSession
   completeOnboarding(): StaffSession
   rejectWrongAccount(): void
@@ -46,7 +47,7 @@ const mockAuthApi: AuthApi = {
       staffId: nextMockStaffId(),
       storeKey: DEFAULT_STORE_KEY,
       displayName: DEFAULT_DISPLAY_NAME,
-      onboardingStep: 'NAME',
+      onboardingStep: 'LINE_OA',
       role: 'OWNER',
     }
     setSession(session)
@@ -63,13 +64,15 @@ const mockAuthApi: AuthApi = {
     }
     return saveSession({
       displayName: trimmed,
-      onboardingStep: 'LINE_OA',
     })
   },
 
+  completeStoreNameStep(): StaffSession {
+    return saveSession({ onboardingStep: 'DONE' })
+  },
+
   confirmLineOfficial(): StaffSession {
-    // Step stays LINE_OA until OrderFieldsPage calls completeOnboarding.
-    return requireSession()
+    return saveSession({ onboardingStep: 'NAME' })
   },
 
   completeOnboarding(): StaffSession {
