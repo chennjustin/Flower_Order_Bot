@@ -1,13 +1,13 @@
-# backend/app/routes/chat.py
-
 from datetime import datetime
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.core.deps import get_settings
+from app.core.redis_client import is_redis_enabled
 from app.schemas.chat import (
     ChatMessageCreate,
     ChatMessageOut,
@@ -15,6 +15,7 @@ from app.schemas.chat import (
     StaffChatImageUploadOut,
     SwitchModeBody,
 )
+from app.services.chat_event_bus import subscribe_room_events, subscribe_rooms_events
 from app.services.message_service import (
     create_staff_message,
     get_chat_messages,
@@ -32,6 +33,40 @@ api_router = APIRouter(prefix="/chat_rooms", tags=["Chat"])
 @api_router.get("", response_model=List[ChatRoomOut])
 async def list_chat_rooms(db: AsyncSession = Depends(get_db)):
     return await get_chat_room_list(db)
+
+
+async def _sse_event_generator(event_source):
+    if not is_redis_enabled():
+        yield 'event: error\ndata: {"detail":"Redis not configured"}\n\n'
+        return
+    async for data in event_source:
+        if not data:
+            yield ": keepalive\n\n"
+        else:
+            yield f"data: {data}\n\n"
+
+
+@api_router.get("/stream")
+async def stream_chat_rooms():
+    """SSE: Redis pub/sub for chat list updates (all rooms)."""
+    return StreamingResponse(
+        _sse_event_generator(subscribe_rooms_events()),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "Connection": "keep-alive"},
+    )
+
+
+@api_router.get("/{room_id}/stream")
+async def stream_room_messages(room_id: int, db: AsyncSession = Depends(get_db)):
+    """SSE: Redis pub/sub for new messages in one chat room."""
+    room = await get_chat_room_by_room_id(db, room_id)
+    if not room:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Chat room not found")
+    return StreamingResponse(
+        _sse_event_generator(subscribe_room_events(room_id)),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "Connection": "keep-alive"},
+    )
 
 
 @api_router.get("/{room_id}/messages", response_model=List[ChatMessageOut])

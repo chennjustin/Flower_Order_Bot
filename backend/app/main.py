@@ -1,4 +1,5 @@
 import logging
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI
@@ -9,15 +10,24 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse
 
 from app.api.v1.router import api_router
+from app.core.redis_client import close_redis
 
 logger = logging.getLogger(__name__)
 
 _uploads_root = Path(__file__).resolve().parent.parent / "uploads"
 _uploads_root.mkdir(parents=True, exist_ok=True)
 
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    yield
+    await close_redis()
+
+
 app = FastAPI(
     title="花店自動化系統 API Dashboard",
-    docs_url="/",  # Swagger UI 路徑
+    docs_url="/",
+    lifespan=lifespan,
 )
 
 

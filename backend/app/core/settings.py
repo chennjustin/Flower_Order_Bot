@@ -13,6 +13,7 @@ class Settings:
     line_channel_access_token: str | None
     line_channel_secret: str | None
     database_url: str
+    redis_url: str | None
     # 與此字串完全相符的 LINE 文字訊息會觸發開發用清除（見 linebot_flow）
     line_test_reset_phrase: str | None
     # 建置圖片給對外 URL（LINE 推圖、後台顯示本機上傳圖）；ngrok／正式網域請改此值
@@ -99,11 +100,13 @@ def load_settings() -> Settings:
     phrase = os.getenv("LINE_TEST_RESET_PHRASE", "").strip()
     pub = os.getenv("PUBLIC_BASE_URL", "").strip().rstrip("/")
     public_base_url = pub if pub else "http://localhost:8000"
+    redis_url = os.getenv("REDIS_URL", "").strip() or None
     return Settings(
         openai_api_key=os.getenv("OPENAI_API_KEY"),
         line_channel_access_token=os.getenv("LINE_CHANNEL_ACCESS_TOKEN"),
         line_channel_secret=os.getenv("LINE_CHANNEL_SECRET"),
         database_url=database_url,
+        redis_url=redis_url,
         line_test_reset_phrase=phrase or None,
         public_base_url=public_base_url,
     )

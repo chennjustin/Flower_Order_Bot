@@ -6,6 +6,8 @@ import DetailPanel, {
 } from '@/components/messages/DetailPanel'
 import OrderSidePanelToggle from '@/components/messages/OrderSidePanelToggle'
 import { useChatRooms } from '@/hooks/useChatRooms'
+import { useChatRealtime } from '@/hooks/useChatRealtime'
+import { useVisibleRoomDeltaSync } from '@/hooks/useVisibleRoomDeltaSync'
 import { useOrganizeData } from '@/hooks/useOrderDraft'
 import type { ChatRoom as ChatRoomType } from '@/types/domain'
 
@@ -20,6 +22,8 @@ export default function MessagesPage() {
     useState<DetailPanelSubView>('main')
 
   const organizeMutation = useOrganizeData(selectedRoomId)
+  const { sseAvailable } = useChatRealtime(selectedRoomId)
+  useVisibleRoomDeltaSync(selectedRoomId, !sseAvailable)
   /** Organize draft is hidden while editing a formal order (use in-panel AI instead). */
   const showOrganizeButton =
     !showDetail || detailSubView !== 'order-edit'

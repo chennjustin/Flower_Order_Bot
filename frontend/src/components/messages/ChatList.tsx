@@ -1,5 +1,7 @@
+import { useQueryClient } from '@tanstack/react-query'
 import { useMemo, useState } from 'react'
 import { MessageSquare } from 'lucide-react'
+import { prefetchRoomMessages } from '@/hooks/useRoomMessages'
 import type { ChatRoom } from '@/types/domain'
 import type { ChatRoomStage } from '@/types/enums'
 import {
@@ -29,6 +31,7 @@ export default function ChatList({
   onSelect,
   isLoading,
 }: ChatListProps) {
+  const qc = useQueryClient()
   const [currentTab, setCurrentTab] = useState<(typeof FILTER_TABS)[number]['key']>('ALL')
 
   const filteredRooms = useMemo(() => {
@@ -94,6 +97,7 @@ export default function ChatList({
                   room={room}
                   active={selectedRoomId === room.room_id}
                   onSelect={onSelect}
+                  onPrefetch={() => prefetchRoomMessages(qc, room.room_id)}
                 />
               </li>
             ))}
@@ -108,9 +112,10 @@ interface ChatRoomCardProps {
   room: ChatRoom
   active: boolean
   onSelect: (room: ChatRoom) => void
+  onPrefetch: () => void
 }
 
-function ChatRoomCard({ room, active, onSelect }: ChatRoomCardProps) {
+function ChatRoomCard({ room, active, onSelect, onPrefetch }: ChatRoomCardProps) {
   const lastMessageTime = room.last_message?.timestamp
     ? formatRoomTime(room.last_message.timestamp)
     : ''
@@ -120,6 +125,8 @@ function ChatRoomCard({ room, active, onSelect }: ChatRoomCardProps) {
     <button
       type="button"
       onClick={() => onSelect(room)}
+      onMouseEnter={onPrefetch}
+      onFocus={onPrefetch}
       className={cn(
         'flex h-[100px] w-full items-center px-[17px] text-left transition-colors',
         active ? 'bg-[#D8EAFF]' : 'bg-transparent hover:bg-black/[0.03]',
