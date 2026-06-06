@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime
+import csv
+import io
+from datetime import date, datetime
 from typing import List, Optional
 
 from fastapi import HTTPException, status
@@ -18,23 +20,33 @@ from app.enums.shipment import ShipmentMethod
 from app.models.chat import ChatMessage
 from app.models.order import Order, OrderDraft
 from app.repositories.order_repository import (
+    OrderListFilters,
+    count_orders_filtered,
     get_latest_confirmed_order_by_room,
     get_latest_order_draft_by_room,
     get_order_by_id,
     list_all_orders,
     list_orders_by_customer_id,
+    list_orders_filtered,
     now_taipei_naive,
     save_order,
     save_order_draft,
 )
 from app.schemas.chat import ChatMessagePayload
-from app.schemas.order import OrderDraftOut, OrderDraftUpdate, OrderOut, OrderPatchUpdate
+from app.schemas.order import (
+    OrderDraftOut,
+    OrderDraftUpdate,
+    OrderListOut,
+    OrderOut,
+    OrderPatchUpdate,
+)
 from app.services.message_service import get_chat_room_by_room_id
 from app.services.order_field_config_service import get_effective_order_field_config
 from app.services.order_field_values import (
     collect_missing_catalog_keys,
     order_draft_catalog_values,
 )
+from app.repositories.payment_repository import get_payment_methods_by_order_ids
 from app.services.payment_service import get_pay_way_by_order_id, get_payment_method_by_id
 from app.services.user_service import (
     get_line_uid_by_chatroom_id,
@@ -85,10 +97,13 @@ async def get_order_out_by_id(db: AsyncSession, order_id: int) -> Optional[Order
     return await _build_order_out(db, order)
 
 
-async def _build_order_out(db: AsyncSession, order: Order) -> Optional[OrderOut]:
-    pay_way = await get_pay_way_by_order_id(db, order.id)
+def _order_to_out(order: Order, pay_way_map: dict[int, object]) -> OrderOut:
+    pay_method = pay_way_map.get(order.id)
     shipment = order.shipment_method or ShipmentMethod.STORE_PICKUP
     quantity = order.quantity if order.quantity is not None else 0
+    pay_way_name = order.pay_way or (
+        getattr(pay_method, "display_name", None) if pay_method else None
+    )
 
     return OrderOut(
         id=order.id,
@@ -96,7 +111,7 @@ async def _build_order_out(db: AsyncSession, order: Order) -> Optional[OrderOut]
         customer_phone=order.customer_phone or "",
         order_date=to_taipei_aware(order.created_at),
         order_status=order.status,
-        pay_way=order.pay_way or (pay_way.display_name if pay_way else None),
+        pay_way=pay_way_name,
         pay_status=order.pay_status or PaymentStatus.PENDING,
         total_amount=float(order.total_amount),
         item=order.item_type,
@@ -110,16 +125,112 @@ async def _build_order_out(db: AsyncSession, order: Order) -> Optional[OrderOut]
     )
 
 
+async def _build_orders_out_batch(
+    db: AsyncSession, orders: list[Order]
+) -> list[OrderOut]:
+    if not orders:
+        return []
+    pay_way_map = await get_payment_methods_by_order_ids(db, [o.id for o in orders])
+    return [_order_to_out(order, pay_way_map) for order in orders]
+
+
+async def _build_order_out(db: AsyncSession, order: Order) -> Optional[OrderOut]:
+    batch = await _build_orders_out_batch(db, [order])
+    return batch[0] if batch else None
+
+
+def build_order_list_filters(
+    store_id: int,
+    *,
+    status: Optional[str] = None,
+    pickup_date: Optional[date] = None,
+    pickup_from: Optional[datetime] = None,
+    pickup_to: Optional[datetime] = None,
+    q: Optional[str] = None,
+    include_cancelled: bool = False,
+) -> OrderListFilters:
+    return OrderListFilters(
+        store_id=store_id,
+        status=status or None,
+        pickup_date=pickup_date,
+        pickup_from=pickup_from,
+        pickup_to=pickup_to,
+        q=q,
+        include_cancelled=include_cancelled,
+    )
+
+
+async def get_orders_page(
+    db: AsyncSession,
+    filters: OrderListFilters,
+    *,
+    page: int = 1,
+    page_size: int = 20,
+) -> OrderListOut:
+    page = max(1, page)
+    page_size = max(1, min(page_size, 200))
+    total = await count_orders_filtered(db, filters)
+    orders = await list_orders_filtered(
+        db,
+        filters,
+        limit=page_size,
+        offset=(page - 1) * page_size,
+    )
+    items = await _build_orders_out_batch(db, orders)
+    return OrderListOut(
+        items=items,
+        total=total,
+        page=page,
+        page_size=page_size,
+    )
+
+
+async def export_orders_csv(db: AsyncSession, filters: OrderListFilters) -> str:
+    orders = await list_orders_filtered(db, filters)
+    items = await _build_orders_out_batch(db, orders)
+    buffer = io.StringIO()
+    writer = csv.writer(buffer)
+    writer.writerow(
+        [
+            "訂單編號",
+            "顧客姓名",
+            "顧客電話",
+            "狀態",
+            "品項",
+            "數量",
+            "總金額",
+            "取貨時間",
+            "備註",
+        ]
+    )
+    for row in items:
+        writer.writerow(
+            [
+                row.id,
+                row.customer_name,
+                row.customer_phone,
+                row.order_status.value,
+                row.item,
+                row.quantity,
+                row.total_amount,
+                row.send_datetime.isoformat() if row.send_datetime else "",
+                row.note or "",
+            ]
+        )
+    return buffer.getvalue()
+
+
 async def get_all_orders(
     db: AsyncSession, store_id: int | None = None
 ) -> Optional[List[OrderOut]]:
-    results: list[OrderOut] = []
-    for order in await list_all_orders(db, store_id=store_id):
-        out = await _build_order_out(db, order)
-        if out:
-            results.append(out)
-    results.sort(key=lambda x: x.id, reverse=True)
-    return results
+    if store_id is None:
+        orders = await list_all_orders(db, store_id=None)
+    else:
+        filters = build_order_list_filters(store_id, include_cancelled=True)
+        orders = await list_orders_filtered(db, filters)
+    items = await _build_orders_out_batch(db, orders)
+    items.sort(key=lambda x: x.id, reverse=True)
+    return items
 
 
 async def get_orders_by_room_id(db: AsyncSession, room_id: int) -> List[OrderOut]:
@@ -312,6 +423,43 @@ async def _mark_chat_messages_processed(
         .values(processed=True)
     )
     await db.execute(stmt)
+
+
+async def create_order_direct(
+    db: AsyncSession, store_id: int, patch: OrderPatchUpdate
+) -> OrderOut:
+    """Create a standalone order not tied to a chat room draft."""
+    order = Order(
+        room_id=None,
+        customer_id=None,
+        store_id=store_id,
+        status=patch.order_status or OrderStatus.CONFIRMED,
+        customer_name=patch.customer_name,
+        customer_phone=patch.customer_phone,
+        item_type=patch.item or "",
+        quantity=patch.quantity,
+        total_amount=patch.total_amount or 0,
+        notes=patch.note,
+        shipment_method=patch.shipment_method,
+        pay_way=patch.pay_way,
+        pay_status=patch.pay_status or PaymentStatus.PENDING,
+        delivery_address=patch.delivery_address,
+        delivery_datetime=(
+            to_taipei_naive(patch.send_datetime) if patch.send_datetime else None
+        ),
+        created_at=now_taipei_naive(),
+        updated_at=now_taipei_naive(),
+    )
+    db.add(order)
+    await db.commit()
+    await db.refresh(order)
+    out = await _build_order_out(db, order)
+    if not out:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to build order response.",
+        )
+    return out
 
 
 async def update_order_fields_by_id(

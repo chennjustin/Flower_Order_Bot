@@ -17,7 +17,7 @@ export default function StepIndicator({
   return (
     <p
       className={cn(
-        'm-0 text-center text-sm font-medium tracking-wide text-white/90',
+        'm-0 text-center text-sm font-medium tracking-wide text-black',
         className,
       )}
       aria-live="polite"

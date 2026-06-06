@@ -5,6 +5,7 @@ import type {
   OrderPatchUpdate,
 } from '@/types/domain'
 import type { OrderStatus, PaymentStatus, ShipmentMethod } from '@/types/enums'
+import { getRegistryEntry } from '@/config/orderDisplayFields'
 import type { OrderFieldKey } from '@/types/orderDisplay'
 import {
   ORDER_STATUS_OPTIONS,
@@ -16,6 +17,10 @@ import { useState } from 'react'
 import { ChevronDown } from 'lucide-react'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { cn } from '@/lib/utils'
+import {
+  AI_CHANGED_INPUT_CLASS,
+  AI_CHANGED_VALUE_CLASS,
+} from '@/lib/llmChangedFields'
 
 export type EditableKey =
   | 'customer_name'
@@ -113,21 +118,28 @@ export function filterResolvedMissingKeys(
   return missing.filter(key => !isMissingCatalogKeyFilled(key, draft))
 }
 
-export const FIELD_META: Record<FieldKey, Omit<FieldDef, 'key'>> = {
-  id: { label: '訂單編號', editable: false },
-  customer_name: { label: '客戶姓名', editable: true },
-  customer_phone: { label: '客戶電話', editable: true },
-  total_amount: { label: '總金額', editable: true, variant: 'amount' },
-  item: { label: '品項', editable: true },
-  quantity: { label: '數量', editable: true, variant: 'number' },
-  note: { label: '備註', editable: true },
-  shipment_method: { label: '取貨方式', editable: true, variant: 'select' },
-  send_datetime: { label: '送貨日期', editable: true, variant: 'datetime' },
-  delivery_address: { label: '送貨地址', editable: true },
-  order_date: { label: '訂單日期', editable: false },
-  order_status: { label: '狀態', editable: false, variant: 'order_status' },
-  pay_way: { label: '付款方式', editable: true },
-  pay_status: { label: '付款狀態', editable: true, variant: 'select' },
+/** Side-panel control metadata only — labels come from ORDER_FIELD_REGISTRY. */
+const FIELD_UI_META: Partial<
+  Record<FieldKey, Partial<Pick<FieldDef, 'editable' | 'variant'>>>
+> = {
+  total_amount: { variant: 'amount' },
+  quantity: { variant: 'number' },
+  shipment_method: { variant: 'select' },
+  send_datetime: { variant: 'datetime' },
+  order_status: { variant: 'order_status' },
+  pay_status: { variant: 'select' },
+}
+
+/** Build a form row definition; label is always read from the canonical registry. */
+export function buildFieldDef(key: FieldKey): FieldDef {
+  const { label, editable } = getRegistryEntry(key)
+  const ui = FIELD_UI_META[key]
+  return {
+    key,
+    label,
+    editable: ui?.editable ?? editable,
+    variant: ui?.variant,
+  }
 }
 
 export const DRAFT_SUPPORTED_KEYS: OrderFieldKey[] = [
@@ -199,6 +211,11 @@ function combineDateTimeIso(date: string, time: string): string | null {
   const d = new Date(stamp)
   if (Number.isNaN(d.getTime())) return null
   return d.toISOString()
+}
+
+/** True when pickup/delivery date is missing (time is optional; defaults to 00:00). */
+export function isSendDatetimeMissing(form: FormState): boolean {
+  return !form.send_datetime_date.trim()
 }
 
 export function formStateFromDraft(draft: OrderDraft | null | undefined): FormState {
@@ -367,6 +384,8 @@ interface FormRowProps {
   setField: <K extends keyof FormState>(key: K, value: FormState[K]) => void
   display: Record<FieldKey, string> | null
   missing: boolean
+  /** True when LLM changed this field in the latest organize/suggest. */
+  aiChanged?: boolean
 }
 
 export function FormRow({
@@ -376,21 +395,24 @@ export function FormRow({
   setField,
   display,
   missing,
+  aiChanged = false,
 }: FormRowProps) {
   const labelClasses = 'w-[110px] flex-shrink-0 font-bold font-["Noto_Sans_TC",sans-serif] text-base text-black/[0.87]'
+  const showAiHighlight = aiChanged && !missing
 
   return (
     <div className="flex min-h-8 items-center gap-2">
       <div className={labelClasses}>{field.label}</div>
       <div className="flex-1">
         {isEditing ? (
-          renderEditor(field, form, setField, missing)
+          renderEditor(field, form, setField, missing, showAiHighlight)
         ) : field.variant === 'order_status' && field.editable ? (
           <OrderStatusBadge status={normalizeOrderStatus(form.order_status)} />
         ) : (
           <span
             className={cn(
-              "font-bold font-['Noto_Sans_TC',sans-serif] text-base text-black",
+              "font-['Noto_Sans_TC',sans-serif] text-base text-black",
+              showAiHighlight ? AI_CHANGED_VALUE_CLASS : 'font-bold',
             )}
           >
             {display?.[field.key] || '—'}
@@ -470,6 +492,7 @@ function renderEditor(
   form: FormState,
   setField: <K extends keyof FormState>(key: K, value: FormState[K]) => void,
   missing: boolean,
+  aiChanged: boolean,
 ) {
   const emptyHint = missing ? '此欄位不可為空' : undefined
   const inputClasses = cn(
@@ -477,6 +500,7 @@ function renderEditor(
     "font-['Noto_Sans_TC',sans-serif]",
     'focus:border-[#6168FC] focus:shadow-[0_0_0_2px_#e4e7ff]',
     missing && 'border-red-500 bg-red-50 placeholder:text-red-400 focus:shadow-[0_0_0_2px_rgba(220,53,69,0.25)]',
+    aiChanged && !missing && AI_CHANGED_INPUT_CLASS,
   )
 
   if (field.variant === 'select' && field.key === 'shipment_method') {
@@ -562,6 +586,7 @@ interface DateTimeRowProps {
   onDateChange: (v: string) => void
   onTimeChange: (v: string) => void
   missing: boolean
+  aiChanged?: boolean
 }
 
 export function DateTimeRow({
@@ -571,12 +596,15 @@ export function DateTimeRow({
   onDateChange,
   onTimeChange,
   missing,
+  aiChanged = false,
 }: DateTimeRowProps) {
+  const showAiHighlight = aiChanged && !missing
   const inputClasses = cn(
     'w-full rounded-md border-[1.5px] border-[#e0e3ed] bg-[#fafbff] px-3 py-2 text-[15px] text-black outline-none transition',
     "font-['Noto_Sans_TC',sans-serif]",
     'focus:border-[#6168FC] focus:shadow-[0_0_0_2px_#e4e7ff]',
     missing && 'border-red-500 bg-red-50 focus:shadow-[0_0_0_2px_rgba(220,53,69,0.25)]',
+    showAiHighlight && AI_CHANGED_INPUT_CLASS,
   )
   return (
     <>

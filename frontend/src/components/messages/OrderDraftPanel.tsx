@@ -5,14 +5,16 @@ import {
   useOrderDraft,
   useUpdateOrderDraft,
 } from '@/hooks/useOrderDraft'
+import { getRegistryEntry } from '@/config/orderDisplayFields'
 import { useOrderDisplayConfig } from '@/context/OrderDisplayConfigContext'
 import type { OrderFieldKey } from '@/types/orderDisplay'
 import { cn } from '@/lib/utils'
+import { toHighlightFieldKeys } from '@/lib/llmChangedFields'
 import {
+  buildFieldDef,
   DRAFT_SUPPORTED_KEYS,
   DateTimeRow,
   EMPTY_FORM,
-  FIELD_META,
   FormRow,
   MISSING_KEY_TO_FIELD,
   emptyDraftDisplay,
@@ -31,6 +33,9 @@ interface OrderDraftPanelProps {
   onBack: () => void
   onClosePanel: () => void
   onDirtyChange?: (dirty: boolean) => void
+  /** Catalog keys from latest LLM organize (`changed_fields`). */
+  aiChangedFields?: string[]
+  onAiHighlightClear?: () => void
 }
 
 export default function OrderDraftPanel({
@@ -39,6 +44,8 @@ export default function OrderDraftPanel({
   onBack,
   onClosePanel: _onClosePanel,
   onDirtyChange,
+  aiChangedFields = [],
+  onAiHighlightClear,
 }: OrderDraftPanelProps) {
   const draftQuery = useOrderDraft(roomId, open)
   const updateDraft = useUpdateOrderDraft(roomId)
@@ -48,9 +55,14 @@ export default function OrderDraftPanel({
   const [isEditing, setIsEditing] = useState(false)
   const [form, setForm] = useState<FormState>(EMPTY_FORM)
   const [missing, setMissing] = useState<string[]>([])
+  const [aiChangedKeys, setAiChangedKeys] = useState<Set<FieldKey>>(() => new Set())
   const [showLeaveDialog, setShowLeaveDialog] = useState(false)
 
   const draft = draftQuery.data ?? null
+
+  useEffect(() => {
+    setAiChangedKeys(toHighlightFieldKeys(aiChangedFields))
+  }, [aiChangedFields])
 
   useEffect(() => {
     if (!isEditing) {
@@ -61,6 +73,7 @@ export default function OrderDraftPanel({
   useEffect(() => {
     setIsEditing(false)
     setMissing([])
+    setAiChangedKeys(new Set())
   }, [roomId])
 
   const display = useMemo(() => {
@@ -114,20 +127,34 @@ export default function OrderDraftPanel({
         const key = field.key as FieldKey
         return field.visible || missingFieldSet.has(key)
       })
-      .map(field => ({ key: field.key as FieldKey, ...FIELD_META[field.key as FieldKey] }))
+      .map(field => buildFieldDef(field.key as FieldKey))
   }, [savedConfig.fields, missingFieldSet])
 
   const missingFieldLabels = useMemo(
     () =>
       missing.map(raw => {
         const mapped = MISSING_KEY_TO_FIELD[raw]
-        return mapped ? FIELD_META[mapped].label : raw
+        return mapped ? getRegistryEntry(mapped).label : raw
       }),
     [missing],
   )
 
+  function clearAiHighlightForField(key: keyof FormState) {
+    setAiChangedKeys(prev => {
+      if (prev.size === 0) return prev
+      const next = new Set(prev)
+      if (key === 'send_datetime_date' || key === 'send_datetime_time') {
+        next.delete('send_datetime')
+      } else {
+        next.delete(key as FieldKey)
+      }
+      return next
+    })
+  }
+
   function setField<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm(prev => ({ ...prev, [key]: value }))
+    clearAiHighlightForField(key)
   }
 
   async function startEditing() {
@@ -151,6 +178,8 @@ export default function OrderDraftPanel({
         setMissing(prev => filterResolvedMissingKeys(prev, updated))
       }
       setIsEditing(false)
+      setAiChangedKeys(new Set())
+      onAiHighlightClear?.()
       return true
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err)
@@ -196,11 +225,17 @@ export default function OrderDraftPanel({
     onDirtyChange?.(isDirty)
   }, [isDirty, onDirtyChange])
 
+  function leavePanel() {
+    setAiChangedKeys(new Set())
+    onAiHighlightClear?.()
+    onBack()
+  }
+
   function handleBack() {
     if (isDirty) {
       setShowLeaveDialog(true)
     } else {
-      onBack()
+      leavePanel()
     }
   }
 
@@ -254,6 +289,16 @@ export default function OrderDraftPanel({
                 尚無草稿內容，請先點聊天室上方「整理資料」。
               </p>
             )}
+            {aiChangedKeys.size > 0 && (
+              <p
+                className={cn(
+                  'rounded-lg bg-[#FFFDE7] px-3 py-2 text-center text-xs text-black/70',
+                  "font-['Noto_Sans_TC',sans-serif]",
+                )}
+              >
+                螢光標示為 AI 本次整理的變更欄位
+              </p>
+            )}
             {hasMissingFields && (
               <div
                 className={cn(
@@ -278,6 +323,7 @@ export default function OrderDraftPanel({
                   onDateChange={v => setField('send_datetime_date', v)}
                   onTimeChange={v => setField('send_datetime_time', v)}
                   missing={isFieldMissing('send_datetime')}
+                  aiChanged={aiChangedKeys.has('send_datetime')}
                 />
               ) : (
                 <FormRow
@@ -288,6 +334,7 @@ export default function OrderDraftPanel({
                   setField={setField}
                   display={display}
                   missing={isFieldMissing(field.key)}
+                  aiChanged={aiChangedKeys.has(field.key)}
                 />
               ),
             )}
@@ -331,7 +378,7 @@ export default function OrderDraftPanel({
               </button>
               <button
                 type="button"
-                onClick={() => { setShowLeaveDialog(false); onBack() }}
+                onClick={() => { setShowLeaveDialog(false); leavePanel() }}
                 className="flex h-10 flex-1 items-center justify-center rounded-xl bg-red-500 text-sm font-bold text-white transition hover:bg-red-600"
               >
                 離開

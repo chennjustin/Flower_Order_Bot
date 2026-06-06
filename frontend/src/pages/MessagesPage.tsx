@@ -6,21 +6,34 @@ import DetailPanel, {
   type DetailPanelSubView,
 } from '@/components/messages/DetailPanel'
 import { useStore } from '@/context/StoreContext'
-import { useChatRooms } from '@/hooks/useChatRooms'
+import {
+  flattenChatRoomPages,
+  useChatRooms,
+  type ChatRoomsFilter,
+} from '@/hooks/useChatRooms'
 import { useChatRealtime } from '@/hooks/useChatRealtime'
 import { useVisibleRoomDeltaSync } from '@/hooks/useVisibleRoomDeltaSync'
 import { useOrganizeData } from '@/hooks/useOrderDraft'
 import type { ChatRoom as ChatRoomType } from '@/types/domain'
+import type { ChatRoomStage } from '@/types/enums'
 
 export default function MessagesPage() {
   const { currentStoreId } = useStore()
-  const roomsQuery = useChatRooms()
-  const rooms = useMemo(() => roomsQuery.data ?? [], [roomsQuery.data])
+  const [roomFilters, setRoomFilters] = useState<ChatRoomsFilter>({
+    stage: 'ALL',
+    q: '',
+  })
+  const roomsQuery = useChatRooms(roomFilters)
+  const rooms = useMemo(
+    () => flattenChatRoomPages(roomsQuery.data),
+    [roomsQuery.data],
+  )
 
   const [selectedRoomId, setSelectedRoomId] = useState<number | null>(null)
   const [showDetail, setShowDetail] = useState(false)
   const [openDraftOnDetail, setOpenDraftOnDetail] = useState(false)
   const [detailSubView, setDetailSubView] = useState<DetailPanelSubView>('main')
+  const [draftAiChangedFields, setDraftAiChangedFields] = useState<string[]>([])
   const [showLeaveDialog, setShowLeaveDialog] = useState(false)
   const pendingRoomRef = useRef<ChatRoomType | null>(null)
   const isDirtyRef = useRef(false)
@@ -42,6 +55,7 @@ export default function MessagesPage() {
   useEffect(() => {
     setSelectedRoomId(null)
     setShowDetail(false)
+    setDraftAiChangedFields([])
   }, [currentStoreId])
 
   useEffect(() => {
@@ -81,19 +95,29 @@ export default function MessagesPage() {
     setSelectedRoomId(room.room_id)
     setShowDetail(false)
     setDetailSubView('main')
+    setDraftAiChangedFields([])
     isDirtyRef.current = false
   }
 
   async function handleOrganizeOrder() {
     if (selectedRoomId == null) return
     try {
-      await organizeMutation.mutateAsync()
+      const result = await organizeMutation.mutateAsync()
+      setDraftAiChangedFields(result.changed_fields)
       setOpenDraftOnDetail(true)
       setShowDetail(true)
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err)
       alert(`整理資料失敗：${message}`)
     }
+  }
+
+  function handleStageChange(stage: ChatRoomStage | 'ALL') {
+    setRoomFilters(prev => ({ ...prev, stage }))
+  }
+
+  function handleSearchChange(q: string) {
+    setRoomFilters(prev => ({ ...prev, q }))
   }
 
   return (
@@ -103,6 +127,18 @@ export default function MessagesPage() {
         selectedRoomId={selectedRoomId}
         onSelect={handleSelect}
         isLoading={roomsQuery.isLoading}
+        isFetchingMore={roomsQuery.isFetchingNextPage}
+        hasMore={roomsQuery.hasNextPage ?? false}
+        onLoadMore={() => {
+          if (roomsQuery.hasNextPage && !roomsQuery.isFetchingNextPage) {
+            void roomsQuery.fetchNextPage()
+          }
+        }}
+        totalUnread={roomsQuery.data?.pages[0]?.total_unread ?? 0}
+        currentStage={roomFilters.stage}
+        onStageChange={handleStageChange}
+        searchQuery={roomFilters.q}
+        onSearchChange={handleSearchChange}
         storeId={currentStoreId}
       />
       <div className="relative flex min-w-0 flex-1 flex-col bg-[#f5f5f5]">
@@ -119,6 +155,7 @@ export default function MessagesPage() {
               onOrganizeOrder={handleOrganizeOrder}
               isOrganizing={organizeMutation.isPending}
               showOrganizeButton={showOrganizeButton}
+              roomFilters={roomFilters}
             />
           </>
         ) : (
@@ -139,6 +176,8 @@ export default function MessagesPage() {
           onDraftViewOpened={() => setOpenDraftOnDetail(false)}
           onSubViewChange={setDetailSubView}
           onDirtyChange={handleDirtyChange}
+          draftAiChangedFields={draftAiChangedFields}
+          onDraftAiHighlightClear={() => setDraftAiChangedFields([])}
         />
       )}
 

@@ -12,10 +12,11 @@ import {
   orderStatusLabel,
 } from '@/utils/orderStatus'
 import { cn } from '@/lib/utils'
+import { toHighlightFieldKeys } from '@/lib/llmChangedFields'
 import {
+  buildFieldDef,
   DRAFT_SUPPORTED_KEYS,
   DateTimeRow,
-  FIELD_META,
   FormRow,
   formatReadOnly,
   formStateFromOrder,
@@ -52,6 +53,7 @@ export default function OrderEditPanel({
   const [form, setForm] = useState<FormState>(() => formStateFromOrder(order))
   const [pendingMessageIds, setPendingMessageIds] = useState<number[]>([])
   const [aiPreviewHint, setAiPreviewHint] = useState(false)
+  const [aiChangedKeys, setAiChangedKeys] = useState<Set<FieldKey>>(() => new Set())
   const [showLeaveDialog, setShowLeaveDialog] = useState(false)
 
   const orderStatus = normalizeOrderStatus(order.order_status)
@@ -62,6 +64,7 @@ export default function OrderEditPanel({
     setIsEditing(false)
     setPendingMessageIds([])
     setAiPreviewHint(false)
+    setAiChangedKeys(new Set())
   }, [order])
 
   const isDirty = useMemo(() => isOrderFormDirty(form, order), [form, order])
@@ -108,7 +111,7 @@ export default function OrderEditPanel({
       .sort((a, b) => a.order - b.order)
       .filter(field => field.visible && supportedSet.has(field.key))
       .map(field => {
-        const base = { key: field.key as FieldKey, ...FIELD_META[field.key as FieldKey] }
+        const base = buildFieldDef(field.key as FieldKey)
         if (field.key === 'order_status') {
           return { ...base, editable: true, variant: 'order_status' as const }
         }
@@ -116,8 +119,22 @@ export default function OrderEditPanel({
       })
   }, [savedConfig.fields])
 
+  function clearAiHighlightForField(key: keyof FormState) {
+    setAiChangedKeys(prev => {
+      if (prev.size === 0) return prev
+      const next = new Set(prev)
+      if (key === 'send_datetime_date' || key === 'send_datetime_time') {
+        next.delete('send_datetime')
+      } else {
+        next.delete(key as FieldKey)
+      }
+      return next
+    })
+  }
+
   function setField<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm(prev => ({ ...prev, [key]: value }))
+    clearAiHighlightForField(key)
   }
 
   function startEditing() {
@@ -142,6 +159,7 @@ export default function OrderEditPanel({
       setIsEditing(false)
       setPendingMessageIds([])
       setAiPreviewHint(false)
+      setAiChangedKeys(new Set())
       return true
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err)
@@ -156,6 +174,7 @@ export default function OrderEditPanel({
       const result = await suggestFromChat.mutateAsync(order.id)
       setForm(orderPatchToFormState(result.suggested, order))
       setPendingMessageIds(result.source_message_ids)
+      setAiChangedKeys(toHighlightFieldKeys(result.changed_fields))
       setAiPreviewHint(true)
       setIsEditing(true)
     } catch (err) {
@@ -167,12 +186,12 @@ export default function OrderEditPanel({
   const isSaving = updateOrder.isPending
   const isSuggesting = suggestFromChat.isPending
 
-  const REQUIRED_FIELDS: { key: keyof FormState; label: string }[] = [
-    { key: 'item', label: '品項' },
-    { key: 'customer_name', label: '客戶姓名' },
-    { key: 'customer_phone', label: '客戶電話' },
-    { key: 'quantity', label: '數量' },
-    { key: 'total_amount', label: '總金額' },
+  const REQUIRED_FIELD_KEYS: (keyof FormState)[] = [
+    'item',
+    'customer_name',
+    'customer_phone',
+    'quantity',
+    'total_amount',
   ]
 
   function handleBack() {
@@ -231,6 +250,7 @@ export default function OrderEditPanel({
                 onDateChange={(v: string) => setField('send_datetime_date', v)}
                 onTimeChange={(v: string) => setField('send_datetime_time', v)}
                 missing={false}
+                aiChanged={aiChangedKeys.has('send_datetime')}
               />
             ) : (
               <FormRow
@@ -240,7 +260,8 @@ export default function OrderEditPanel({
                 form={form}
                 setField={setField}
                 display={display}
-                missing={isEditing && REQUIRED_FIELDS.some(r => r.key === field.key) && !String(form[field.key as keyof FormState] ?? '').trim()}
+                missing={isEditing && REQUIRED_FIELD_KEYS.includes(field.key as keyof FormState) && !String(form[field.key as keyof FormState] ?? '').trim()}
+                aiChanged={aiChangedKeys.has(field.key)}
               />
             ),
           )}

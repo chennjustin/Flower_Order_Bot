@@ -31,6 +31,7 @@ class Store(Base):
     owner_email: Mapped[str] = mapped_column(String, nullable=False)
     # 首次登入時由 Supabase auth user id 綁定；未綁定前為 NULL（partial-unique 由 DB 端建立）
     owner_auth_user_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
+    owner_display_name: Mapped[str | None] = mapped_column(String, nullable=True)
 
     # Google Calendar 整合（店主授權後填入）；refresh token 以 Fernet 加密儲存
     google_calendar_refresh_token: Mapped[str | None] = mapped_column(String, nullable=True)

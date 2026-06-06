@@ -1,7 +1,16 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useQueryClient } from '@tanstack/react-query'
+import {
+  updateMyOwnerDisplayName,
+  type StoreOnboardingContext,
+} from '@/api/stores'
 import OnboardingCard from '@/components/onboarding/OnboardingCard'
 import StepIndicator from '@/components/onboarding/StepIndicator'
+import {
+  ONBOARDING_STORE_CONTEXT_QUERY_KEY,
+  useOnboardingStoreContext,
+} from '@/hooks/useOnboardingStoreContext'
 import { useAuth } from '@/hooks/useAuth'
 import { cn } from '@/lib/utils'
 
@@ -11,16 +20,22 @@ const MAX_NAME_LENGTH = 32
 export default function OnboardingNamePage() {
   const { session, updateDisplayName } = useAuth()
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
+  const { data: onboardingContext } = useOnboardingStoreContext()
   const [name, setName] = useState(DEFAULT_NAME)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
+    if (onboardingContext?.ownerDisplayName) {
+      setName(onboardingContext.ownerDisplayName)
+      return
+    }
     if (session?.displayName) {
       setName(session.displayName)
     }
-  }, [session?.displayName])
+  }, [onboardingContext?.ownerDisplayName, session?.displayName])
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setError(null)
 
@@ -35,6 +50,12 @@ export default function OnboardingNamePage() {
     }
 
     try {
+      const savedName = await updateMyOwnerDisplayName(trimmed)
+      queryClient.setQueryData(
+        ONBOARDING_STORE_CONTEXT_QUERY_KEY,
+        (prev: StoreOnboardingContext | undefined) =>
+          prev ? { ...prev, ownerDisplayName: savedName } : prev,
+      )
       updateDisplayName(trimmed)
       navigate('/onboarding/line-official', { replace: true })
     } catch (err) {
@@ -45,13 +66,10 @@ export default function OnboardingNamePage() {
   return (
     <>
       <StepIndicator current={1} className="mb-4" />
-      <OnboardingCard
-        title="設定您的顯示名稱"
-        description="此名稱會顯示在後台操作紀錄中，之後仍可在個人設定修改。"
-      >
+      <OnboardingCard title="設定您的顯示名稱">
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <label className="flex flex-col gap-2 text-left text-sm font-medium text-[#3a3a3a]">
-            顯示名稱
+            名稱
             <input
               type="text"
               value={name}
@@ -74,8 +92,7 @@ export default function OnboardingNamePage() {
           <button
             type="submit"
             className={cn(
-              'w-full rounded-xl border-none py-3 text-base font-bold text-white',
-              'bg-gradient-to-r from-brand-primary to-brand-secondary',
+              'w-full rounded-xl border-none bg-[#D8EAFF] py-3 text-base font-bold text-[#3a3a3a]',
               'transition active:scale-[0.99]',
             )}
           >

@@ -11,22 +11,11 @@ from pathlib import Path
 from docx import Document
 from docx.shared import Pt
 
+from app.domain.order_fields import DEFAULT_FIELD_ORDER, get_field_label
+
 # Label (Traditional Chinese UI) -> catalog key for docxtpl
 FIELD_ROWS: list[tuple[str, str]] = [
-    ("訂單編號", "id"),
-    ("狀態", "order_status"),
-    ("顧客姓名", "customer_name"),
-    ("顧客電話", "customer_phone"),
-    ("品項", "item"),
-    ("數量", "quantity"),
-    ("總金額", "total_amount"),
-    ("備註", "note"),
-    ("取貨時間", "send_datetime"),
-    ("取貨方式", "shipment_method"),
-    ("付款方式", "pay_way"),
-    ("付款狀態", "pay_status"),
-    ("送貨地址", "delivery_address"),
-    ("訂單日期", "order_date"),
+    (get_field_label(key), key) for key in DEFAULT_FIELD_ORDER
 ]
 
 OUTPUT = Path(__file__).resolve().parents[1] / "docs" / "工單模板.docx"

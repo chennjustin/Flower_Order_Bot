@@ -1,20 +1,10 @@
 import StatisticsCards from '@/components/stats/StatisticsCards'
 import PageHeader from '@/components/layout/PageHeader'
 import { useStats } from '@/hooks/useStats'
-import { useMemo } from 'react'
-import { useOrders } from '@/hooks/useOrders'
-import { isInProgressOrder, normalizeOrderStatus } from '@/utils/orderStatus'
 
 export default function StatsPage() {
   const { data, isLoading, error } = useStats()
-  const ordersQuery = useOrders()
-
-  const inProgressOrders = useMemo(() => {
-    const orders = ordersQuery.data ?? []
-    return orders.filter(o =>
-      isInProgressOrder(normalizeOrderStatus(o.order_status)),
-    ).length
-  }, [ordersQuery.data])
+  const inProgressOrders = data?.in_progress_orders ?? 0
 
   return (
     <>

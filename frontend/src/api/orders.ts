@@ -4,19 +4,51 @@ import type {
   Order,
   OrderDraft,
   OrderDraftUpdate,
+  OrderListParams,
+  OrderListResponse,
   OrderPatchUpdate,
+  OrganizeOrderDraftOut,
   OrderSuggestFromChatOut,
 } from '@/types/domain'
 
-export async function fetchOrders(): Promise<Order[]> {
-  const { data } = await api.get<Order[] | null>('/orders')
-  return data ?? []
+function buildOrderListQueryParams(params: OrderListParams): Record<string, string | number | boolean> {
+  const query: Record<string, string | number | boolean> = {}
+  if (params.page != null) query.page = params.page
+  if (params.page_size != null) query.page_size = params.page_size
+  if (params.status) query.status = params.status
+  if (params.pickup_date) query.pickup_date = params.pickup_date
+  if (params.pickup_from) query.pickup_from = params.pickup_from
+  if (params.pickup_to) query.pickup_to = params.pickup_to
+  if (params.q) query.q = params.q
+  if (params.include_cancelled) query.include_cancelled = true
+  return query
+}
+
+export async function fetchOrdersPage(params: OrderListParams = {}): Promise<OrderListResponse> {
+  const { data } = await api.get<OrderListResponse>('/orders', {
+    params: buildOrderListQueryParams(params),
+  })
+  return data
+}
+
+export function buildOrdersExportUrl(params: OrderListParams = {}): string {
+  const search = new URLSearchParams()
+  for (const [key, value] of Object.entries(buildOrderListQueryParams(params))) {
+    search.set(key, String(value))
+  }
+  const qs = search.toString()
+  return `${API_BASE}/orders/export.csv${qs ? `?${qs}` : ''}`
+}
+
+export async function createOrderDirect(patch: OrderPatchUpdate): Promise<Order> {
+  const { data } = await api.post<Order>('/orders/direct', patch)
+  return data
 }
 
 /** All orders for the chat room's customer (includes cancelled). */
 export async function fetchOrdersByRoom(roomId: number): Promise<Order[]> {
   const { data } = await api.get<Order[]>(`/orders/room/${roomId}`)
-  return data ?? []
+  return data
 }
 
 export async function deleteOrder(orderId: number): Promise<boolean> {
@@ -87,12 +119,9 @@ export async function updateOrderDraft(
   return data ?? null
 }
 
-/**
- * Trigger the LLM-driven `organize_data` flow for a room and return the
- * resulting draft.
- */
-export async function organizeData(roomId: number): Promise<OrderDraft> {
-  const { data } = await api.patch<OrderDraft>(`/organize_data/${roomId}`)
+/** Trigger LLM draft organize; returns draft plus `changed_fields` metadata. */
+export async function organizeData(roomId: number): Promise<OrganizeOrderDraftOut> {
+  const { data } = await api.patch<OrganizeOrderDraftOut>(`/organize_data/${roomId}`)
   return data
 }
 

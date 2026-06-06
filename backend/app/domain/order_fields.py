@@ -73,6 +73,19 @@ DEFAULT_FIELD_ORDER: Final[tuple[str, ...]] = (
 
 ALL_CATALOG_KEYS: Final[tuple[str, ...]] = DEFAULT_FIELD_ORDER
 
+# Subset exported in the orders CSV download (headers use FIELD_LABELS).
+ORDER_CSV_EXPORT_KEYS: Final[tuple[str, ...]] = (
+    "id",
+    "customer_name",
+    "customer_phone",
+    "order_status",
+    "item",
+    "quantity",
+    "total_amount",
+    "send_datetime",
+    "note",
+)
+
 # ---------------------------------------------------------------------------
 # Display labels (registry)
 # ---------------------------------------------------------------------------

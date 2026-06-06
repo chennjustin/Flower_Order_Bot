@@ -1,32 +1,32 @@
 import { useEffect, useMemo, useState } from 'react'
-import { ChevronLeft, ChevronRight, ChevronDown, Download, Search, List, Calendar } from 'lucide-react'
+import { ChevronLeft, ChevronRight, ChevronDown, Download, Plus, Search, List, Calendar } from 'lucide-react'
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover'
 import { exportDocx } from '@/api/orders'
-import { useOrders, useUpdateOrderStatus } from '@/hooks/useOrders'
+import {
+  downloadOrdersCsv,
+  useOrdersPage,
+  useUpdateOrderStatus,
+} from '@/hooks/useOrders'
 import {
   buildOrderTableColumns,
   formatOrderFieldValue,
-  getVisibleFieldItems,
   type OrderTableColumnKey,
 } from '@/lib/orderFieldPresentation'
 import {
   type OrderFilterTab,
   ORDER_FILTER_TABS,
   ORDER_STATUS_OPTIONS,
-  isInProgressOrder,
-  isCancelledOrder,
   normalizeOrderStatus,
   orderStatusBadgeClasses,
   orderStatusLabel,
 } from '@/utils/orderStatus'
 import { toLocalDateKey } from '@/utils/datetime'
-import { rowsToCsvBlob } from '@/utils/csv'
 import { downloadBlob } from '@/utils/download'
-import type { Order } from '@/types/domain'
+import type { Order, OrderListParams } from '@/types/domain'
 import type { OrderStatus } from '@/types/enums'
 import type { OrderFieldKey } from '@/types/orderDisplay'
 import { cn } from '@/lib/utils'
@@ -45,19 +45,57 @@ interface OrderTableProps {
   showTitle?: boolean
   /** Number of rows per page. Default 20. Dashboard uses 10. */
   pageSize?: number
+  /** When provided, clicking a row calls this instead of opening the inline dialog. */
+  onSelectOrder?: (order: Order) => void
+  /** When provided, shows a「新增訂單」button and calls this on click. */
+  onCreateOrder?: () => void
 }
 
 interface NormalizedOrder extends Order {
   display_status: OrderStatus
 }
 
-function filterOrdersByPickupDate(rows: NormalizedOrder[], date: Date): NormalizedOrder[] {
-  const key = toLocalDateKey(date)
-  return rows.filter(r => {
-    if (!r.send_datetime) return false
-    const d = new Date(r.send_datetime)
-    return !Number.isNaN(d.getTime()) && toLocalDateKey(d) === key
-  })
+function monthPickupRange(date: Date): Pick<OrderListParams, 'pickup_from' | 'pickup_to'> {
+  const start = new Date(date.getFullYear(), date.getMonth(), 1, 0, 0, 0, 0)
+  const end = new Date(date.getFullYear(), date.getMonth() + 1, 1, 0, 0, 0, 0)
+  return {
+    pickup_from: start.toISOString(),
+    pickup_to: end.toISOString(),
+  }
+}
+
+function buildListQueryParams(args: {
+  currentPage: number
+  pageSize: number
+  effectiveStatusTab: '' | 'in_progress' | 'completed'
+  activeTab: OrderFilterTab
+  dateFilterActive: boolean
+  currentDate: Date
+  quickFilter: QuickFilter | undefined
+  searchText: string
+}): OrderListParams {
+  const params: OrderListParams = {
+    page: args.currentPage,
+    page_size: args.pageSize,
+    q: args.searchText.trim() || undefined,
+  }
+
+  if (args.effectiveStatusTab === 'in_progress') {
+    params.status = 'in_progress'
+  } else if (args.effectiveStatusTab === 'completed') {
+    params.status = 'completed'
+  }
+
+  if (args.activeTab === '' && args.effectiveStatusTab === '') {
+    params.include_cancelled = true
+  }
+
+  if (args.dateFilterActive || args.quickFilter === 'today') {
+    const filterDate = args.quickFilter === 'today' ? new Date() : args.currentDate
+    params.pickup_date = toLocalDateKey(filterDate)
+  }
+
+  return params
 }
 
 export default function OrderTable({
@@ -65,9 +103,9 @@ export default function OrderTable({
   onQuickFilterClear,
   showTitle = true,
   pageSize = 20,
+  onSelectOrder,
+  onCreateOrder,
 }: OrderTableProps) {
-  const ordersQuery = useOrders()
-  const updateStatusMutation = useUpdateOrderStatus()
   const { savedConfig } = useOrderDisplayConfig()
 
   const [viewMode, setViewMode] = useState<ViewMode>('list')
@@ -78,17 +116,63 @@ export default function OrderTable({
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
   const [currentPage, setCurrentPage] = useState(1)
 
-  const orders = useMemo(() => ordersQuery.data ?? [], [ordersQuery.data])
-
-  const pendingStatusOrderId =
-    updateStatusMutation.isPending ? updateStatusMutation.variables?.orderId ?? null : null
-
   const effectiveStatusTab: '' | 'in_progress' | 'completed' =
     quickFilter === 'in_progress' || activeTab === 'in_progress'
       ? 'in_progress'
       : activeTab === 'completed'
         ? 'completed'
         : ''
+
+  const listParams = useMemo(
+    () =>
+      buildListQueryParams({
+        currentPage,
+        pageSize,
+        effectiveStatusTab,
+        activeTab,
+        dateFilterActive,
+        currentDate,
+        quickFilter,
+        searchText,
+      }),
+    [
+      currentPage,
+      pageSize,
+      effectiveStatusTab,
+      activeTab,
+      dateFilterActive,
+      currentDate,
+      quickFilter,
+      searchText,
+    ],
+  )
+
+  const calendarParams = useMemo<OrderListParams>(
+    () => ({
+      page: 1,
+      page_size: 500,
+      ...monthPickupRange(currentDate),
+      q: searchText.trim() || undefined,
+      status: effectiveStatusTab || undefined,
+      include_cancelled: activeTab === '' && effectiveStatusTab === '',
+    }),
+    [currentDate, searchText, effectiveStatusTab, activeTab],
+  )
+
+  const ordersQuery = useOrdersPage(
+    viewMode === 'calendar' ? calendarParams : listParams,
+    true,
+  )
+  const updateStatusMutation = useUpdateOrderStatus(
+    viewMode === 'calendar' ? calendarParams : listParams,
+  )
+
+  const orders = useMemo(() => ordersQuery.data?.items ?? [], [ordersQuery.data])
+  const total = ordersQuery.data?.total ?? 0
+  const totalPages = Math.max(1, Math.ceil(total / pageSize))
+
+  const pendingStatusOrderId =
+    updateStatusMutation.isPending ? updateStatusMutation.variables?.orderId ?? null : null
 
   useEffect(() => {
     if (quickFilter === 'today') {
@@ -98,6 +182,24 @@ export default function OrderTable({
     }
   }, [quickFilter])
 
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [effectiveStatusTab, dateFilterActive, currentDate, searchText, quickFilter, viewMode])
+
+  const pagedRows = useMemo<NormalizedOrder[]>(
+    () =>
+      orders.map(o => ({
+        ...o,
+        display_status: normalizeOrderStatus(o.order_status),
+      })),
+    [orders],
+  )
+
+  const visibleColumns = useMemo(
+    () => buildOrderTableColumns(savedConfig),
+    [savedConfig],
+  )
+
   function isTabHighlighted(tab: OrderFilterTab): boolean {
     if (quickFilter === 'today' && tab === 'today') return true
     if (quickFilter === 'in_progress' && tab === 'in_progress') return true
@@ -105,52 +207,6 @@ export default function OrderTable({
     if (tab === 'today') return activeTab === 'today'
     return activeTab === tab
   }
-
-  const filtered = useMemo<NormalizedOrder[]>(() => {
-    let rows: NormalizedOrder[] = orders.map(o => ({
-      ...o,
-      display_status: normalizeOrderStatus(o.order_status),
-    }))
-
-    if (effectiveStatusTab === 'in_progress') {
-      rows = rows.filter(r => isInProgressOrder(r.display_status))
-    } else if (effectiveStatusTab === 'completed') {
-      rows = rows.filter(r => r.display_status === 'COMPLETED')
-    } else if (dateFilterActive || quickFilter === 'today') {
-      const filterDate = quickFilter === 'today' ? new Date() : currentDate
-      rows = filterOrdersByPickupDate(rows, filterDate)
-    }
-
-    const showCancelledOrders = activeTab === '' && effectiveStatusTab === ''
-    if (!showCancelledOrders) {
-      rows = rows.filter(r => !isCancelledOrder(r.display_status))
-    }
-
-    const q = searchText.trim().toLowerCase()
-    if (q) {
-      rows = rows.filter(r =>
-        Object.values(r).some(v => String(v ?? '').toLowerCase().includes(q)),
-      )
-    }
-
-    return rows
-  }, [orders, effectiveStatusTab, dateFilterActive, currentDate, searchText, activeTab, quickFilter])
-
-  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize))
-
-  useEffect(() => {
-    setCurrentPage(1)
-  }, [effectiveStatusTab, dateFilterActive, currentDate, searchText, quickFilter])
-
-  const pagedRows = useMemo(
-    () => filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize),
-    [filtered, currentPage, pageSize],
-  )
-
-  const visibleColumns = useMemo(
-    () => buildOrderTableColumns(savedConfig),
-    [savedConfig],
-  )
 
   function selectTab(value: OrderFilterTab) {
     if (value === 'today') {
@@ -181,13 +237,18 @@ export default function OrderTable({
     onQuickFilterClear?.()
   }
 
-  function handleDownloadCsv() {
-    const csvFields = getVisibleFieldItems(savedConfig)
-    const headers = csvFields.map(field => field.label)
-    const rows = orders.map(order =>
-      csvFields.map(field => formatOrderFieldValue(field.key, order)),
-    )
-    downloadBlob(rowsToCsvBlob(headers, rows), '訂單資料.csv')
+  async function handleDownloadCsv() {
+    try {
+      const exportParams: OrderListParams = {
+        ...listParams,
+        page: undefined,
+        page_size: undefined,
+      }
+      await downloadOrdersCsv(exportParams)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err)
+      alert(`下載 CSV 失敗：${message}`)
+    }
   }
 
   async function handleExportDocx(orderId: number) {
@@ -214,7 +275,7 @@ export default function OrderTable({
   }
 
   return (
-    <section className="w-full rounded-lg bg-white px-8 py-6 mt-6 mb-8 border-b-[1.5px] border-[#e9e9e9]">
+    <section className="min-w-0 w-full rounded-lg bg-white px-8 py-6 mt-6 mb-8 border-b-[1.5px] border-[#e9e9e9]">
       <div className="mb-4 flex flex-wrap items-center gap-4">
         {showTitle && (
           <span className="text-[22px] font-bold tracking-wider whitespace-nowrap text-[#6168FC]">
@@ -261,6 +322,18 @@ export default function OrderTable({
             <Search className="absolute right-6 top-1/2 h-5 w-5 -translate-y-1/2 text-black/[0.38]" />
           </div>
 
+          {onCreateOrder && (
+            <button
+              type="button"
+              onClick={onCreateOrder}
+              className="flex h-[46px] shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-xl border-0 bg-[#6168FC] px-4 py-3 text-white shadow-[2px_2px_2px_rgba(0,0,0,0.25)] transition hover:bg-[#4F51FF]"
+            >
+              <Plus className="h-5 w-5" strokeWidth={2.5} />
+              <span className="text-base font-bold leading-[112.5%] font-['Noto_Sans_TC',sans-serif]">
+                新增訂單
+              </span>
+            </button>
+          )}
           <button
             type="button"
             onClick={handleDownloadCsv}
@@ -318,7 +391,7 @@ export default function OrderTable({
             </div>
           )}
 
-          {totalPages > 1 && (
+          {viewMode === 'list' && totalPages > 1 && (
             <div className="ml-auto flex items-center gap-3">
               <button
                 type="button"
@@ -346,18 +419,26 @@ export default function OrderTable({
       </div>
 
       {viewMode === 'calendar' ? (
-        <CalendarView
-          orders={filtered}
-          currentDate={currentDate}
-          onDateChange={d => {
-            setCurrentDate(d)
-            setDateFilterActive(false)
-          }}
-          onOrderClick={setSelectedOrder}
-        />
+        ordersQuery.error ? (
+          <div className="py-10 text-center text-base text-red-600">
+            無法載入訂單資料：{(ordersQuery.error as Error).message}
+          </div>
+        ) : ordersQuery.isLoading && orders.length === 0 ? (
+          <div className="py-10 text-center text-base text-[#6168FC]">載入中...</div>
+        ) : (
+          <CalendarView
+            orders={orders}
+            currentDate={currentDate}
+            onDateChange={d => {
+              setCurrentDate(d)
+              setDateFilterActive(false)
+            }}
+            onOrderClick={order => onSelectOrder ? onSelectOrder(order) : setSelectedOrder(order)}
+          />
+        )
       ) : (
-        <div className="w-full overflow-hidden">
-          <div className="w-full overflow-x-auto px-2">
+        <div className="min-w-0 w-full overflow-hidden">
+          <div className="min-w-0 w-full overflow-x-auto px-2">
             {ordersQuery.error ? (
               <div className="py-10 text-center text-base text-red-600">
                 無法載入訂單資料：{(ordersQuery.error as Error).message}
@@ -395,7 +476,7 @@ export default function OrderTable({
                       <tr
                         key={row.id}
                         className="group cursor-pointer bg-white"
-                        onClick={() => setSelectedOrder(row)}
+                        onClick={() => onSelectOrder ? onSelectOrder(row) : setSelectedOrder(row)}
                       >
                         {visibleColumns.map((col, idx) => (
                           <td
@@ -423,7 +504,7 @@ export default function OrderTable({
                     ))}
                   </tbody>
                 </table>
-                {filtered.length === 0 && (
+                {total === 0 && (
                   <div className="py-10 text-center text-[#aaa]">
                     <Search className="mx-auto mb-3 h-8 w-8" strokeWidth={1.5} />
                     <p>找不到符合條件的訂單</p>
@@ -460,11 +541,13 @@ export default function OrderTable({
         </div>
       )}
 
-      <OrderDetailDialog
-        order={selectedOrder}
-        open={selectedOrder !== null}
-        onOpenChange={open => !open && setSelectedOrder(null)}
-      />
+      {!onSelectOrder && (
+        <OrderDetailDialog
+          order={selectedOrder}
+          open={selectedOrder !== null}
+          onOpenChange={open => !open && setSelectedOrder(null)}
+        />
+      )}
     </section>
   )
 }
