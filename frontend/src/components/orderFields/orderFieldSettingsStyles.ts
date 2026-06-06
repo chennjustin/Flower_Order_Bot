@@ -58,13 +58,10 @@ export function fieldIconClass(visible: boolean) {
 /** Drag handle (ChevronsUpDown) — bolder stroke in settings list. */
 export const dragHandleClass = 'text-black/60'
 
-/** Eye icon in edit mode: locked = grayscale; visible toggleable = black bold. */
-export function eyeIconClass(locked: boolean, visible: boolean, isEditMode: boolean) {
+/** Eye icon in edit mode: visible = black bold; hidden optional fields = muted. */
+export function eyeIconClass(_locked: boolean, visible: boolean, isEditMode: boolean) {
   if (!isEditMode) {
     return fieldIconClass(visible)
-  }
-  if (locked) {
-    return 'text-black/30 grayscale'
   }
   if (visible) {
     return 'text-black'
@@ -72,11 +69,8 @@ export function eyeIconClass(locked: boolean, visible: boolean, isEditMode: bool
   return 'text-black/38'
 }
 
-export const eyeIconStroke = (locked: boolean, visible: boolean, isEditMode: boolean) => {
+export const eyeIconStroke = (_locked: boolean, visible: boolean, isEditMode: boolean) => {
   if (!isEditMode) {
-    return 2
-  }
-  if (locked) {
     return 2
   }
   if (visible) {
