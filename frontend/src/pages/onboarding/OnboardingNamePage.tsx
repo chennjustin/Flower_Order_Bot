@@ -45,13 +45,10 @@ export default function OnboardingNamePage() {
   return (
     <>
       <StepIndicator current={1} className="mb-4" />
-      <OnboardingCard
-        title="設定您的顯示名稱"
-        description="此名稱會顯示在後台操作紀錄中，之後仍可在個人設定修改。"
-      >
+      <OnboardingCard title="設定您的顯示名稱">
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <label className="flex flex-col gap-2 text-left text-sm font-medium text-[#3a3a3a]">
-            顯示名稱
+            名稱
             <input
               type="text"
               value={name}
@@ -74,8 +71,7 @@ export default function OnboardingNamePage() {
           <button
             type="submit"
             className={cn(
-              'w-full rounded-xl border-none py-3 text-base font-bold text-white',
-              'bg-gradient-to-r from-brand-primary to-brand-secondary',
+              'w-full rounded-xl border-none bg-[#D8EAFF] py-3 text-base font-bold text-[#3a3a3a]',
               'transition active:scale-[0.99]',
             )}
           >

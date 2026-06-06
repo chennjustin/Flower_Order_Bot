@@ -42,7 +42,7 @@ export default function OnboardingLineOfficialPage() {
       <StepIndicator current={2} className="mb-4" />
       <OnboardingCard
         title="確認店家 LINE 官方帳號"
-        description="請比對您手機 LINE 好友列表中的官方帳號，是否與下方顯示一致（非您的 Google 登入帳號）。"
+        description="請比對您手機 LINE 好友列表中的官方帳號，是否與下方顯示一致。"
       >
         <div className="flex flex-col items-center gap-3 rounded-xl bg-brand-soft/40 px-4 py-5">
           <img
@@ -62,8 +62,7 @@ export default function OnboardingLineOfficialPage() {
             type="button"
             onClick={handleConfirmCorrect}
             className={cn(
-              'w-full rounded-xl border-none py-3 text-base font-bold text-white',
-              'bg-gradient-to-r from-brand-primary to-brand-secondary',
+              'w-full rounded-xl border-none bg-[#D8EAFF] py-3 text-base font-bold text-[#3a3a3a]',
               'transition active:scale-[0.99]',
             )}
           >
@@ -145,8 +144,7 @@ export default function OnboardingLineOfficialPage() {
               type="button"
               onClick={() => setSupportOpen(false)}
               className={cn(
-                'w-full rounded-lg border-none py-2.5 text-sm font-medium text-white sm:w-auto',
-                'bg-gradient-to-r from-brand-primary to-brand-secondary',
+                'w-full rounded-lg border-none bg-[#D8EAFF] py-2.5 text-sm font-medium text-[#3a3a3a] sm:min-w-[136px] sm:w-auto',
               )}
             >
               我知道了
