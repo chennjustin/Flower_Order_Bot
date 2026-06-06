@@ -17,6 +17,7 @@ import {
   FormRow,
   MISSING_KEY_TO_FIELD,
   emptyDraftDisplay,
+  filterResolvedMissingKeys,
   formatReadOnly,
   formStateFromDraft,
   formStateToUpdate,
@@ -142,7 +143,11 @@ export default function OrderDraftPanel({
       return false
     }
     try {
-      await updateDraft.mutateAsync(formStateToUpdate(form))
+      const updated = await updateDraft.mutateAsync(formStateToUpdate(form))
+      if (updated) {
+        setForm(formStateFromDraft(updated))
+        setMissing(prev => filterResolvedMissingKeys(prev, updated))
+      }
       setIsEditing(false)
       return true
     } catch (err) {

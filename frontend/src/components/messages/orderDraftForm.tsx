@@ -58,6 +58,58 @@ export const MISSING_KEY_TO_FIELD: Record<string, FieldKey> = {
   note: 'note',
 }
 
+const NUMERIC_MISSING_CATALOG_KEYS = new Set(['total_amount', 'quantity'])
+
+/**
+ * Mirrors backend `is_catalog_value_empty` — true when a previously-missing
+ * catalog key now has an acceptable value on the saved draft.
+ */
+export function isMissingCatalogKeyFilled(
+  catalogKey: string,
+  draft: OrderDraft,
+): boolean {
+  if (NUMERIC_MISSING_CATALOG_KEYS.has(catalogKey)) {
+    if (catalogKey === 'total_amount') {
+      return draft.total_amount != null && draft.total_amount > 0
+    }
+    if (catalogKey === 'quantity') {
+      return draft.quantity != null && draft.quantity > 0
+    }
+  }
+
+  switch (catalogKey) {
+    case 'customer_name':
+      return Boolean(draft.customer_name?.trim())
+    case 'customer_phone':
+      return Boolean(draft.customer_phone?.trim())
+    case 'item':
+    case 'item_type':
+      return Boolean(draft.item?.trim())
+    case 'send_datetime':
+      return Boolean(draft.send_datetime)
+    case 'note':
+      return Boolean(draft.note?.trim())
+    case 'delivery_address':
+      return Boolean(draft.delivery_address?.trim())
+    case 'pay_way':
+      return Boolean(draft.pay_way?.trim())
+    case 'shipment_method':
+      return draft.shipment_method != null
+    case 'pay_status':
+      return draft.pay_status != null
+    default:
+      return false
+  }
+}
+
+/** Drop only catalog keys that are no longer empty after a successful save (✓). */
+export function filterResolvedMissingKeys(
+  missing: string[],
+  draft: OrderDraft,
+): string[] {
+  return missing.filter(key => !isMissingCatalogKeyFilled(key, draft))
+}
+
 export const FIELD_META: Record<FieldKey, Omit<FieldDef, 'key'>> = {
   id: { label: '訂單編號', editable: false },
   customer_name: { label: '客戶姓名', editable: true },
