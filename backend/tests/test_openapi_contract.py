@@ -38,6 +38,7 @@ async def test_openapi_contains_frozen_core_paths():
         "/organize_data/{room_id}",
         "/chat_rooms",
         "/chat_rooms/{room_id}/messages",
+        "/chat_rooms/{room_id}/mark_read",
         "/chat_rooms/{room_id}/switch_mode",
         "/stats",
         "/payment_methods",

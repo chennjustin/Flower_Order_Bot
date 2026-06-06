@@ -51,6 +51,9 @@ async def test_get_chat_room_page_has_more(monkeypatch) -> None:
     async def fake_unread(_db, _store_id):
         return 5
 
+    async def fake_filtered_unread(_db, _store_id, *, stage=None, q=None):
+        return 1
+
     async def fake_build(_db, rooms):
         from app.schemas.chat import ChatRoomOut
 
@@ -67,6 +70,7 @@ async def test_get_chat_room_page_has_more(monkeypatch) -> None:
     monkeypatch.setattr(message_service, "count_chat_rooms_filtered", fake_count)
     monkeypatch.setattr(message_service, "list_chat_rooms_paginated", fake_list)
     monkeypatch.setattr(message_service, "sum_store_unread_count", fake_unread)
+    monkeypatch.setattr(message_service, "count_filtered_unread_rooms", fake_filtered_unread)
     monkeypatch.setattr(message_service, "_build_chat_room_outs", fake_build)
 
     page = await message_service.get_chat_room_page(
@@ -77,5 +81,6 @@ async def test_get_chat_room_page_has_more(monkeypatch) -> None:
     )
     assert page.total == 35
     assert page.total_unread == 5
+    assert page.filtered_unread_rooms == 1
     assert page.has_more is True
     assert len(page.items) == 1

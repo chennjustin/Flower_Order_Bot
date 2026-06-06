@@ -63,6 +63,20 @@ async def count_chat_rooms_filtered(
     return int(result.scalar() or 0)
 
 
+async def count_filtered_unread_rooms(
+    db: AsyncSession,
+    store_id: int,
+    *,
+    stage: Optional[ChatRoomStage] = None,
+    q: Optional[str] = None,
+) -> int:
+    stmt = select(func.count()).select_from(ChatRoom)
+    stmt = _apply_chat_room_filters(stmt, store_id=store_id, stage=stage, q=q)
+    stmt = stmt.where(ChatRoom.unread_count > 0)
+    result = await db.execute(stmt)
+    return int(result.scalar() or 0)
+
+
 async def list_chat_rooms_paginated(
     db: AsyncSession,
     store_id: int,
@@ -231,3 +245,15 @@ async def touch_chat_room_updated_at(db: AsyncSession, room: ChatRoom) -> ChatRo
     await db.commit()
     await db.refresh(room)
     return room
+
+
+async def mark_chat_room_as_read(db: AsyncSession, room: ChatRoom) -> int:
+    previous_unread = int(room.unread_count or 0)
+    if previous_unread <= 0:
+        return 0
+    room.unread_count = 0
+    room.updated_at = datetime.now(timezone(timedelta(hours=8))).replace(tzinfo=None)
+    db.add(room)
+    await db.commit()
+    await db.refresh(room)
+    return previous_unread

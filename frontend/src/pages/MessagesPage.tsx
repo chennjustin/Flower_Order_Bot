@@ -8,22 +8,28 @@ import DetailPanel, {
 import { useStore } from '@/context/StoreContext'
 import {
   flattenChatRoomPages,
+  getChatRoomsFilteredUnreadRooms,
+  useMarkRoomRead,
   useChatRooms,
   type ChatRoomsFilter,
 } from '@/hooks/useChatRooms'
 import { useChatRealtime } from '@/hooks/useChatRealtime'
 import { useVisibleRoomDeltaSync } from '@/hooks/useVisibleRoomDeltaSync'
 import { useOrganizeData } from '@/hooks/useOrderDraft'
+import { clearRoomUnread } from '@/utils/chatRoomCache'
 import type { ChatRoom as ChatRoomType } from '@/types/domain'
 import type { ChatRoomStage } from '@/types/enums'
+import { useQueryClient } from '@tanstack/react-query'
 
 export default function MessagesPage() {
+  const qc = useQueryClient()
   const { currentStoreId } = useStore()
   const [roomFilters, setRoomFilters] = useState<ChatRoomsFilter>({
     stage: 'ALL',
     q: '',
   })
   const roomsQuery = useChatRooms(roomFilters)
+  const markRoomReadMutation = useMarkRoomRead(roomFilters)
   const rooms = useMemo(
     () => flattenChatRoomPages(roomsQuery.data),
     [roomsQuery.data],
@@ -93,6 +99,10 @@ export default function MessagesPage() {
 
   function doSelect(room: ChatRoomType) {
     setSelectedRoomId(room.room_id)
+    if (currentStoreId != null) {
+      clearRoomUnread(qc, currentStoreId, room.room_id)
+    }
+    markRoomReadMutation.mutate(room.room_id)
     setShowDetail(false)
     setDetailSubView('main')
     setDraftAiChangedFields([])
@@ -134,7 +144,7 @@ export default function MessagesPage() {
             void roomsQuery.fetchNextPage()
           }
         }}
-        totalUnread={roomsQuery.data?.pages[0]?.total_unread ?? 0}
+        totalUnread={getChatRoomsFilteredUnreadRooms(roomsQuery.data)}
         currentStage={roomFilters.stage}
         onStageChange={handleStageChange}
         searchQuery={roomFilters.q}

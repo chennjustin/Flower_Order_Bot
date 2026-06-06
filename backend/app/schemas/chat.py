@@ -27,6 +27,7 @@ class ChatRoomListOut(BaseModel):
     items: list[ChatRoomOut]
     total: int
     total_unread: int
+    filtered_unread_rooms: int
     has_more: bool
 
 

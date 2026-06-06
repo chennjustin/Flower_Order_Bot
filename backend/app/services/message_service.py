@@ -19,6 +19,7 @@ from app.utils.line_send_message import LINE_push_message
 from app.services.user_service import get_user_by_id
 from app.enums.chat import ChatRoomStage
 from app.repositories.chat_repository import (
+    count_filtered_unread_rooms,
     count_chat_rooms_filtered,
     create_chat_message_entry as repo_create_chat_message_entry,
     create_chat_room as repo_create_chat_room,
@@ -29,6 +30,7 @@ from app.repositories.chat_repository import (
     list_chat_messages,
     list_chat_rooms,
     list_chat_rooms_paginated,
+    mark_chat_room_as_read,
     sum_store_unread_count,
     switch_chat_room_mode as repo_switch_chat_room_mode,
     touch_chat_room_updated_at,
@@ -119,10 +121,17 @@ async def get_chat_room_page(
     )
     items = await _build_chat_room_outs(db, rooms)
     total_unread = await sum_store_unread_count(db, store_id)
+    filtered_unread_rooms = await count_filtered_unread_rooms(
+        db,
+        store_id,
+        stage=stage,
+        q=q,
+    )
     return ChatRoomListOut(
         items=items,
         total=total,
         total_unread=total_unread,
+        filtered_unread_rooms=filtered_unread_rooms,
         has_more=offset + len(items) < total,
     )
 
@@ -152,14 +161,7 @@ async def get_chat_messages(db: AsyncSession, room_id: int, after: Optional[date
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Chat room not found"
         )
-    
-    chatroom = await get_chat_room_by_room_id(db, room_id)
-    if not chatroom:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Chat room not found"
-        )
-    
+
     messages = await list_chat_messages(db, room_id, after=after)
 
     user = await get_user_by_id(db, chatroom.customer_id)
@@ -178,6 +180,13 @@ async def get_chat_messages(db: AsyncSession, room_id: int, after: Optional[date
             created_at=message.created_at
         ) for message in messages
     ]
+
+
+async def mark_room_as_read(db: AsyncSession, room_id: int) -> int:
+    room = await get_chat_room_by_room_id(db, room_id)
+    if not room:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Chat room not found")
+    return await mark_chat_room_as_read(db, room)
 
 async def switch_chat_room_mode(db: AsyncSession, room_id: int, mode: str) -> None:
     await repo_switch_chat_room_mode(db, room_id, mode)

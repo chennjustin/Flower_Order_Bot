@@ -25,6 +25,7 @@ from app.services.message_service import (
     get_chat_messages,
     get_chat_room_by_room_id,
     get_chat_room_page,
+    mark_room_as_read,
     switch_chat_room_mode,
 )
 from app.utils.staff_chat_upload import save_staff_chat_image
@@ -62,6 +63,17 @@ async def get_messages(
 ):
     await get_chat_room_for_store(db, room_id, store)
     return await get_chat_messages(db, room_id, after=after)
+
+
+@api_router.post("/{room_id}/mark_read", response_model=dict)
+async def mark_read(
+    room_id: int,
+    store: Store = Depends(get_current_store),
+    db: AsyncSession = Depends(get_db),
+):
+    await get_chat_room_for_store(db, room_id, store)
+    cleared = await mark_room_as_read(db, room_id)
+    return {"message": "success", "cleared_unread": cleared}
 
 
 @api_router.post("/{room_id}/messages/upload_image", response_model=StaffChatImageUploadOut)

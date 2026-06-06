@@ -60,27 +60,30 @@ function patchInfiniteChatRooms(
   if (!data?.pages) return data
   return {
     ...data,
-    pages: data.pages.map((page, pageIndex) => ({
-      ...page,
-      items: sortChatRoomsByLastMessage(
-        page.items.map(room => {
-          if (room.room_id !== roomId) return room
-          const bumpUnread =
-            options?.bumpUnread === true &&
-            options.selectedRoomId != null &&
-            roomId !== options.selectedRoomId
-          return {
-            ...room,
-            unread_count: bumpUnread ? room.unread_count + 1 : room.unread_count,
-            last_message: { text: patch.text, timestamp: patch.timestamp },
-          }
-        }),
-      ),
-      total_unread:
-        pageIndex === 0 && options?.bumpUnread && options.selectedRoomId !== roomId
-          ? page.total_unread + 1
-          : page.total_unread,
-    })),
+    pages: data.pages.map((page, pageIndex) => {
+      const shouldBumpUnread =
+        options?.bumpUnread === true && roomId !== options.selectedRoomId
+      let bumpedUnreadRooms = 0
+      const nextItems = page.items.map(room => {
+        if (room.room_id !== roomId) return room
+        const nextUnreadCount = shouldBumpUnread ? room.unread_count + 1 : room.unread_count
+        if (shouldBumpUnread && room.unread_count === 0) {
+          bumpedUnreadRooms += 1
+        }
+        return {
+          ...room,
+          unread_count: nextUnreadCount,
+          last_message: { text: patch.text, timestamp: patch.timestamp },
+        }
+      })
+      return {
+        ...page,
+        items: sortChatRoomsByLastMessage(nextItems),
+        total_unread: pageIndex === 0 && shouldBumpUnread ? page.total_unread + 1 : page.total_unread,
+        filtered_unread_rooms:
+          pageIndex === 0 ? page.filtered_unread_rooms + bumpedUnreadRooms : page.filtered_unread_rooms,
+      }
+    }),
   }
 }
 
@@ -97,6 +100,50 @@ export function patchChatRoomLastMessage(
       predicate: query => isChatRoomListQueryKey(query.queryKey),
     },
     data => patchInfiniteChatRooms(data, roomId, patch, options),
+  )
+}
+
+export function clearRoomUnread(
+  qc: QueryClient,
+  storeId: number,
+  roomId: number,
+): void {
+  qc.setQueriesData<ChatRoomsInfinite>(
+    {
+      queryKey: ['chatRooms', storeId],
+      predicate: query => isChatRoomListQueryKey(query.queryKey),
+    },
+    data => {
+      if (!data?.pages) return data
+      return {
+        ...data,
+        pages: data.pages.map((page, pageIndex) => {
+          let clearedUnread = 0
+          let decrementedUnreadRooms = 0
+          const nextItems = page.items.map(room => {
+            if (room.room_id !== roomId) return room
+            const previousUnread = room.unread_count
+            if (previousUnread > 0) {
+              clearedUnread += previousUnread
+              decrementedUnreadRooms += 1
+            }
+            return { ...room, unread_count: 0 }
+          })
+          return {
+            ...page,
+            items: nextItems,
+            total_unread:
+              pageIndex === 0
+                ? Math.max(0, page.total_unread - clearedUnread)
+                : page.total_unread,
+            filtered_unread_rooms:
+              pageIndex === 0
+                ? Math.max(0, page.filtered_unread_rooms - decrementedUnreadRooms)
+                : page.filtered_unread_rooms,
+          }
+        }),
+      }
+    },
   )
 }
 

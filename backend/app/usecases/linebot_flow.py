@@ -30,6 +30,12 @@ from app.utils.line_inbound_media import fetch_line_message_binary, save_inbound
 from app.utils.line_send_message import send_confirm, send_quick_reply_message
 
 
+def _advance_unread_for_incoming(chat_room: ChatRoom, created_at: datetime) -> None:
+    chat_room.unread_count = int(chat_room.unread_count or 0) + 1
+    chat_room.last_message_ts = created_at
+    chat_room.updated_at = created_at
+
+
 async def resolve_line_user_and_room(
     db: AsyncSession, user_line_id: str, store: Store
 ) -> tuple[User, ChatRoom]:
@@ -107,6 +113,7 @@ async def handle_incoming_text_message(
         updated_at=datetime.now(timezone(timedelta(hours=8))).replace(tzinfo=None),
     )
 
+    _advance_unread_for_incoming(chat_room, message.created_at)
     db.add(message)
     await db.commit()
     await db.refresh(message)
@@ -167,6 +174,7 @@ async def handle_incoming_image_message(
         created_at=datetime.now(timezone(timedelta(hours=8))).replace(tzinfo=None),
         updated_at=datetime.now(timezone(timedelta(hours=8))).replace(tzinfo=None),
     )
+    _advance_unread_for_incoming(chat_room, message.created_at)
     db.add(message)
     await db.commit()
     await db.refresh(message)
@@ -199,6 +207,7 @@ async def handle_incoming_sticker_message(
         created_at=datetime.now(timezone(timedelta(hours=8))).replace(tzinfo=None),
         updated_at=datetime.now(timezone(timedelta(hours=8))).replace(tzinfo=None),
     )
+    _advance_unread_for_incoming(chat_room, message.created_at)
     db.add(message)
     await db.commit()
     await db.refresh(message)

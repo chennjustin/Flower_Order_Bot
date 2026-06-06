@@ -124,6 +124,7 @@ export interface ChatRoomListResponse {
   items: ChatRoom[]
   total: number
   total_unread: number
+  filtered_unread_rooms: number
   has_more: boolean
 }
 
