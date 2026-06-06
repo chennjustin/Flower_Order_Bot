@@ -1,6 +1,7 @@
 import ChatHeader from './ChatHeader'
 import MessageInput from './MessageInput'
 import MessageList from './MessageList'
+import type { ChatRoomsFilter } from '@/hooks/useChatRooms'
 import { useRoomMessages, useSendMessage } from '@/hooks/useRoomMessages'
 import type { ChatRoom as ChatRoomType } from '@/types/domain'
 import { ChatMessageStatus } from '@/types/enums'
@@ -13,6 +14,7 @@ interface ChatRoomProps {
   isOrganizing?: boolean
   /** When false, hides header「整理資料」(draft-only). */
   showOrganizeButton?: boolean
+  roomFilters: ChatRoomsFilter
 }
 
 export default function ChatRoom({
@@ -22,6 +24,7 @@ export default function ChatRoom({
   onOrganizeOrder,
   isOrganizing,
   showOrganizeButton = true,
+  roomFilters,
 }: ChatRoomProps) {
   const messagesQuery = useRoomMessages(room.room_id)
   const sendMutation = useSendMessage(room.room_id)
@@ -38,6 +41,7 @@ export default function ChatRoom({
         onOrganizeOrder={onOrganizeOrder}
         isOrganizing={isOrganizing}
         showOrganizeButton={showOrganizeButton}
+        roomFilters={roomFilters}
       />
       {messagesQuery.error ? (
         <div className="flex-1 overflow-y-auto bg-white px-6 py-10 text-center text-sm text-red-600">

@@ -12,6 +12,7 @@ import {
   orderStatusLabel,
 } from '@/utils/orderStatus'
 import { cn } from '@/lib/utils'
+import { toHighlightFieldKeys } from '@/lib/llmChangedFields'
 import {
   DRAFT_SUPPORTED_KEYS,
   DateTimeRow,
@@ -52,6 +53,7 @@ export default function OrderEditPanel({
   const [form, setForm] = useState<FormState>(() => formStateFromOrder(order))
   const [pendingMessageIds, setPendingMessageIds] = useState<number[]>([])
   const [aiPreviewHint, setAiPreviewHint] = useState(false)
+  const [aiChangedKeys, setAiChangedKeys] = useState<Set<FieldKey>>(() => new Set())
   const [showLeaveDialog, setShowLeaveDialog] = useState(false)
 
   const orderStatus = normalizeOrderStatus(order.order_status)
@@ -62,6 +64,7 @@ export default function OrderEditPanel({
     setIsEditing(false)
     setPendingMessageIds([])
     setAiPreviewHint(false)
+    setAiChangedKeys(new Set())
   }, [order])
 
   const isDirty = useMemo(() => isOrderFormDirty(form, order), [form, order])
@@ -116,8 +119,22 @@ export default function OrderEditPanel({
       })
   }, [savedConfig.fields])
 
+  function clearAiHighlightForField(key: keyof FormState) {
+    setAiChangedKeys(prev => {
+      if (prev.size === 0) return prev
+      const next = new Set(prev)
+      if (key === 'send_datetime_date' || key === 'send_datetime_time') {
+        next.delete('send_datetime')
+      } else {
+        next.delete(key as FieldKey)
+      }
+      return next
+    })
+  }
+
   function setField<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm(prev => ({ ...prev, [key]: value }))
+    clearAiHighlightForField(key)
   }
 
   function startEditing() {
@@ -142,6 +159,7 @@ export default function OrderEditPanel({
       setIsEditing(false)
       setPendingMessageIds([])
       setAiPreviewHint(false)
+      setAiChangedKeys(new Set())
       return true
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err)
@@ -156,6 +174,7 @@ export default function OrderEditPanel({
       const result = await suggestFromChat.mutateAsync(order.id)
       setForm(orderPatchToFormState(result.suggested, order))
       setPendingMessageIds(result.source_message_ids)
+      setAiChangedKeys(toHighlightFieldKeys(result.changed_fields))
       setAiPreviewHint(true)
       setIsEditing(true)
     } catch (err) {
@@ -231,6 +250,7 @@ export default function OrderEditPanel({
                 onDateChange={(v: string) => setField('send_datetime_date', v)}
                 onTimeChange={(v: string) => setField('send_datetime_time', v)}
                 missing={false}
+                aiChanged={aiChangedKeys.has('send_datetime')}
               />
             ) : (
               <FormRow
@@ -241,6 +261,7 @@ export default function OrderEditPanel({
                 setField={setField}
                 display={display}
                 missing={isEditing && REQUIRED_FIELDS.some(r => r.key === field.key) && !String(form[field.key as keyof FormState] ?? '').trim()}
+                aiChanged={aiChangedKeys.has(field.key)}
               />
             ),
           )}

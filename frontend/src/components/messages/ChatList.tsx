@@ -1,5 +1,5 @@
 import { useQueryClient } from '@tanstack/react-query'
-import { useMemo, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { MessageSquare, Search, X } from 'lucide-react'
 import { prefetchRoomMessages } from '@/hooks/useRoomMessages'
 import type { ChatRoom } from '@/types/domain'
@@ -23,6 +23,14 @@ interface ChatListProps {
   selectedRoomId: number | null
   onSelect: (room: ChatRoom) => void
   isLoading?: boolean
+  isFetchingMore?: boolean
+  hasMore?: boolean
+  onLoadMore?: () => void
+  totalUnread?: number
+  currentStage: ChatRoomStage | 'ALL'
+  onStageChange: (stage: ChatRoomStage | 'ALL') => void
+  searchQuery: string
+  onSearchChange: (q: string) => void
   storeId: number | null
 }
 
@@ -31,43 +39,57 @@ export default function ChatList({
   selectedRoomId,
   onSelect,
   isLoading,
+  isFetchingMore,
+  hasMore,
+  onLoadMore,
+  totalUnread = 0,
+  currentStage,
+  onStageChange,
+  searchQuery,
+  onSearchChange,
   storeId,
 }: ChatListProps) {
   const qc = useQueryClient()
-  const [currentTab, setCurrentTab] = useState<(typeof FILTER_TABS)[number]['key']>('ALL')
-  const [searchInput, setSearchInput] = useState('')
-  const [appliedSearch, setAppliedSearch] = useState('')
+  const [searchInput, setSearchInput] = useState(searchQuery)
+  const loadMoreRef = useRef<HTMLDivElement | null>(null)
+
+  useEffect(() => {
+    setSearchInput(searchQuery)
+  }, [searchQuery])
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      if (searchInput.trim() !== searchQuery.trim()) {
+        onSearchChange(searchInput.trim())
+      }
+    }, 300)
+    return () => window.clearTimeout(timer)
+  }, [searchInput, onSearchChange, searchQuery])
+
+  useEffect(() => {
+    const node = loadMoreRef.current
+    if (!node || !hasMore || !onLoadMore) return
+
+    const observer = new IntersectionObserver(
+      entries => {
+        if (entries[0]?.isIntersecting && !isFetchingMore) {
+          onLoadMore()
+        }
+      },
+      { rootMargin: '120px' },
+    )
+    observer.observe(node)
+    return () => observer.disconnect()
+  }, [hasMore, isFetchingMore, onLoadMore, rooms.length])
 
   function commitSearch() {
-    setAppliedSearch(searchInput.trim())
+    onSearchChange(searchInput.trim())
   }
 
   function clearSearch() {
     setSearchInput('')
-    setAppliedSearch('')
+    onSearchChange('')
   }
-
-  const filteredRooms = useMemo(() => {
-    let rows =
-      currentTab === 'ALL' ? rooms : rooms.filter(r => r.status === currentTab)
-
-    const q = appliedSearch.toLowerCase()
-    if (q) {
-      rows = rows.filter(r => r.user_name.toLowerCase().includes(q))
-    }
-
-    return rows
-  }, [rooms, currentTab, appliedSearch])
-
-  const totalUnread = useMemo(
-    () =>
-      rooms.reduce(
-        (sum, room) =>
-          sum + (selectedRoomId !== room.room_id ? room.unread_count : 0),
-        0,
-      ),
-    [rooms, selectedRoomId],
-  )
 
   return (
     <div className="flex h-full w-[360px] flex-col border-r border-[#B3B3B3] bg-white">
@@ -91,11 +113,11 @@ export default function ChatList({
             <button
               key={tab.key}
               type="button"
-              onClick={() => setCurrentTab(tab.key)}
+              onClick={() => onStageChange(tab.key)}
               className={cn(
                 'inline-flex h-7 w-[72px] flex-shrink-0 items-center justify-center rounded-[36px] px-2 text-sm font-bold whitespace-nowrap transition-colors',
                 "font-['Noto_Sans_TC',sans-serif] text-black/60",
-                currentTab === tab.key ? 'bg-[#C5C7FF]' : 'bg-[#F7F7F7] hover:bg-[#C5C7FF]',
+                currentStage === tab.key ? 'bg-[#C5C7FF]' : 'bg-[#F7F7F7] hover:bg-[#C5C7FF]',
               )}
             >
               {tab.label}
@@ -118,7 +140,7 @@ export default function ChatList({
               placeholder="搜尋顧客姓名"
               className="w-full border-0 bg-transparent p-0 pr-8 text-base leading-[140%] text-black/[0.38] outline-none placeholder:text-black/[0.38] font-['Noto_Sans_TC',sans-serif]"
             />
-            {appliedSearch ? (
+            {searchInput ? (
               <button
                 type="button"
                 onClick={clearSearch}
@@ -140,15 +162,15 @@ export default function ChatList({
           </div>
         </div>
 
-{isLoading && rooms.length === 0 ? (
+        {isLoading && rooms.length === 0 ? (
           <div className="px-6 py-10 text-center text-sm text-black/40">載入中...</div>
-        ) : filteredRooms.length === 0 ? (
+        ) : rooms.length === 0 ? (
           <div className="px-6 py-10 text-center text-sm text-black/40">
-            {rooms.length > 0 ? '找不到符合的聊天室' : '目前沒有聊天室'}
+            目前沒有聊天室
           </div>
         ) : (
           <ul>
-            {filteredRooms.map(room => (
+            {rooms.map(room => (
               <li key={room.room_id}>
                 <ChatRoomCard
                   room={room}
@@ -161,6 +183,15 @@ export default function ChatList({
               </li>
             ))}
           </ul>
+        )}
+
+        {hasMore && (
+          <div
+            ref={loadMoreRef}
+            className="px-6 py-4 text-center text-sm text-black/40"
+          >
+            {isFetchingMore ? '載入更多...' : '往下捲動載入更多'}
+          </div>
         )}
       </div>
     </div>

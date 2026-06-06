@@ -1,12 +1,15 @@
 from __future__ import annotations
 
-import json
-
 from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.adapters.llm.openai_chat import complete_system_prompt
+from app.adapters.llm.json_extract import JsonExtractError
+from app.adapters.llm.openai_chat import (
+    DEFAULT_LLM_MODEL,
+    LlmServiceUnavailableError,
+    complete_system_prompt,
+)
 from app.enums.order import OrderStatus
 from app.models.chat import ChatMessage
 from app.repositories.order_repository import get_order_by_id
@@ -15,54 +18,56 @@ from app.services.order_field_config_service import get_effective_order_field_co
 from app.services.order_service import _build_order_out
 from app.services.message_service import get_chat_room_by_room_id
 from app.managers.prompt_manager import PromptManager
-from app.usecases.organize_order_draft import (
-    _filter_update_by_required_fields,
-    _parse_order_draft_json,
+from app.usecases.organize_order_draft import _filter_update_by_visible_fields
+from app.usecases.llm_order_delta import (
+    build_chat_text,
+    build_order_patch_from_merged,
+    compute_changed_fields,
+    filter_changed_fields_to_visible,
+    merge_delta_into_catalog,
+    order_out_to_catalog_values,
+    order_visible_baseline_for_llm,
+    parse_delta_json,
+    reference_now_taipei,
 )
 
 
 prompt_manager = PromptManager()
 
+ORDER_CUSTOMER_IDENTITY_RULES = """- `customer_name`: do not output; fixed from the formal order.
+- `customer_phone`: MUST output when new messages mention a phone number (fill empty baseline or replace with a new/corrected number). Use key `customer_phone` only.
+  Triggers: customer says "我的電話…", "聯絡我…", or sends digits like 0912345678 / +886912345678.
+- `order_date`: do not output; keep existing order date."""
 
-def _build_combined_chat_text(messages: list[ChatMessage]) -> str:
-    return "\n".join(
-        reversed(
-            [
-                f"[{m.created_at.strftime('%Y-%m-%d %H:%M:%S')}] {m.text} {m.direction}"
-                for m in messages
-            ]
-        )
+
+def _load_order_suggest_prompt(
+    *,
+    order_out: OrderOut,
+    visible_fields: set[str],
+    combined_text: str,
+    message_count: int,
+) -> str:
+    extraction_rules = prompt_manager.load_prompt(
+        "order_extraction_rules",
+        reference_now=reference_now_taipei(),
+        customer_identity_rules=ORDER_CUSTOMER_IDENTITY_RULES,
+    )
+    return prompt_manager.load_prompt(
+        "order_update_prompt",
+        extraction_rules=extraction_rules,
+        baseline=order_visible_baseline_for_llm(order_out, visible_fields),
+        user_message=combined_text,
+        message_count=message_count,
     )
 
 
-def _order_out_to_prompt_json(order_out: OrderOut) -> str:
-    payload = order_out.model_dump(mode="json")
-    return json.dumps(payload, ensure_ascii=False)
+def _merge_llm_update_into_patch(order_out: OrderOut, update) -> OrderPatchUpdate:
+    """Backward-compatible wrapper used by existing unit tests."""
 
-
-def _merge_llm_update_into_patch(order_out: OrderOut, update: OrderDraftUpdate) -> OrderPatchUpdate:
-    """Build a full PATCH body from current order plus LLM deltas."""
-
-    def pick_str(current: str | None, new: str | None) -> str | None:
-        return new if new is not None else current
-
-    def pick_num(current: float | int | None, new: float | int | None) -> float | int | None:
-        return new if new is not None else current
-
-    return OrderPatchUpdate(
-        customer_name=order_out.customer_name,
-        customer_phone=order_out.customer_phone,
-        total_amount=pick_num(order_out.total_amount, update.total_amount),
-        pay_status=update.pay_status if update.pay_status is not None else order_out.pay_status,
-        item=pick_str(order_out.item, update.item),
-        quantity=pick_num(order_out.quantity, update.quantity),
-        note=pick_str(order_out.note, update.note),
-        shipment_method=update.shipment_method or order_out.shipment_method,
-        send_datetime=update.send_datetime or order_out.send_datetime,
-        delivery_address=pick_str(order_out.delivery_address, update.delivery_address),
-        pay_way=pick_str(order_out.pay_way, update.pay_way),
-        order_status=order_out.order_status,
-    )
+    baseline_values = order_out_to_catalog_values(order_out)
+    delta = update.model_dump(exclude_unset=True)
+    merged = merge_delta_into_catalog(baseline_values, delta, flow="order_suggest")
+    return build_order_patch_from_merged(order_out, merged)
 
 
 async def suggest_order_from_chat(db: AsyncSession, order_id: int) -> OrderSuggestFromChatOut:
@@ -101,27 +106,54 @@ async def suggest_order_from_chat(db: AsyncSession, order_id: int) -> OrderSugge
     messages = list(messages_result.scalars().all())
     source_message_ids = [m.id for m in messages]
 
-    combined_text = _build_combined_chat_text(messages)
-    gpt_prompt = prompt_manager.load_prompt(
-        "order_update_prompt",
-        user_message=combined_text,
-        current_order=_order_out_to_prompt_json(order_out),
-    )
+    baseline_values = order_out_to_catalog_values(order_out)
 
-    gpt_reply = complete_system_prompt(gpt_prompt, model="gpt-4.1", temperature=0)
-    order_draft_update = _parse_order_draft_json(gpt_reply)
-    if not order_draft_update:
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail="LLM returned empty or invalid JSON.",
+    if not messages:
+        suggested = build_order_patch_from_merged(order_out, baseline_values)
+        return OrderSuggestFromChatOut(
+            suggested=suggested,
+            changed_fields=[],
+            source_message_ids=[],
         )
 
     field_config = await get_effective_order_field_config(db, room.store_id)
-    required_fields = set(field_config.organize_required_fields)
-    order_draft_update = _filter_update_by_required_fields(order_draft_update, required_fields)
-    suggested = _merge_llm_update_into_patch(order_out, order_draft_update)
+    visible_fields = set(field_config.visible_fields)
+
+    combined_text = build_chat_text(messages)
+    gpt_prompt = _load_order_suggest_prompt(
+        order_out=order_out,
+        visible_fields=visible_fields,
+        combined_text=combined_text,
+        message_count=len(messages),
+    )
+
+    try:
+        gpt_reply = complete_system_prompt(gpt_prompt, model=DEFAULT_LLM_MODEL, temperature=0)
+        delta = parse_delta_json(gpt_reply)
+    except JsonExtractError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="LLM returned empty or invalid JSON.",
+        ) from exc
+    except LlmServiceUnavailableError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="LLM service unavailable",
+        ) from exc
+
+    draft_delta = OrderDraftUpdate(**{k: v for k, v in delta.items() if k in OrderDraftUpdate.model_fields})
+    draft_delta = _filter_update_by_visible_fields(draft_delta, visible_fields)
+    filtered_delta = draft_delta.model_dump(exclude_unset=True)
+
+    merged_values = merge_delta_into_catalog(baseline_values, filtered_delta, flow="order_suggest")
+    changed_fields = filter_changed_fields_to_visible(
+        compute_changed_fields(baseline_values, merged_values),
+        visible_fields,
+    )
+    suggested = build_order_patch_from_merged(order_out, merged_values)
 
     return OrderSuggestFromChatOut(
         suggested=suggested,
+        changed_fields=changed_fields,
         source_message_ids=source_message_ids,
     )

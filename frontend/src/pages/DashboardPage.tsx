@@ -1,12 +1,10 @@
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import OrderTable from '@/components/orders/OrderTable'
 import PageHeader from '@/components/layout/PageHeader'
 import StatisticsCards from '@/components/stats/StatisticsCards'
 import { useStats } from '@/hooks/useStats'
-import { useOrders } from '@/hooks/useOrders'
 import { useStore } from '@/context/StoreContext'
-import { isInProgressOrder, normalizeOrderStatus } from '@/utils/orderStatus'
 
 export type QuickFilter = 'today' | 'in_progress' | null
 
@@ -15,15 +13,9 @@ export default function DashboardPage() {
   const { stores, currentStoreId } = useStore()
   const storeName = stores.find(s => s.id === currentStoreId)?.name ?? '訂單管理平台'
   const { data, isLoading, error } = useStats()
-  const ordersQuery = useOrders()
   const [quickFilter, setQuickFilter] = useState<QuickFilter>(null)
 
-  const inProgressOrders = useMemo(() => {
-    const orders = ordersQuery.data ?? []
-    return orders.filter(o =>
-      isInProgressOrder(normalizeOrderStatus(o.order_status)),
-    ).length
-  }, [ordersQuery.data])
+  const inProgressOrders = data?.in_progress_orders ?? 0
 
   return (
     <>
