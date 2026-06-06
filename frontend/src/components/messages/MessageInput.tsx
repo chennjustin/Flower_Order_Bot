@@ -92,10 +92,17 @@ export default function MessageInput({ roomId, disabled, onSend }: MessageInputP
     if (!attachUiOpen) return
 
     function onDocumentPointerDown(event: PointerEvent) {
-      const target = event.target as Node | null
-      if (rootRef.current && target && !rootRef.current.contains(target)) {
-        returnToTextMode()
+      const target = event.target
+      if (!(target instanceof Node)) return
+      if (rootRef.current?.contains(target)) return
+      // Keep header stage popover clickable while attach UI is open.
+      if (target instanceof Element) {
+        if (target.closest('[data-chat-header]')) return
+        if (target.closest('[data-radix-popover-content], [data-radix-popper-content-wrapper]')) {
+          return
+        }
       }
+      returnToTextMode()
     }
 
     function onDocumentKeyDown(event: KeyboardEvent) {

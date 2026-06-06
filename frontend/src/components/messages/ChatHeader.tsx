@@ -101,7 +101,10 @@ export default function ChatHeader({
   ) : null
 
   return (
-    <header className="flex h-20 items-center gap-3 border-b-[1.5px] border-[#e9e9e9] bg-white px-4 md:px-6">
+    <header
+      data-chat-header
+      className="relative z-20 flex h-20 items-center gap-3 border-b-[1.5px] border-[#e9e9e9] bg-white px-4 md:px-6"
+    >
       {/* Back button — mobile only */}
       {onBack && (
         <button
@@ -127,14 +130,11 @@ export default function ChatHeader({
       )}
 
       {/* Name + status: stacked on mobile, inline on desktop */}
-      <div className="flex min-w-0 flex-shrink flex-col justify-center md:flex-row md:items-center md:gap-3">
+      <div className="flex min-w-0 flex-shrink flex-col justify-center gap-0.5 md:flex-row md:items-center md:gap-3">
         <span className="truncate text-[1.05rem] font-bold leading-tight text-[#6168FC] md:text-[1.15rem] md:whitespace-nowrap font-['Noto_Sans_TC',sans-serif]">
           {roomName}
         </span>
-        {/* desktop: inline after name */}
-        <span className="hidden md:contents">{statusButton}</span>
-        {/* mobile: below name */}
-        <span className="mt-0.5 md:hidden">{statusButton}</span>
+        {statusButton}
       </div>
 
       {/* Spacer */}
