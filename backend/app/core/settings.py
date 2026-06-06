@@ -24,14 +24,14 @@ class Settings:
     supabase_jwt_secret: str | None
 
     # Google Calendar 整合（店主自行授權後同步訂單到自己的 Google 日曆）
-    google_client_id: str | None
-    google_client_secret: str | None
+    google_client_id: str | None = None
+    google_client_secret: str | None = None
     # OAuth 完成後 Google 導回的後端 callback；須與 Google Cloud 設定一致
-    google_oauth_redirect_uri: str | None
+    google_oauth_redirect_uri: str | None = None
     # 加密儲存 refresh token 用的 Fernet 金鑰
-    google_token_encryption_key: str | None
+    google_token_encryption_key: str | None = None
     # callback 完成後導回前端的網址（顯示連結結果）
-    frontend_base_url: str
+    frontend_base_url: str = "http://localhost:5173"
 
 
 def _postgres_connection_params() -> tuple[str, str, str, str, str]:
