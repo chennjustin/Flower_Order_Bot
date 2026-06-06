@@ -107,3 +107,29 @@ class OrderStatusUpdate(BaseModel):
     """PATCH /order/{order_id}/status request body."""
 
     status: OrderStatus
+
+
+class OrderPatchUpdate(BaseModel):
+    """PATCH /orders/{order_id} — partial update of a formal order."""
+
+    customer_name: Optional[str] = None
+    customer_phone: Optional[str] = None
+    total_amount: Optional[float] = None
+    pay_status: Optional[PaymentStatus] = None
+    item: Optional[str] = None
+    quantity: Optional[int] = None
+    note: Optional[str] = None
+    shipment_method: Optional[ShipmentMethod] = None
+    send_datetime: Optional[datetime] = None
+    delivery_address: Optional[str] = None
+    pay_way: Optional[str] = None
+    order_status: Optional[OrderStatus] = None
+    # When set, marks these chat messages processed after a successful save.
+    mark_processed_message_ids: Optional[list[int]] = None
+
+
+class OrderSuggestFromChatOut(BaseModel):
+    """POST /orders/{order_id}/suggest-from-chat — LLM preview, no DB write."""
+
+    suggested: OrderPatchUpdate
+    source_message_ids: list[int] = []

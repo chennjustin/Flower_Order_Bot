@@ -1,23 +1,23 @@
-import { ShoppingBag, MessageCircle, BarChart2, DollarSign } from 'lucide-react'
+import { ShoppingBag, Package, BarChart2, DollarSign } from 'lucide-react'
 import type { Stats } from '@/types/domain'
 import { cn } from '@/lib/utils'
 
-type QuickFilter = 'today' | 'pending' | null
+type QuickFilter = 'today' | 'in_progress' | null
 
 interface StatisticsCardsProps {
   stats: Stats | undefined
-  monthlyOrders: number
+  inProgressOrders: number
   quickFilter: QuickFilter
   onQuickFilter: (f: QuickFilter) => void
 }
 
 export default function StatisticsCards({
   stats,
-  monthlyOrders,
+  inProgressOrders,
   quickFilter,
   onQuickFilter,
 }: StatisticsCardsProps) {
-  function toggle(filter: 'today' | 'pending') {
+  function toggle(filter: 'today' | 'in_progress') {
     onQuickFilter(quickFilter === filter ? null : filter)
   }
 
@@ -37,30 +37,33 @@ export default function StatisticsCards({
             今日製作
           </span>
         </div>
-        <div className="absolute left-1/2 top-[69px] -translate-x-1/2 -translate-y-0">
+        <div className="absolute left-1/2 top-[69px] -translate-x-1/2 -translate-y-0 flex items-baseline gap-1">
           <span className="text-[40px] font-bold leading-[50px] text-brand-primary">
-            {stats ? stats.today_orders : '—'}
+            {stats ? stats.today_completed : '—'}
+          </span>
+          <span className="text-xl font-bold text-brand-primary/40">
+            / {stats ? stats.today_orders : '—'}
           </span>
         </div>
       </button>
 
       <button
         type="button"
-        onClick={() => toggle('pending')}
+        onClick={() => toggle('in_progress')}
         className={cn(
           'relative h-36 flex-1 cursor-pointer rounded-lg shadow-[2px_2px_8px_rgba(0,0,0,0.25)] transition-colors duration-200',
-          quickFilter === 'pending' ? 'bg-[#D8EAFF]' : 'bg-white hover:bg-[#D8EAFF]',
+          quickFilter === 'in_progress' ? 'bg-[#D8EAFF]' : 'bg-white hover:bg-[#D8EAFF]',
         )}
       >
         <div className="absolute left-1/2 top-[27px] flex -translate-x-1/2 items-center gap-2 px-2">
-          <MessageCircle className="h-5 w-5 shrink-0 text-brand-primary" />
+          <Package className="h-5 w-5 shrink-0 text-brand-primary" />
           <span className="whitespace-nowrap text-xl font-bold tracking-[2px] text-brand-primary">
-            溝通中訂單
+            尚未製作
           </span>
         </div>
         <div className="absolute left-1/2 top-[69px] -translate-x-1/2">
           <span className="text-[40px] font-bold leading-[50px] text-brand-primary">
-            {stats ? stats.pending_orders : '—'}
+            {inProgressOrders}
           </span>
         </div>
       </button>
@@ -74,7 +77,7 @@ export default function StatisticsCards({
         </div>
         <div className="absolute left-1/2 top-[69px] -translate-x-1/2">
           <span className="text-[40px] font-bold leading-[50px] text-brand-primary">
-            {monthlyOrders}
+            {stats ? stats.monthly_orders : '—'}
           </span>
         </div>
       </div>

@@ -4,22 +4,20 @@ import PageHeader from '@/components/layout/PageHeader'
 import StatisticsCards from '@/components/stats/StatisticsCards'
 import { useStats } from '@/hooks/useStats'
 import { useOrders } from '@/hooks/useOrders'
+import { isInProgressOrder, normalizeOrderStatus } from '@/utils/orderStatus'
 
-export type QuickFilter = 'today' | 'pending' | null
+export type QuickFilter = 'today' | 'in_progress' | null
 
 export default function DashboardPage() {
   const { data, isLoading, error } = useStats()
   const ordersQuery = useOrders()
   const [quickFilter, setQuickFilter] = useState<QuickFilter>(null)
 
-  const monthlyOrders = useMemo(() => {
+  const inProgressOrders = useMemo(() => {
     const orders = ordersQuery.data ?? []
-    const now = new Date()
-    return orders.filter(o => {
-      if (!o.order_date) return false
-      const d = new Date(o.order_date)
-      return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth()
-    }).length
+    return orders.filter(o =>
+      isInProgressOrder(normalizeOrderStatus(o.order_status)),
+    ).length
   }, [ordersQuery.data])
 
   return (
@@ -36,12 +34,12 @@ export default function DashboardPage() {
         )}
         <StatisticsCards
           stats={data}
-          monthlyOrders={monthlyOrders}
+          inProgressOrders={inProgressOrders}
           quickFilter={quickFilter}
           onQuickFilter={setQuickFilter}
         />
         <div className="mt-8">
-          <OrderTable quickFilter={quickFilter} onQuickFilterClear={() => setQuickFilter(null)} />
+          <OrderTable quickFilter={quickFilter} onQuickFilterClear={() => setQuickFilter(null)} pageSize={10} />
         </div>
       </div>
     </>

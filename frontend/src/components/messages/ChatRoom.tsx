@@ -7,16 +7,21 @@ import { ChatMessageStatus } from '@/types/enums'
 
 interface ChatRoomProps {
   room: ChatRoomType
+  detailPanelOpen?: boolean
   onOpenDetail: () => void
   onOrganizeOrder: () => void
   isOrganizing?: boolean
+  /** When false, hides header「整理資料」(draft-only). */
+  showOrganizeButton?: boolean
 }
 
 export default function ChatRoom({
   room,
+  detailPanelOpen,
   onOpenDetail,
   onOrganizeOrder,
   isOrganizing,
+  showOrganizeButton = true,
 }: ChatRoomProps) {
   const messagesQuery = useRoomMessages(room.room_id)
   const sendMutation = useSendMessage(room.room_id)
@@ -28,9 +33,11 @@ export default function ChatRoom({
         roomName={room.user_name}
         avatar={room.user_avatar_url ?? null}
         status={room.status}
+        detailPanelOpen={detailPanelOpen}
         onOpenDetail={onOpenDetail}
         onOrganizeOrder={onOrganizeOrder}
         isOrganizing={isOrganizing}
+        showOrganizeButton={showOrganizeButton}
       />
       {messagesQuery.error ? (
         <div className="flex-1 overflow-y-auto bg-white px-6 py-10 text-center text-sm text-red-600">

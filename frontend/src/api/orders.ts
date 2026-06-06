@@ -4,6 +4,8 @@ import type {
   Order,
   OrderDraft,
   OrderDraftUpdate,
+  OrderPatchUpdate,
+  OrderSuggestFromChatOut,
 } from '@/types/domain'
 
 export async function fetchOrders(): Promise<Order[]> {
@@ -11,8 +13,42 @@ export async function fetchOrders(): Promise<Order[]> {
   return data ?? []
 }
 
+/** All orders for the chat room's customer (includes cancelled). */
+export async function fetchOrdersByRoom(roomId: number): Promise<Order[]> {
+  const { data } = await api.get<Order[]>(`/orders/room/${roomId}`)
+  return data ?? []
+}
+
 export async function deleteOrder(orderId: number): Promise<boolean> {
   const { data } = await api.delete<boolean>(`/order/${orderId}`)
+  return data
+}
+
+/** Partial update of a formal order (messages panel edit flow). */
+export async function updateOrderById(
+  orderId: number,
+  patch: OrderPatchUpdate,
+): Promise<Order> {
+  const { data } = await api.patch<Order>(`/orders/${orderId}`, patch)
+  return data
+}
+
+/** LLM suggestion from unprocessed chat; does not write the order row. */
+export async function suggestOrderFromChat(
+  orderId: number,
+): Promise<OrderSuggestFromChatOut> {
+  const { data } = await api.post<OrderSuggestFromChatOut>(
+    `/orders/${orderId}/suggest-from-chat`,
+  )
+  return data
+}
+
+/** Update order status (store manual override). */
+export async function updateOrderStatus(
+  orderId: number,
+  status: Order['order_status'],
+): Promise<Order> {
+  const { data } = await api.patch<Order>(`/order/${orderId}/status`, { status })
   return data
 }
 

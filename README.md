@@ -1,6 +1,6 @@
-# ChiMei Floral
+# **Flourish**
 
-本專案為花店商家後台：透過 LINE Bot 接收顧客訊息，以 OpenAI 將對話整理成結構化訂單草稿；商家確認後寫入訂單資料庫，並在 `/orders` 查詢。CSV 由前端在瀏覽器產生下載，DOCX 工單由後端提供。
+本專案為花店商家後台：透過 LINE Bot 接收顧客訊息，以 OpenAI 將對話整理成結構化訂單草稿；商家確認後寫入訂單資料庫，並在 `/orders` 查詢。CSV 由前端在瀏覽器產生下載，DOCX 訂單由後端提供。
 
 **目前分支（`refactor/db`）** 已改為 **多租戶 schema**（`store` → `customer` → `chat_room` / `order`），主資料庫建議使用 **Supabase PostgreSQL**；Docker Compose **不再**內建本機 Postgres 容器。
 
@@ -12,7 +12,7 @@
 - ✅ GPT 將對話轉為結構化訂單草稿（關鍵字觸發）
 - ✅ **PostgreSQL**（開發／部署以 Supabase 或自備 Postgres 為主）
 - ✅ 管理訂單、顧客（`customer`）與聊天紀錄
-- ✅ `/orders` 查詢、CSV（前端）、DOCX 工單（後端）
+- ✅ `/orders` 查詢、CSV（前端）、DOCX 訂單（後端）
 - ✅ 前端 **React + TypeScript + Vite**
 - ✅ **Alembic** 資料庫版本控制
 
@@ -75,15 +75,15 @@ cp backend/.env.example backend/.env
 
 編輯 `backend/.env`，至少設定：
 
-| 變數 | 說明 |
-|------|------|
-| `DATABASE_URL` | 非同步連線（`postgresql+asyncpg://...`，Supabase 請用 `ssl=require`） |
-| `DATABASE_ALEM_URL` | Alembic 用（session pooler `:5432`；程式會自動改為 transaction pooler `:6543`） |
-| `DATABASE_ALEM_DIRECT_URL` | 選填；Alembic 最優先（`db.<ref>.supabase.co`；需網路可連 IPv6/IPv4） |
-| `DATABASE_DIRECT_URL` | 選填；`make provision-stores` 最優先；否則同樣自動改 `:6543` |
-| `OPENAI_API_KEY` | OpenAI |
-| `LINE_CHANNEL_ACCESS_TOKEN` / `LINE_CHANNEL_SECRET` | LINE Bot（開發 fallback；正式請寫入 `store` 表） |
-| `PUBLIC_BASE_URL` | 對外可連的後端基底網址（本機 `http://localhost:8000`；ngrok 請改 https） |
+
+| 變數                                                  | 說明                                                          |
+| --------------------------------------------------- | ----------------------------------------------------------- |
+| `DATABASE_URL`                                      | 非同步連線（`postgresql+asyncpg://...`，Supabase 請用 `ssl=require`） |
+| `DATABASE_ALEM_URL`                                 | Alembic 用（`postgresql+psycopg2://...`，常用 `sslmode=require`） |
+| `OPENAI_API_KEY`                                    | OpenAI                                                      |
+| `LINE_CHANNEL_ACCESS_TOKEN` / `LINE_CHANNEL_SECRET` | LINE Bot                                                    |
+| `PUBLIC_BASE_URL`                                   | 對外可連的後端基底網址（本機 `http://localhost:8000`；ngrok 請改 https）      |
+
 
 連線組裝邏輯見 `backend/app/core/settings.py`（若已設 `DATABASE_URL` 則優先於舊版 `POSTGRES_*`）。
 
@@ -105,14 +105,7 @@ make migrate
 # 或：./venv/bin/alembic upgrade head
 ```
 
-- 若出現 `Can't locate revision identified by 'a9f3c2d1e4b7'`：Supabase 曾記錄此 revision；repo 已含 bridge 檔 `a9f3c2d1e4b7_supabase_bridge_revision.py`，pull 最新程式後再 `./venv/bin/alembic upgrade head` 即可。其他未知 revision 請查 `SELECT * FROM alembic_version;` 或用手動 SQL：[`backend/docs/manual_migration_f1a2b3c4d5e6.sql`](backend/docs/manual_migration_f1a2b3c4d5e6.sql).
-
-- 若出現 **`EMAXCONNSESSION` / max clients reached**（Session pooler 連線滿了，常見於同時開著 Docker 後端、本機 uvicorn、多次 alembic）：
-  1. 暫停多餘的 backend／docker compose，或到 Supabase Dashboard 稍後再試。
-  2. 再執行 `make migrate` / `make provision-stores`：程式會自動把 session pooler **`:5432`** 改成 transaction pooler **`:6543`**（同一個 `*.pooler.supabase.com` host）。若本機可連直連，也可手動設 **`DATABASE_ALEM_DIRECT_URL`**（`db.<ref>.supabase.co`）。
-  3. 或略過 alembic，在 SQL Editor 執行 [`backend/docs/manual_migration_f1a2b3c4d5e6.sql`](backend/docs/manual_migration_f1a2b3c4d5e6.sql)，然後 `UPDATE alembic_version SET version_num = 'f1a2b3c4d5e6';`
-
-- Docker 啟動時預設 **`SKIP_ALEMBIC_ON_START=1`**（不自動跑 Alembic），請在 Supabase 上自行確認 revision 或手動執行上述指令。
+- Docker 啟動時預設 `**SKIP_ALEMBIC_ON_START=1**`（不自動跑 Alembic），請在 Supabase 上自行確認 revision 或手動執行上述指令。
 
 ### 多店家 LINE（`store.slug` = webhook `destination`）
 
@@ -250,16 +243,16 @@ cd backend
 python -m uvicorn app.main:app --reload --port 8000
 ```
 
-3. 前端：
+1. 前端：
 
 ```bash
 cd frontend
 npm run dev
 ```
 
-4. 網址：
-   - 前端：`http://localhost:5173`
-   - 後端 API / Swagger：`http://localhost:8000`
+1. 網址：
+  - 前端：`http://localhost:5173`
+  - 後端 API / Swagger：`http://localhost:8000`
 
 修改 `.env` 後請重啟 uvicorn。
 
@@ -323,17 +316,19 @@ pytest tests/test_contract_smoke.py
 
 ### `backend/app/`（FastAPI）
 
-| 目錄 | 說明 |
-|------|------|
-| `main.py` | 應用入口、CORS、靜態 uploads |
-| `api/v1/` | API 路由聚合 |
-| `models/` | ORM：`Store`、`Customer`、`ChatRoom`、`Order` 等 |
-| `routes/` | HTTP 路由（linebot、orders、chat、payment…） |
-| `services/` | 業務邏輯 |
-| `repositories/` | 資料存取（含 `get_first_store_id`） |
-| `schemas/` | Pydantic 請求／回應；`User` 為 `Customer` 的相容別名 |
-| `core/` | 設定、DB session |
-| `seeds/` | 假資料產生 |
+
+| 目錄              | 說明                                          |
+| --------------- | ------------------------------------------- |
+| `main.py`       | 應用入口、CORS、靜態 uploads                        |
+| `api/v1/`       | API 路由聚合                                    |
+| `models/`       | ORM：`Store`、`Customer`、`ChatRoom`、`Order` 等 |
+| `routes/`       | HTTP 路由（linebot、orders、chat、payment…）       |
+| `services/`     | 業務邏輯                                        |
+| `repositories/` | 資料存取（含 `get_first_store_id`）                |
+| `schemas/`      | Pydantic 請求／回應；`User` 為 `Customer` 的相容別名    |
+| `core/`         | 設定、DB session                               |
+| `seeds/`        | 假資料產生                                       |
+
 
 ### `frontend/`（React + TypeScript）
 
@@ -343,7 +338,7 @@ pytest tests/test_contract_smoke.py
 ### 重構後手動 smoke
 
 - 首頁訂單表與統計可載入；刪除訂單後列表刷新。
-- `Messages`：切換聊天室、送訊、右側草稿面板、「更新／建立工單」。
+- `Messages`：切換聊天室、送訊、右側草稿面板、「建立新訂單」。
 - DOCX 下載、CSV 瀏覽器下載。
 - `docker compose up` 下 5173 / 8000 行為與本機模式一致。
 

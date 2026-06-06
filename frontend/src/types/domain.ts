@@ -56,6 +56,30 @@ export interface Order extends OrderBase {
   pay_way?: string | null
 }
 
+/** Partial update body for PATCH /orders/{order_id}. */
+export interface OrderPatchUpdate {
+  customer_name?: string | null
+  customer_phone?: string | null
+  total_amount?: number | null
+  pay_status?: PaymentStatus | null
+  item?: string | null
+  quantity?: number | null
+  note?: string | null
+  shipment_method?: ShipmentMethod | null
+  send_datetime?: string | null
+  delivery_address?: string | null
+  pay_way?: string | null
+  order_status?: OrderStatus | null
+  /** Mark chat messages processed after a successful save. */
+  mark_processed_message_ids?: number[] | null
+}
+
+/** LLM preview from POST /orders/{order_id}/suggest-from-chat (no DB write). */
+export interface OrderSuggestFromChatOut {
+  suggested: OrderPatchUpdate
+  source_message_ids: number[]
+}
+
 export interface LastMessage {
   text: string
   timestamp: string
@@ -88,8 +112,10 @@ export interface ChatMessage {
 
 export interface Stats {
   today_orders: number
+  today_completed: number
   pending_orders: number
   monthly_income: number
+  monthly_orders: number
   total_customers: number
 }
 
