@@ -1,8 +1,11 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { isAxiosError } from 'axios'
+import { fetchMyStore } from '@/api/stores'
 import AuthLoading from '@/components/auth/AuthLoading'
 import { useAuth } from '@/hooks/useAuth'
 import { getOnboardingPath } from '@/lib/onboardingPaths'
+import { supabase } from '@/lib/supabase'
 import { isSupabaseConfigured } from '@/lib/supabase'
 
 const LOGIN_PAGE_BACKGROUND_CLASS = 'bg-[#D8EAFF]'
@@ -11,13 +14,47 @@ const LOGIN_CARD_CLASS = 'w-full max-w-md rounded-2xl bg-white px-10 py-12 shado
 export default function LoginPage() {
   const { session, isAuthenticated, isLoading, signInWithGoogle } = useAuth()
   const navigate = useNavigate()
+  const [isCheckingAccess, setIsCheckingAccess] = useState(false)
+  const [loginError, setLoginError] = useState<string | null>(null)
 
   useEffect(() => {
-    if (isLoading || !isAuthenticated || !session) return
+    if (isLoading || !isAuthenticated || !session) {
+      return
+    }
 
-    const target =
-      session.onboardingStep === 'DONE' ? '/' : getOnboardingPath(session.onboardingStep)
-    navigate(target, { replace: true })
+    let cancelled = false
+
+    async function verifyAccessAndNavigate() {
+      setIsCheckingAccess(true)
+      try {
+        await fetchMyStore()
+        if (cancelled) {
+          return
+        }
+        const target =
+          session.onboardingStep === 'DONE' ? '/' : getOnboardingPath(session.onboardingStep)
+        navigate(target, { replace: true })
+      } catch (error) {
+        if (cancelled) {
+          return
+        }
+        if (isAxiosError(error) && error.response?.status === 403) {
+          setLoginError('此 Google 帳號未被授權，請聯絡管理員。')
+          await supabase.auth.signOut()
+          return
+        }
+        setLoginError('登入驗證失敗，請稍後再試。')
+      } finally {
+        if (!cancelled) {
+          setIsCheckingAccess(false)
+        }
+      }
+    }
+
+    void verifyAccessAndNavigate()
+    return () => {
+      cancelled = true
+    }
   }, [isLoading, isAuthenticated, session, navigate])
 
   if (isLoading) {
@@ -52,8 +89,16 @@ export default function LoginPage() {
           <p className="mt-2 text-base text-gray-500">請使用 Google 帳號登入</p>
         </div>
 
+        {loginError ? (
+          <p className="mb-4 text-center text-sm font-medium text-red-600">{loginError}</p>
+        ) : null}
+
         <button
-          onClick={() => void signInWithGoogle()}
+          onClick={() => {
+            setLoginError(null)
+            void signInWithGoogle()
+          }}
+          disabled={isCheckingAccess}
           className="flex w-full items-center justify-center gap-3 rounded-lg border border-gray-200 bg-white px-4 py-3.5 text-base font-medium text-gray-700 shadow-sm transition hover:bg-gray-50 active:scale-[0.98]"
         >
           <svg width="20" height="20" viewBox="0 0 48 48">
@@ -63,7 +108,7 @@ export default function LoginPage() {
             <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
             <path fill="none" d="M0 0h48v48H0z"/>
           </svg>
-          使用 Google 帳號登入
+          {isCheckingAccess ? '登入驗證中…' : '使用 Google 帳號登入'}
         </button>
       </div>
     </div>
