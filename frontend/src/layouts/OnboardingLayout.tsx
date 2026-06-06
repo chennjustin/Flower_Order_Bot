@@ -1,4 +1,5 @@
 import { Outlet } from 'react-router-dom'
+import { useOnboardingStoreContext } from '@/hooks/useOnboardingStoreContext'
 
 const BACKGROUND_STYLE = {
   backgroundColor: '#D8EAFF',
@@ -9,18 +10,16 @@ const BACKGROUND_STYLE = {
  * Child routes render inside the centered card region via Outlet.
  */
 export default function OnboardingLayout() {
+  const { data } = useOnboardingStoreContext()
+  const storeName = data?.storeName ?? '店家'
+
   return (
     <div
       className="flex min-h-full flex-col items-center justify-center px-4 py-10"
       style={BACKGROUND_STYLE}
     >
       <header className="mb-8 text-center">
-        <p className="m-0 text-base font-medium tracking-[2px] text-black">
-          奇美花店
-        </p>
-        <h1 className="m-0 mt-1 text-3xl font-bold tracking-wide text-black">
-          Chi-Mei Floral
-        </h1>
+        <p className="m-0 text-3xl font-bold tracking-wide text-black">{storeName}</p>
         <p className="m-0 mt-2 text-base text-black">帳號設定</p>
       </header>
 

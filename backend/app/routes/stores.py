@@ -11,15 +11,51 @@ from app.core.auth import get_current_store
 from app.core.database import get_db
 from app.models.store import Store
 from app.repositories.store_repository import list_stores
-from app.schemas.store import StoreListItem
+from app.schemas.store import LineOfficialDisplay, StoreListItem, StoreOnboardingContext
+from app.utils.line_bot_info import fetch_line_bot_profile
 
 api_router = APIRouter(tags=["Stores"])
+
+
+async def _resolve_line_official_display(store: Store) -> LineOfficialDisplay:
+    token = (store.line_channel_access_token or "").strip()
+    if token:
+        try:
+            profile = await fetch_line_bot_profile(token)
+            return LineOfficialDisplay(
+                display_name=profile["display_name"] or store.name,
+                basic_id=profile["basic_id"],
+                user_id=profile["user_id"] or store.slug,
+                image_url=profile["picture_url"],
+            )
+        except ValueError:
+            pass
+
+    return LineOfficialDisplay(
+        display_name=store.name,
+        basic_id=None,
+        user_id=store.slug,
+        image_url=None,
+    )
 
 
 @api_router.get("/stores/me", response_model=StoreListItem)
 async def get_my_store(store: Store = Depends(get_current_store)) -> StoreListItem:
     """Return the store bound to the logged-in owner (OAuth 1:1)."""
     return StoreListItem(id=store.id, name=store.name, slug=store.slug)
+
+
+@api_router.get("/stores/me/onboarding-context", response_model=StoreOnboardingContext)
+async def get_my_store_onboarding_context(
+    store: Store = Depends(get_current_store),
+) -> StoreOnboardingContext:
+    """Return onboarding display context for the logged-in owner."""
+    return StoreOnboardingContext(
+        id=store.id,
+        name=store.name,
+        slug=store.slug,
+        line_official=await _resolve_line_official_display(store),
+    )
 
 
 @api_router.get("/stores", response_model=List[StoreListItem])
