@@ -193,7 +193,7 @@ export default function OrderDraftPanel({
         )}
       </header>
 
-      <div className="flex-1 overflow-y-auto px-6 pt-6 pb-32">
+      <div className="flex-1 overflow-y-auto px-6 pt-6 pb-6">
         {draftQuery.isLoading ? (
           <div className="py-10 text-center text-sm text-black/40">載入中...</div>
         ) : draftQuery.error ? (
@@ -239,28 +239,26 @@ export default function OrderDraftPanel({
         )}
       </div>
 
-      {(draft || isEditing) && (
-        <div className="absolute bottom-4 left-0 right-0 z-20 flex justify-center">
-          <button
-            type="button"
-            onClick={handleCreateOrder}
-            disabled={isPending || isEditing}
-            aria-disabled={isPending || isEditing}
-            title={isEditing ? '請先完成編輯（點 ✓）後再建立新訂單' : undefined}
-            className={cn(
-              'flex h-10 w-[200px] items-center justify-center gap-2 rounded-xl px-3 text-base font-bold text-white transition active:scale-95',
-              "font-['Noto_Sans_TC',sans-serif]",
-              'disabled:cursor-not-allowed disabled:opacity-50 disabled:active:scale-100 disabled:hover:shadow-none',
-              isEditing
-                ? 'bg-[#C5C7FF]'
-                : 'bg-[#6168FC] hover:bg-[#4F51FF] hover:shadow-[2px_2px_4px_rgba(0,0,0,0.25)]',
-            )}
-          >
-            <Plus className="h-4 w-4" />
-            <span>建立新訂單</span>
-          </button>
-        </div>
-      )}
+      <div className="flex-shrink-0 px-4 py-3">
+        <button
+          type="button"
+          onClick={handleCreateOrder}
+          disabled={isPending || isEditing}
+          aria-disabled={isPending || isEditing}
+          title={isEditing ? '請先完成編輯（點 ✓）後再建立新訂單' : undefined}
+          className={cn(
+            'flex h-10 w-full items-center justify-center gap-2 rounded-xl px-3 text-base font-bold text-white transition active:scale-95',
+            "font-['Noto_Sans_TC',sans-serif]",
+            'disabled:cursor-not-allowed disabled:opacity-50 disabled:active:scale-100 disabled:hover:shadow-none',
+            isEditing
+              ? 'bg-[#C5C7FF]'
+              : 'bg-[#6168FC] hover:bg-[#4F51FF] hover:shadow-[2px_2px_4px_rgba(0,0,0,0.25)]',
+          )}
+        >
+          <Plus className="h-4 w-4" />
+          <span>建立新訂單</span>
+        </button>
+      </div>
     </aside>
   )
 }

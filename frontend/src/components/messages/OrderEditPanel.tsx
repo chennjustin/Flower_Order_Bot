@@ -191,84 +191,72 @@ export default function OrderEditPanel({
         </button>
       </header>
 
-      <div className="flex flex-1 flex-col overflow-hidden">
-        <div className="flex-shrink-0 px-6 pt-4">
-          <button
-            type="button"
-            onClick={handleAiImport}
-            disabled={isCancelled || isSuggesting || isSaving}
-            className={cn(
-              'flex h-10 w-full items-center justify-center gap-2 rounded-xl border border-[#C5C7FF] bg-[#F5F6FF] text-sm font-bold text-[#6168FC] transition',
-              "font-['Noto_Sans_TC',sans-serif]",
-              'hover:bg-[#E8EAFF] active:scale-95 disabled:cursor-not-allowed disabled:opacity-50',
-            )}
-          >
-            {isSuggesting ? (
-              <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+      <div className="flex-1 overflow-y-auto px-6 pt-4 pb-6">
+        {aiPreviewHint && isEditing && (
+          <p className="mb-3 text-center text-xs text-[#6168FC] font-['Noto_Sans_TC',sans-serif]">
+            以下為 AI 建議，請確認後按「更新訂單」寫入資料庫
+          </p>
+        )}
+        <div className="flex flex-col gap-4">
+          {visibleFields.map(field =>
+            field.key === 'send_datetime' && isEditing ? (
+              <DateTimeRow
+                key={field.key}
+                label={field.label}
+                date={form.send_datetime_date}
+                time={form.send_datetime_time}
+                onDateChange={v => setField('send_datetime_date', v)}
+                onTimeChange={v => setField('send_datetime_time', v)}
+                missing={false}
+              />
             ) : (
-              <Sparkles className="h-4 w-4" aria-hidden />
-            )}
-            <span>從對話 AI 帶入</span>
-          </button>
-          {aiPreviewHint && isEditing && (
-            <p className="mt-2 text-center text-xs text-[#6168FC] font-['Noto_Sans_TC',sans-serif]">
-              以下為 AI 建議，請確認後按「更新訂單」寫入資料庫
-            </p>
+              <FormRow
+                key={field.key}
+                field={field}
+                isEditing={isEditing && field.editable}
+                form={form}
+                setField={setField}
+                display={display}
+                missing={false}
+              />
+            ),
           )}
-        </div>
-
-        <div className="flex-1 overflow-y-auto px-6 pt-4 pb-28">
-          <div className="flex flex-col gap-4">
-            {visibleFields.map(field =>
-              field.key === 'send_datetime' && isEditing ? (
-                <DateTimeRow
-                  key={field.key}
-                  label={field.label}
-                  date={form.send_datetime_date}
-                  time={form.send_datetime_time}
-                  onDateChange={v => setField('send_datetime_date', v)}
-                  onTimeChange={v => setField('send_datetime_time', v)}
-                  missing={false}
-                />
-              ) : (
-                <FormRow
-                  key={field.key}
-                  field={field}
-                  isEditing={isEditing && field.editable}
-                  form={form}
-                  setField={setField}
-                  display={display}
-                  missing={false}
-                />
-              ),
-            )}
-          </div>
         </div>
       </div>
 
-      <div className="absolute bottom-4 left-0 right-0 z-20 flex flex-col items-center gap-1 px-4">
+      <div className="flex-shrink-0 flex gap-2 px-4 py-3">
+        <button
+          type="button"
+          onClick={handleAiImport}
+          disabled={isCancelled || isSuggesting || isSaving}
+          className={cn(
+            'flex h-10 flex-1 items-center justify-center gap-1.5 rounded-xl border border-[#C5C7FF] bg-[#F5F6FF] text-sm font-bold text-[#6168FC] transition',
+            "font-['Noto_Sans_TC',sans-serif]",
+            'hover:bg-[#E8EAFF] active:scale-95 disabled:cursor-not-allowed disabled:opacity-50',
+          )}
+        >
+          {isSuggesting ? (
+            <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+          ) : (
+            <Sparkles className="h-4 w-4" aria-hidden />
+          )}
+          <span>AI 整理</span>
+        </button>
         <button
           type="button"
           onClick={commitOrder}
           disabled={!isDirty || isSaving || isCancelled}
-          aria-disabled={!isDirty || isSaving || isCancelled}
-          title={
-            !isDirty
-              ? '請先從對話帶入或編輯欄位後再更新訂單'
-              : undefined
-          }
+          title={!isDirty ? '請先從對話帶入或編輯欄位後再更新訂單' : undefined}
           className={cn(
-            'flex h-10 w-full max-w-[200px] items-center justify-center gap-2 rounded-xl px-3 text-base font-bold text-white transition active:scale-95',
+            'flex h-10 flex-1 items-center justify-center gap-1.5 rounded-xl text-sm font-bold text-white transition active:scale-95',
             "font-['Noto_Sans_TC',sans-serif]",
-            'disabled:cursor-not-allowed disabled:opacity-50 disabled:active:scale-100 disabled:hover:shadow-none',
+            'disabled:cursor-not-allowed disabled:opacity-50 disabled:active:scale-100',
             isDirty && !isCancelled
               ? 'bg-[#6168FC] hover:bg-[#4F51FF] hover:shadow-[2px_2px_4px_rgba(0,0,0,0.25)]'
               : 'bg-[#C5C7FF]',
           )}
         >
-          {isSaving ? (
-            <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-          ) : null}
+          {isSaving ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : null}
           <span>更新訂單</span>
         </button>
       </div>

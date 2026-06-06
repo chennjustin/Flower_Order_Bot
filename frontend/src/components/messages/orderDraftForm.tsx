@@ -12,6 +12,9 @@ import {
   orderStatusBadgeClasses,
   orderStatusLabel,
 } from '@/utils/orderStatus'
+import { useState } from 'react'
+import { ChevronDown } from 'lucide-react'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { cn } from '@/lib/utils'
 
 export type EditableKey =
@@ -356,7 +359,7 @@ export function OrderStatusBadge({ status }: { status: OrderStatus }) {
   )
 }
 
-/** Three selectable status blocks for edit mode. */
+/** Dropdown select for order status in edit mode. */
 export function OrderStatusBlockPicker({
   value,
   onChange,
@@ -364,30 +367,44 @@ export function OrderStatusBlockPicker({
   value: OrderStatus
   onChange: (status: OrderStatus) => void
 }) {
+  const [open, setOpen] = useState(false)
   return (
-    <div className="flex flex-wrap gap-2">
-      {ORDER_STATUS_OPTIONS.map(option => {
-        const selected = value === option.value
-        return (
-          <button
-            key={option.value}
-            type="button"
-            onClick={() => onChange(option.value)}
-            aria-pressed={selected}
-            className={cn(
-              'inline-flex h-8 min-w-[88px] items-center justify-center rounded-lg px-3 text-sm font-bold transition',
-              "font-['Noto_Sans_TC',sans-serif]",
-              orderStatusBadgeClasses(option.value),
-              selected
-                ? 'ring-2 ring-[#6168FC] ring-offset-1 shadow-sm'
-                : 'opacity-75 hover:opacity-100',
-            )}
-          >
-            {option.label}
-          </button>
-        )
-      })}
-    </div>
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          className={cn(
+            'inline-flex h-8 items-center gap-1.5 rounded-lg px-3 text-sm font-bold transition',
+            "font-['Noto_Sans_TC',sans-serif]",
+            orderStatusBadgeClasses(value),
+            'hover:opacity-90 active:scale-95',
+          )}
+        >
+          {orderStatusLabel(value)}
+          <ChevronDown className="h-3.5 w-3.5 opacity-70" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align="start" className="w-36 p-2">
+        <ul className="flex flex-col gap-1">
+          {ORDER_STATUS_OPTIONS.map(option => (
+            <li key={option.value}>
+              <button
+                type="button"
+                onClick={() => { onChange(option.value); setOpen(false) }}
+                className={cn(
+                  'inline-flex w-full h-8 items-center justify-center rounded-lg px-3 text-sm font-bold transition',
+                  "font-['Noto_Sans_TC',sans-serif]",
+                  orderStatusBadgeClasses(option.value),
+                  option.value === value ? 'ring-2 ring-[#6168FC] ring-offset-1' : 'opacity-75 hover:opacity-100',
+                )}
+              >
+                {option.label}
+              </button>
+            </li>
+          ))}
+        </ul>
+      </PopoverContent>
+    </Popover>
   )
 }
 
