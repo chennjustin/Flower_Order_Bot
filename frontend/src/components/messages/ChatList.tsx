@@ -224,7 +224,7 @@ function ChatRoomCard({ room, active, onSelect, onPrefetch }: ChatRoomCardProps)
     >
       <div className="flex w-full items-center gap-4">
         <Avatar src={room.user_avatar_url} alt={room.user_name} size={56} />
-        <div className="flex h-[74px] flex-1 flex-col justify-between gap-2 overflow-hidden">
+        <div className="flex flex-1 flex-col justify-between gap-2 overflow-hidden">
           <div className="flex flex-col gap-1">
             <div className="flex items-center justify-between">
               <span className="truncate text-base font-bold text-black font-['Noto_Sans_TC',sans-serif]">
