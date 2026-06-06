@@ -1,6 +1,6 @@
 import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 
-import { fetchChatRoomsPage, switchChatRoomMode } from '@/api/messages'
+import { fetchChatRoomsPage, markRoomRead, switchChatRoomMode } from '@/api/messages'
 import { useStoreQueryGate } from '@/hooks/useStoreQuery'
 import { chatRoomsQueryKey } from '@/lib/storeQueryKeys'
 import type { ChatRoom, ChatRoomListParams, ChatRoomListResponse } from '@/types/domain'
@@ -55,6 +55,12 @@ export function getChatRoomsTotalUnread(
   data: { pages: ChatRoomListResponse[] } | undefined,
 ): number {
   return data?.pages[0]?.total_unread ?? 0
+}
+
+export function getChatRoomsFilteredUnreadRooms(
+  data: { pages: ChatRoomListResponse[] } | undefined,
+): number {
+  return data?.pages[0]?.filtered_unread_rooms ?? 0
 }
 
 export function useSwitchChatRoomMode(roomId: number | null, filters: ChatRoomsFilter) {
@@ -123,6 +129,26 @@ export function useSwitchChatRoomMode(roomId: number | null, filters: ChatRoomsF
       }
     },
     onSettled: () => {
+      if (listKey != null) {
+        qc.invalidateQueries({ queryKey: listKey })
+      }
+    },
+  })
+}
+
+export function useMarkRoomRead(filters: ChatRoomsFilter) {
+  const qc = useQueryClient()
+  const { storeId } = useStoreQueryGate()
+  const listParams: ChatRoomListParams = {
+    limit: ROOM_PAGE_SIZE,
+    stage: filters.stage,
+    q: filters.q || undefined,
+  }
+  const listKey = storeId != null ? chatRoomsQueryKey(storeId, listParams) : null
+
+  return useMutation({
+    mutationFn: (roomId: number) => markRoomRead(roomId),
+    onError: () => {
       if (listKey != null) {
         qc.invalidateQueries({ queryKey: listKey })
       }

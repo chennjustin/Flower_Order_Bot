@@ -66,30 +66,38 @@ function bubbleRoomInInfinitePages(
     return { data: data as ChatRoomsInfinite, found: false }
   }
 
-  let updatedRoom: ChatRoom | null = null
-  const pages = data.pages.map(page => ({
-    ...page,
-    items: (page.items ?? []).filter(room => {
-      if (room.room_id !== roomId) return true
-      updatedRoom = updater(room)
-      return false
-    }),
-  }))
+  const shouldBumpUnread =
+    options?.bumpUnread === true && roomId !== options.selectedRoomId
 
-  if (!updatedRoom) {
+  let previousUnreadCount = 0
+  let patchedRoom: ChatRoom | undefined
+  for (const page of data.pages) {
+    const hit = (page.items ?? []).find(r => r.room_id === roomId)
+    if (hit) {
+      previousUnreadCount = hit.unread_count
+      patchedRoom = updater(hit)
+      break
+    }
+  }
+
+  if (!patchedRoom) {
     return { data, found: false }
   }
 
-  const bumpUnread =
-    options?.bumpUnread === true &&
-    options.selectedRoomId != null &&
-    roomId !== options.selectedRoomId
+  const pages = data.pages.map(page => ({
+    ...page,
+    items: (page.items ?? []).filter(room => room.room_id !== roomId),
+  }))
+
+  const bumpedUnreadRooms =
+    shouldBumpUnread && previousUnreadCount === 0 && patchedRoom.unread_count > 0 ? 1 : 0
 
   if (pages[0]) {
     pages[0] = {
       ...pages[0],
-      items: sortChatRoomsByLastMessage([updatedRoom, ...(pages[0].items ?? [])]),
-      total_unread: bumpUnread ? pages[0].total_unread + 1 : pages[0].total_unread,
+      items: sortChatRoomsByLastMessage([patchedRoom, ...(pages[0].items ?? [])]),
+      total_unread: shouldBumpUnread ? pages[0].total_unread + 1 : pages[0].total_unread,
+      filtered_unread_rooms: pages[0].filtered_unread_rooms + bumpedUnreadRooms,
     }
   }
 
@@ -116,9 +124,7 @@ export function patchChatRoomLastMessage(
         roomId,
         room => {
           const bumpUnread =
-            options?.bumpUnread === true &&
-            options.selectedRoomId != null &&
-            roomId !== options.selectedRoomId
+            options?.bumpUnread === true && roomId !== options.selectedRoomId
           return {
             ...room,
             unread_count: bumpUnread ? room.unread_count + 1 : room.unread_count,
@@ -135,6 +141,50 @@ export function patchChatRoomLastMessage(
   if (!anyFound) {
     void qc.invalidateQueries({ queryKey: ['chatRooms', storeId] })
   }
+}
+
+export function clearRoomUnread(
+  qc: QueryClient,
+  storeId: number,
+  roomId: number,
+): void {
+  qc.setQueriesData<ChatRoomsInfinite>(
+    {
+      queryKey: ['chatRooms', storeId],
+      predicate: query => isChatRoomListQueryKey(query.queryKey),
+    },
+    data => {
+      if (!data?.pages) return data
+      return {
+        ...data,
+        pages: data.pages.map((page, pageIndex) => {
+          let clearedUnread = 0
+          let decrementedUnreadRooms = 0
+          const nextItems = page.items.map(room => {
+            if (room.room_id !== roomId) return room
+            const previousUnread = room.unread_count
+            if (previousUnread > 0) {
+              clearedUnread += previousUnread
+              decrementedUnreadRooms += 1
+            }
+            return { ...room, unread_count: 0 }
+          })
+          return {
+            ...page,
+            items: nextItems,
+            total_unread:
+              pageIndex === 0
+                ? Math.max(0, page.total_unread - clearedUnread)
+                : page.total_unread,
+            filtered_unread_rooms:
+              pageIndex === 0
+                ? Math.max(0, page.filtered_unread_rooms - decrementedUnreadRooms)
+                : page.filtered_unread_rooms,
+          }
+        }),
+      }
+    },
+  )
 }
 
 export function mergeRoomMessages(

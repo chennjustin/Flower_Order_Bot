@@ -43,6 +43,10 @@ export async function fetchRoomMessages(
   return data
 }
 
+export async function markRoomRead(roomId: number): Promise<void> {
+  await api.post(`/chat_rooms/${roomId}/mark_read`)
+}
+
 export async function sendMessage(
   roomId: number,
   body: ChatMessageBody,
