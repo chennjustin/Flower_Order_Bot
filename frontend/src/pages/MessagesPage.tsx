@@ -8,7 +8,6 @@ import DetailPanel, {
 import { useStore } from '@/context/StoreContext'
 import {
   flattenChatRoomPages,
-  getChatRoomsFilteredUnreadRooms,
   useMarkRoomRead,
   useChatRooms,
   type ChatRoomsFilter,
