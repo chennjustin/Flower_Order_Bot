@@ -1,4 +1,4 @@
-"""Store list for staff store picker (no X-Store-Id required)."""
+"""Store listing and authenticated owner's store."""
 
 from __future__ import annotations
 
@@ -7,11 +7,19 @@ from typing import List
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.auth import get_current_store
 from app.core.database import get_db
+from app.models.store import Store
 from app.repositories.store_repository import list_stores
 from app.schemas.store import StoreListItem
 
 api_router = APIRouter(tags=["Stores"])
+
+
+@api_router.get("/stores/me", response_model=StoreListItem)
+async def get_my_store(store: Store = Depends(get_current_store)) -> StoreListItem:
+    """Return the store bound to the logged-in owner (OAuth 1:1)."""
+    return StoreListItem(id=store.id, name=store.name, slug=store.slug)
 
 
 @api_router.get("/stores", response_model=List[StoreListItem])

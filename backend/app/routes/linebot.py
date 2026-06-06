@@ -4,23 +4,21 @@ from fastapi.responses import PlainTextResponse
 from linebot.exceptions import InvalidSignatureError
 from linebot.models import MessageEvent, TextMessage, ImageMessage, StickerMessage, FollowEvent
 
-from app.core.deps import get_line_webhook_handler
 from app.core.database import get_db
-from app.repositories.store_repository import get_first_store_id
-from app.services.user_service import get_user_by_line_uid, create_user
-from app.services.message_service import get_chat_room_by_user_id, create_chat_room
+from app.core.line_client import line_bot_api_for_store, webhook_handler_for_store
+from app.models.store import Store
+from app.repositories.store_repository import resolve_store_for_webhook
 from app.schemas.customer import CustomerCreate
-
-api_router = APIRouter()
-
-handler = get_line_webhook_handler()
-
+from app.services.message_service import get_chat_room_by_user_id, create_chat_room
+from app.services.user_service import get_user_by_line_uid, create_user
 from app.usecases.linebot_flow import (
     handle_incoming_text_message,
     handle_incoming_image_message,
     handle_incoming_sticker_message,
     run_bot_flow,
 )
+
+api_router = APIRouter()
 
 
 @api_router.post("/callback")
@@ -32,64 +30,41 @@ async def callback(request: Request, db: AsyncSession = Depends(get_db)):
     body = await request.body()
     body_str = body.decode("utf-8")
 
+    store = await resolve_store_for_webhook(db, body_str)
+
     try:
-        events = get_line_webhook_handler().parser.parse(body_str, signature)
+        events = webhook_handler_for_store(store).parser.parse(body_str, signature)
     except InvalidSignatureError:
         raise HTTPException(status_code=400, detail="Invalid signature")
 
     for event in events:
-        if not isinstance(event, MessageEvent):
-            continue
-        msg = event.message
-        if isinstance(msg, TextMessage):
-            await dispatch_line_text_message(event, db)
-        elif isinstance(msg, ImageMessage):
-            await dispatch_line_image_message(event, db)
-        elif isinstance(msg, StickerMessage):
-            await dispatch_line_sticker_message(event, db)
+        if isinstance(event, FollowEvent):
+            await handle_follow(event, store, db)
+        elif isinstance(event, MessageEvent):
+            msg = event.message
+            if isinstance(msg, TextMessage):
+                await handle_incoming_text_message(event, store, db)
+            elif isinstance(msg, ImageMessage):
+                await handle_incoming_image_message(event, store, db)
+            elif isinstance(msg, StickerMessage):
+                await handle_incoming_sticker_message(event, store, db)
 
     return PlainTextResponse("OK")
 
 
-@handler.add(MessageEvent, message=TextMessage)
-async def dispatch_line_text_message(event: MessageEvent, db: AsyncSession):
-    await handle_incoming_text_message(event, db)
-
-
-@handler.add(MessageEvent, message=ImageMessage)
-async def dispatch_line_image_message(event: MessageEvent, db: AsyncSession):
-    await handle_incoming_image_message(event, db)
-
-
-@handler.add(MessageEvent, message=StickerMessage)
-async def dispatch_line_sticker_message(event: MessageEvent, db: AsyncSession):
-    await handle_incoming_sticker_message(event, db)
-
-
-@handler.add(FollowEvent)
-async def handle_follow(event: FollowEvent, db: AsyncSession):
-    """
-    1. get or create user
-    2. get or create chat room
-    3. send welcome template message
-    """
-
+async def handle_follow(event: FollowEvent, store: Store, db: AsyncSession):
     user_line_id = event.source.user_id
-    user = await get_user_by_line_uid(db, user_line_id)
+    user = await get_user_by_line_uid(db, user_line_id, store.id)
     if not user:
-        store_id = await get_first_store_id(db)
-        if store_id is None:
-            raise HTTPException(
-                status_code=503,
-                detail="No store configured. Create a store in Supabase first.",
-            )
         user = await create_user(
             db,
-            CustomerCreate(line_uid=user_line_id, name="Profile Name", store_id=store_id),
+            CustomerCreate(
+                line_uid=user_line_id, name="Profile Name", store_id=store.id
+            ),
         )
-        print(f"新使用者 {user_line_id} 已創建")
+        print(f"新使用者 {user_line_id} 已創建 (store={store.id})")
     else:
-        print(f"使用者 {user_line_id} 已存在")
+        print(f"使用者 {user_line_id} 已存在 (store={store.id})")
 
     chat_room = await get_chat_room_by_user_id(db, user.id)
     if not chat_room:
@@ -97,4 +72,4 @@ async def handle_follow(event: FollowEvent, db: AsyncSession):
         print(f"新聊天室已創建，使用者 {user_line_id} 的聊天室 ID：{chat_room.id}")
 
     print("開始自動回覆流程")
-    await run_bot_flow(chat_room, "", event, db)
+    await run_bot_flow(chat_room, "", event, store, db)

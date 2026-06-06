@@ -11,8 +11,8 @@ import {
   fetchOrderFieldConfig,
   updateOrderFieldConfig,
 } from '@/api/orderFieldConfig'
+import { useAuth } from '@/hooks/useAuth'
 import { getDefaultConfig, isFieldLockedVisible } from '@/config/orderDisplayFields'
-import { useStore } from '@/context/StoreContext'
 import {
   buildConfigFromApiResponse,
   buildOrderDisplayStorageKey,
@@ -76,10 +76,8 @@ interface OrderDisplayConfigProviderProps {
 }
 
 export function OrderDisplayConfigProvider({ children }: OrderDisplayConfigProviderProps) {
-  const { currentStoreId, isReady } = useStore()
-  const storageKey =
-    currentStoreId != null ? buildOrderDisplayStorageKey(currentStoreId) : null
-
+  const { isAuthenticated, isLoading: authLoading } = useAuth()
+  const [storageKey, setStorageKey] = useState<string | null>(null)
   const [savedConfig, setSavedConfig] = useState<OrderDisplayConfig>(() =>
     mergeWithRegistry(getDefaultConfig()),
   )
@@ -89,34 +87,40 @@ export function OrderDisplayConfigProvider({ children }: OrderDisplayConfigProvi
   const [loadError, setLoadError] = useState<string | null>(null)
 
   useEffect(() => {
-    if (!isReady) {
-      return
-    }
-    if (currentStoreId == null || storageKey == null) {
+    if (authLoading) return
+
+    if (!isAuthenticated) {
+      setStorageKey(null)
+      const local = mergeWithRegistry(loadConfig())
+      setSavedConfig(local)
+      setDraftConfig(cloneConfig(local))
+      setLoadError(null)
       setLoading(false)
       return
     }
 
     let cancelled = false
     setLoading(true)
-
     ;(async () => {
       try {
-        const remote = await fetchOrderFieldConfig(currentStoreId)
+        const remote = await fetchOrderFieldConfig()
         if (cancelled) {
           return
         }
-        const normalized = buildConfigFromApiResponse(remote, storageKey)
+        const key = buildOrderDisplayStorageKey(remote.store_id)
+        setStorageKey(key)
+        const normalized = buildConfigFromApiResponse(remote, key)
         setSavedConfig(normalized)
         setDraftConfig(cloneConfig(normalized))
-        saveConfig(normalized, storageKey)
+        saveConfig(normalized, key)
         setLoadError(null)
       } catch (err) {
         if (cancelled) {
           return
         }
         const message = err instanceof Error ? err.message : String(err)
-        const fromLocal = mergeWithRegistry(loadConfig(storageKey))
+        const fallbackKey = storageKey ?? 'order-display-config:unknown'
+        const fromLocal = mergeWithRegistry(loadConfig(fallbackKey))
         setSavedConfig(fromLocal)
         setDraftConfig(cloneConfig(fromLocal))
         setLoadError(`讀取後端欄位設定失敗，已改用本機暫存：${message}`)
@@ -130,7 +134,7 @@ export function OrderDisplayConfigProvider({ children }: OrderDisplayConfigProvi
     return () => {
       cancelled = true
     }
-  }, [currentStoreId, isReady, storageKey])
+  }, [authLoading, isAuthenticated])
 
   const hasChanges = useMemo(
     () => !configsEqual(savedConfig, draftConfig),
@@ -166,25 +170,27 @@ export function OrderDisplayConfigProvider({ children }: OrderDisplayConfigProvi
   }, [savedConfig])
 
   const save = useCallback(async () => {
-    if (currentStoreId == null || storageKey == null) {
-      throw new Error('No store selected')
+    if (!isAuthenticated) {
+      throw new Error('Not signed in')
     }
     setSavePending(true)
     const normalized = mergeWithRegistry(draftConfig)
     try {
-      const remote = await updateOrderFieldConfig(currentStoreId, {
+      const remote = await updateOrderFieldConfig({
         visible_fields: extractVisibleFieldKeys(normalized),
         field_order: extractFieldOrderKeys(normalized),
       })
-      const applied = buildConfigFromApiResponse(remote, storageKey)
-      saveConfig(applied, storageKey)
+      const key = buildOrderDisplayStorageKey(remote.store_id)
+      setStorageKey(key)
+      const applied = buildConfigFromApiResponse(remote, key)
+      saveConfig(applied, key)
       setSavedConfig(applied)
       setDraftConfig(cloneConfig(applied))
       setLoadError(null)
     } finally {
       setSavePending(false)
     }
-  }, [currentStoreId, draftConfig, storageKey])
+  }, [draftConfig, isAuthenticated])
 
   const value = useMemo<OrderDisplayConfigContextValue>(
     () => ({

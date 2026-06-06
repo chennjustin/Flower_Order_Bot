@@ -1,27 +1,40 @@
 # Makefile
 
 # 標記這些目標為 phony，不對應到實際檔案
-.PHONY: all install migrate run test contract-check
+.PHONY: all install migrate migration-new provision-stores run test contract-check
 
 # 預設目標：依序執行 install → migrate → run
 all: install migrate run
 
-# 安裝相依套件
+PYTHON ?= ./venv/bin/python
+ALEMBIC ?= ./venv/bin/alembic
+export PYTHONPATH := .
+
+# 安裝相依套件（請用 backend/venv，勿用 conda base 跑 alembic，易觸發 macOS double free）
 install:
-	pip install -r requirements.txt
+	$(PYTHON) -m pip install -r requirements.txt
 
 # 執行 Alembic 資料庫遷移
 migrate:
-	alembic upgrade head
+	$(ALEMBIC) upgrade head
+
+# 從 model 與目前 DB 差異自動產生新 migration（需設定 DATABASE_ALEM_URL）
+migration-new:
+	@test -n "$(MSG)" || (echo 'Usage: make migration-new MSG="describe change"' && exit 1)
+	$(ALEMBIC) revision --autogenerate -m "$(MSG)"
+
+# 從 config/stores.provision.json 建立／更新 store（含 LINE slug 自動查詢）
+provision-stores:
+	$(PYTHON) scripts/provision_stores.py --file config/stores.provision.json
 
 # 啟動 Uvicorn 開發伺服器
 run:
-	uvicorn app.main:app --reload
+	$(PYTHON) -m uvicorn app.main:app --reload
 
 # 執行後端測試
 test:
-	pytest tests
+	$(PYTHON) -m pytest tests
 
 # 契約守門測試（不依賴資料庫）
 contract-check:
-	pytest tests/test_openapi_contract.py
+	$(PYTHON) -m pytest tests/test_openapi_contract.py

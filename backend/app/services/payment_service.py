@@ -22,8 +22,10 @@ def payment_method_to_base(method) -> PaymentMethodBase:
         active=method.active,
     )
 
-async def get_all_payment_methods(db: AsyncSession) -> Optional[list[PaymentMethodBase]]:
-    payment_methods = await list_payment_methods(db)
+async def get_all_payment_methods(
+    db: AsyncSession, store_id: int | None = None
+) -> Optional[list[PaymentMethodBase]]:
+    payment_methods = await list_payment_methods(db, store_id=store_id)
 
     return [
         payment_method_to_base(method) for method in payment_methods if method.active

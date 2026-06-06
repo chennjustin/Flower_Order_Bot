@@ -1,13 +1,6 @@
-import { Outlet } from 'react-router-dom'
-import Navbar from '@/components/layout/Navbar'
+import AppLayout from '@/layouts/AppLayout'
 
+/** Root route layout; delegates to AppLayout (Navbar + Outlet). */
 export default function App() {
-  return (
-    <>
-      <Navbar />
-      <main>
-        <Outlet />
-      </main>
-    </>
-  )
+  return <AppLayout />
 }

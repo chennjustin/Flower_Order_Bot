@@ -1,0 +1,12 @@
+{
+  "stores": [
+    {
+      "name": "測試花店",
+      "owner_email": "1ddttyyss@gmail.com",
+      "line_channel_access_token": "YOUR_CHANNEL_ACCESS_TOKEN",
+      "line_channel_secret": "YOUR_CHANNEL_SECRET",
+      "timezone": "Asia/Taipei",
+      "active": true
+    }
+  ]
+}

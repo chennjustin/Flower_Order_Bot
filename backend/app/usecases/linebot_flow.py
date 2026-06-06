@@ -3,13 +3,16 @@ from __future__ import annotations
 import asyncio
 from datetime import datetime, timedelta, timezone
 
+from linebot import LineBotApi
 from linebot.exceptions import LineBotApiError
-from linebot.models import MessageEvent, TextMessage, TextSendMessage
+from linebot.models import MessageEvent, TextSendMessage
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.deps import get_line_bot_api, get_settings
+from app.core.deps import get_settings
+from app.core.line_client import line_bot_api_for_store
 from app.enums.chat import ChatMessageDirection, ChatMessageStatus, ChatRoomStage
 from app.models.chat import ChatMessage, ChatRoom
+from app.models.store import Store
 from app.models.user import User
 from app.schemas.customer import CustomerCreate
 from app.services.message_service import (
@@ -21,8 +24,6 @@ from app.services.order_service import (
     create_order_draft_by_room_id,
     get_order_draft_by_room,
 )
-from app.repositories.store_repository import get_first_store_id
-from app.services.dev_room_reset import wipe_line_customer_for_dev
 from app.services.user_service import create_user, get_user_by_line_uid
 from app.utils.line_get_profile import fetch_user_profile
 from app.utils.line_inbound_media import fetch_line_message_binary, save_inbound_line_image
@@ -30,25 +31,20 @@ from app.utils.line_send_message import send_confirm, send_quick_reply_message
 
 
 async def resolve_line_user_and_room(
-    db: AsyncSession, user_line_id: str
+    db: AsyncSession, user_line_id: str, store: Store
 ) -> tuple[User, ChatRoom]:
-    user = await get_user_by_line_uid(db, user_line_id)
+    line_api = line_bot_api_for_store(store)
+    user = await get_user_by_line_uid(db, user_line_id, store.id)
     if not user:
-        store_id = await get_first_store_id(db)
-        if store_id is None:
-            raise RuntimeError("No store configured. Create a store in Supabase first.")
         user = await create_user(
             db,
-            CustomerCreate(line_uid=user_line_id, name="Unknown User", store_id=store_id),
+            CustomerCreate(
+                line_uid=user_line_id, name="Unknown User", store_id=store.id
+            ),
         )
 
     if user.name == "Unknown User" or user.avatar_url is None:
-        try:
-            profile = await fetch_user_profile(user_line_id)
-        except LineBotApiError as e:
-            print(f"Error fetching user profile: {e.status_code} {e.error.message}")
-            profile = None
-
+        profile = await fetch_user_profile(line_api, user_line_id)
         if profile:
             user.name = profile.display_name
             user.avatar_url = profile.picture_url if profile.picture_url else ""
@@ -81,9 +77,6 @@ async def resolve_line_user_and_room(
 async def handoff_to_owner_if_order_confirmed(
     chat_room: ChatRoom, db: AsyncSession
 ) -> None:
-    # A new inbound message while the room is in ORDER_CONFIRM means the
-    # customer reopened the conversation, so hand control back to the store
-    # by switching the stage to WAITING_OWNER (regardless of message type).
     if chat_room.stage == ChatRoomStage.ORDER_CONFIRM:
         chat_room.stage = ChatRoomStage.WAITING_OWNER
         chat_room.bot_step = -1
@@ -92,31 +85,13 @@ async def handoff_to_owner_if_order_confirmed(
         print("ORDER_CONFIRM received a new message; switching to WAITING_OWNER.")
 
 
-async def handle_incoming_text_message(event: MessageEvent, db: AsyncSession) -> None:
-    """
-    Use case entrypoint for an incoming LINE TextMessage.
-
-    Keep behavior identical to the previous inline implementation in routes.
-    """
+async def handle_incoming_text_message(
+    event: MessageEvent, store: Store, db: AsyncSession
+) -> None:
     user_line_id = event.source.user_id
     user_message = event.message.text
 
-    user, chat_room = await resolve_line_user_and_room(db, user_line_id)
-
-    settings = get_settings()
-    if settings.line_test_reset_phrase and user_message.strip() == settings.line_test_reset_phrase:
-        await wipe_line_customer_for_dev(db, chat_room.id, user.id)
-        print(f"[dev] LINE_TEST_RESET_PHRASE matched; wiped room={chat_room.id} user={user.id}")
-        try:
-            get_line_bot_api().reply_message(
-                event.reply_token,
-                TextSendMessage(
-                    text="【開發用】已清除此聊天室與顧客資料，可重新傳訊開始。"
-                ),
-            )
-        except LineBotApiError as e:
-            print(f"[dev] LINE_TEST_RESET_PHRASE 回覆提示失敗：{e.status_code} {e.error.message}")
-        return
+    user, chat_room = await resolve_line_user_and_room(db, user_line_id, store)
 
     message = ChatMessage(
         room_id=chat_room.id,
@@ -151,26 +126,29 @@ async def handle_incoming_text_message(event: MessageEvent, db: AsyncSession) ->
         return
 
     if chat_room.stage == ChatRoomStage.WELCOME:
-        await run_welcome_flow(chat_room, user_message, event, db)
+        await run_welcome_flow(chat_room, user_message, event, store, db)
         await db.refresh(chat_room)
         if chat_room.stage == ChatRoomStage.BOT_ACTIVE:
-            await run_bot_flow(chat_room, "", event, db)
+            await run_bot_flow(chat_room, "", event, store, db)
         return
 
     if chat_room.stage == ChatRoomStage.BOT_ACTIVE:
-        await run_bot_flow(chat_room, user_message, event, db)
+        await run_bot_flow(chat_room, user_message, event, store, db)
         return
 
     await handoff_to_owner_if_order_confirmed(chat_room, db)
 
 
-async def handle_incoming_image_message(event: MessageEvent, db: AsyncSession) -> None:
+async def handle_incoming_image_message(
+    event: MessageEvent, store: Store, db: AsyncSession
+) -> None:
     user_line_id = event.source.user_id
-    _, chat_room = await resolve_line_user_and_room(db, user_line_id)
+    line_api = line_bot_api_for_store(store)
+    _, chat_room = await resolve_line_user_and_room(db, user_line_id, store)
     mid = event.message.id
     settings = get_settings()
     try:
-        raw, ct = await asyncio.to_thread(fetch_line_message_binary, mid)
+        raw, ct = await asyncio.to_thread(fetch_line_message_binary, line_api, mid)
         public_url = save_inbound_line_image(settings.public_base_url, raw, ct)
     except Exception as e:
         print(f"[LINE] 無法下載使用者圖片 message_id={mid}: {e}")
@@ -200,9 +178,11 @@ async def handle_incoming_image_message(event: MessageEvent, db: AsyncSession) -
     await handoff_to_owner_if_order_confirmed(chat_room, db)
 
 
-async def handle_incoming_sticker_message(event: MessageEvent, db: AsyncSession) -> None:
+async def handle_incoming_sticker_message(
+    event: MessageEvent, store: Store, db: AsyncSession
+) -> None:
     user_line_id = event.source.user_id
-    _, chat_room = await resolve_line_user_and_room(db, user_line_id)
+    _, chat_room = await resolve_line_user_and_room(db, user_line_id, store)
     pkg = str(event.message.package_id)
     stk = str(event.message.sticker_id)
     mid = event.message.id
@@ -234,10 +214,13 @@ async def run_welcome_flow(
     chat_room: ChatRoom,
     user_text: str,
     event: MessageEvent,
+    store: Store,
     db: AsyncSession,
 ):
+    line_api = line_bot_api_for_store(store)
     if chat_room.bot_step == -1:
         send_confirm(
+            line_api,
             event.reply_token,
             "您好，歡迎來到奇美花店，若想要訂購客製化花束，請按「是」~",
             yes_txt="是",
@@ -271,7 +254,7 @@ async def run_welcome_flow(
     else:
         chat_room.stage = ChatRoomStage.WAITING_OWNER
         chat_room.bot_step = -1
-        get_line_bot_api().reply_message(
+        line_api.reply_message(
             event.reply_token,
             TextSendMessage("好的！已轉交給客服人員，請稍候。"),
         )
@@ -293,7 +276,10 @@ async def run_welcome_flow(
     await db.refresh(chat_room)
 
 
-async def run_bot_flow(chat_room: ChatRoom, text: str, event: MessageEvent, db: AsyncSession):
+async def run_bot_flow(
+    chat_room: ChatRoom, text: str, event: MessageEvent, store: Store, db: AsyncSession
+):
+    line_api = line_bot_api_for_store(store)
     STEP_MAP = {
         1: ask_budget,
         2: ask_color,
@@ -311,7 +297,9 @@ async def run_bot_flow(chat_room: ChatRoom, text: str, event: MessageEvent, db: 
             await db.commit()
             return
 
-        next_step, manual_override, next_question = await handler(text, event, db, chat_room)
+        next_step, manual_override, next_question = await handler(
+            text, event, db, chat_room, line_api
+        )
 
         if manual_override:
             chat_room.stage = ChatRoomStage.WAITING_OWNER
@@ -327,10 +315,11 @@ async def run_bot_flow(chat_room: ChatRoom, text: str, event: MessageEvent, db: 
             break
 
 
-async def ask_budget(user_text, event, db, chat_room):
+async def ask_budget(user_text, event, db, chat_room, line_api: LineBotApi):
     if chat_room.bot_step == 1:
         if user_text.strip() == "":
             send_quick_reply_message(
+                line_api,
                 event.reply_token,
                 "好的～請問預算大概多少呢？",
                 ["500以下", "500-1000", "1000以上"],
@@ -358,9 +347,10 @@ async def ask_budget(user_text, event, db, chat_room):
                 return 3, False, True
 
 
-async def ask_color(user_text, event, db, chat_room):
+async def ask_color(user_text, event, db, chat_room, line_api: LineBotApi):
     if chat_room.bot_step == 2:
         send_quick_reply_message(
+            line_api,
             event.reply_token,
             "請問想要什麼顏色的客製化花束？",
             ["紅", "白", "粉", "其他"],
@@ -381,9 +371,10 @@ async def ask_color(user_text, event, db, chat_room):
         return 4, False, False
 
 
-async def ask_type(user_text, event, db, chat_room):
+async def ask_type(user_text, event, db, chat_room, line_api: LineBotApi):
     if chat_room.bot_step == 3:
         send_quick_reply_message(
+            line_api,
             event.reply_token,
             "請問想要什麼類型的花材？",
             ["玫瑰花", "滿天星", "向日葵", "其他"],
@@ -404,9 +395,9 @@ async def ask_type(user_text, event, db, chat_room):
         return 4, False, False
 
 
-async def last(user_text, event, db, chat_room):
+async def last(user_text, event, db, chat_room, line_api: LineBotApi):
     _ = user_text.strip()
-    get_line_bot_api().reply_message(
+    line_api.reply_message(
         event.reply_token,
         TextSendMessage("👌了解！已記錄到後臺～接下來會交由老闆與您聯繫確認細節。"),
     )
@@ -423,4 +414,3 @@ async def last(user_text, event, db, chat_room):
     db.add(message)
     await db.commit()
     return -1, False, False
-

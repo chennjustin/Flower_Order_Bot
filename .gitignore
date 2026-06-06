@@ -1,3 +1,6 @@
+# store provision secrets (copy from stores.provision.example.json)
+**/stores.provision.json
+
 # .env
 **/.env*
 **/.venv_ben

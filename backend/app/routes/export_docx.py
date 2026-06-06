@@ -7,11 +7,13 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.auth import get_current_store, get_order_for_store
 from app.core.database import get_db
+from app.models.store import Store
 from app.services.message_service import get_chat_room_by_room_id
 from app.services.order_field_config_service import get_effective_order_field_config
 from app.services.order_field_values import build_docx_render_context_full_catalog
-from app.services.order_service import get_order, get_order_out_by_id
+from app.services.order_service import get_order_out_by_id
 
 api_router = APIRouter()
 _DOCS_DIR = Path(__file__).resolve().parents[2] / "docs"
@@ -21,10 +23,12 @@ TEMPLATE_PATH = _DOCS_DIR / _TEMPLATE_FILENAME
 
 
 @api_router.get("/orders/{order_id}.docx")
-async def export_order_docx(order_id: int, db: AsyncSession = Depends(get_db)):
-    order_row = await get_order(db, order_id)
-    if not order_row:
-        raise HTTPException(status_code=404, detail="Order not found")
+async def export_order_docx(
+    order_id: int,
+    store: Store = Depends(get_current_store),
+    db: AsyncSession = Depends(get_db),
+):
+    order_row = await get_order_for_store(db, order_id, store)
 
     order = await get_order_out_by_id(db, order_id)
     if not order:

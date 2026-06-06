@@ -6,8 +6,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.payment import Payment, PaymentMethod
 
 
-async def list_payment_methods(db: AsyncSession) -> list[PaymentMethod]:
+async def list_payment_methods(
+    db: AsyncSession, store_id: int | None = None
+) -> list[PaymentMethod]:
     stmt = select(PaymentMethod)
+    if store_id is not None:
+        stmt = stmt.where(PaymentMethod.store_id == store_id)
     result = await db.execute(stmt)
     return result.scalars().all()
 
