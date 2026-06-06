@@ -65,7 +65,7 @@ class ChatMessageCreate(BaseModel):
 
 
 class StaffChatImageUploadOut(BaseModel):
-    """POST upload_image 回傳可供 ImageSendMessage 使用的公開 HTTPS URL（見 PUBLIC_BASE_URL）。"""
+    """POST upload_image 回傳 Supabase Storage 公開 HTTPS URL（供 LINE ImageSendMessage）。"""
 
     image_url: str
 

@@ -160,14 +160,14 @@ export default function MessageInput({ roomId, disabled, onSend }: MessageInputP
             >
               {uploading ? '上傳中…' : '選擇本機圖片'}
             </button>
-            <span className="text-xs text-black/[0.45]">或貼上公開 HTTPS 連結（給 LINE 下載）</span>
+            <span className="text-xs text-black/[0.45]">或貼上公開 HTTPS 圖片連結</span>
           </div>
           <input
             type="url"
             value={imageUrl}
             disabled={busy}
             onChange={e => setImageUrl(e.target.value)}
-            placeholder="https://…（選檔後會自動填入後端網址）"
+            placeholder="https://…（選檔後會自動填入 Supabase 圖片網址）"
             className="w-full rounded-xl border border-[#77B5FF]/40 bg-white px-3 py-2 font-['Noto_Sans_TC',sans-serif] text-sm outline-none focus:border-[#77B5FF]"
           />
         </div>

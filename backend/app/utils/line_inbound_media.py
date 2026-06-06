@@ -14,10 +14,10 @@ def fetch_line_message_binary(
 
 
 def save_inbound_line_image(
-    public_base_url: str, raw: bytes, content_type: str | None
+    store_id: int, raw: bytes, content_type: str | None
 ) -> str:
     return save_chat_image(
-        public_base_url=public_base_url,
+        store_id=store_id,
         raw=raw,
         content_type=content_type,
         subdir="line_images",

@@ -15,11 +15,14 @@ class Settings:
     database_url: str
     redis_url: str | None
 
-    # 建置圖片給對外 URL（LINE 推圖、後台顯示本機上傳圖）；ngrok／正式網域請改此值
+    # Legacy; chat images now use Supabase Storage public URLs instead.
     public_base_url: str
     # Supabase Auth：驗證前端帶來的 Bearer token（見 deps.get_current_user）
     supabase_url: str | None
     supabase_anon_key: str | None
+    # Supabase Storage：後端上傳聊天圖片（須 service role，勿暴露到前端）
+    supabase_service_role_key: str | None
+    supabase_storage_bucket: str
     # 預留：未來本機驗證 JWT（HS256）時使用，目前未用到
     supabase_jwt_secret: str | None
 
@@ -157,6 +160,9 @@ def load_settings() -> Settings:
     frontend_base = (os.getenv("FRONTEND_BASE_URL") or "").strip().rstrip("/")
     frontend_base_url = frontend_base if frontend_base else "http://localhost:5173"
     google_redirect = (os.getenv("GOOGLE_OAUTH_REDIRECT_URI") or "").strip() or None
+    storage_bucket = (
+        os.getenv("SUPABASE_STORAGE_BUCKET", "").strip() or "chat-images"
+    )
     return Settings(
         openai_api_key=os.getenv("OPENAI_API_KEY"),
         line_channel_access_token=os.getenv("LINE_CHANNEL_ACCESS_TOKEN"),
@@ -166,6 +172,8 @@ def load_settings() -> Settings:
         public_base_url=public_base_url,
         supabase_url=supabase_url,
         supabase_anon_key=os.getenv("SUPABASE_ANON_KEY") or None,
+        supabase_service_role_key=os.getenv("SUPABASE_SERVICE_ROLE_KEY") or None,
+        supabase_storage_bucket=storage_bucket,
         supabase_jwt_secret=os.getenv("SUPABASE_JWT_SECRET") or None,
         google_client_id=os.getenv("GOOGLE_CLIENT_ID") or None,
         google_client_secret=os.getenv("GOOGLE_CLIENT_SECRET") or None,
