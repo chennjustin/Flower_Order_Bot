@@ -61,7 +61,12 @@ class BackfillResultOut(BaseModel):
 
 
 def _require_config(settings: Settings) -> None:
-    if not (settings.google_client_id and settings.google_client_secret and settings.google_oauth_redirect_uri):
+    if not (
+        settings.google_client_id
+        and settings.google_client_secret
+        and settings.google_oauth_redirect_uri
+        and settings.google_token_encryption_key
+    ):
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Google Calendar integration is not configured on the server.",
