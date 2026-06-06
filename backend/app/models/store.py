@@ -32,6 +32,13 @@ class Store(Base):
     # 首次登入時由 Supabase auth user id 綁定；未綁定前為 NULL（partial-unique 由 DB 端建立）
     owner_auth_user_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
 
+    # Google Calendar 整合（店主授權後填入）；refresh token 以 Fernet 加密儲存
+    google_calendar_refresh_token: Mapped[str | None] = mapped_column(String, nullable=True)
+    # 連結的 Google 帳號 email（顯示用）
+    google_calendar_email: Mapped[str | None] = mapped_column(String, nullable=True)
+    # 寫入哪個日曆；預設 primary（店主主日曆）
+    google_calendar_id: Mapped[str | None] = mapped_column(String, nullable=True, default="primary")
+
     customers = relationship("Customer", back_populates="store")
     chat_rooms = relationship("ChatRoom", back_populates="store")
     payment_methods = relationship("PaymentMethod", back_populates="store")

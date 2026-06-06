@@ -71,6 +71,8 @@ class Order(Base):
     )
     delivery_address: Mapped[str | None] = mapped_column(Text, nullable=True)
     delivery_datetime: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    # 已同步到店主 Google 日曆的事件 id（用於後續更新／刪除）；未同步為 NULL
+    google_calendar_event_id: Mapped[str | None] = mapped_column(String, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=now_taipei_naive)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, default=now_taipei_naive, onupdate=now_taipei_naive
