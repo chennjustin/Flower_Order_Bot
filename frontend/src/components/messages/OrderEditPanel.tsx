@@ -33,6 +33,7 @@ interface OrderEditPanelProps {
   onBack: () => void
   onClosePanel: () => void
   onOrderUpdated?: (order: Order) => void
+  onDirtyChange?: (dirty: boolean) => void
 }
 
 export default function OrderEditPanel({
@@ -41,6 +42,7 @@ export default function OrderEditPanel({
   onBack,
   onClosePanel: _onClosePanel,
   onOrderUpdated,
+  onDirtyChange,
 }: OrderEditPanelProps) {
   const updateOrder = useUpdateRoomOrder(roomId)
   const suggestFromChat = useSuggestOrderFromChat()
@@ -63,6 +65,10 @@ export default function OrderEditPanel({
   }, [order])
 
   const isDirty = useMemo(() => isOrderFormDirty(form, order), [form, order])
+
+  useEffect(() => {
+    onDirtyChange?.(isDirty && isEditing)
+  }, [isDirty, isEditing, onDirtyChange])
 
   const display = useMemo(() => {
     const status = normalizeOrderStatus(order.order_status)

@@ -19,6 +19,7 @@ interface DetailPanelProps {
   openDraftInitially?: boolean
   onDraftViewOpened?: () => void
   onSubViewChange?: (view: DetailPanelSubView) => void
+  onDirtyChange?: (dirty: boolean) => void
 }
 
 export default function DetailPanel({
@@ -28,6 +29,7 @@ export default function DetailPanel({
   openDraftInitially,
   onDraftViewOpened,
   onSubViewChange,
+  onDirtyChange,
 }: DetailPanelProps) {
   const [showDraftPanel, setShowDraftPanel] = useState(false)
   const [editingOrder, setEditingOrder] = useState<Order | null>(null)
@@ -72,8 +74,9 @@ export default function DetailPanel({
       <OrderDraftPanel
         roomId={roomId}
         open={open}
-        onBack={() => setShowDraftPanel(false)}
+        onBack={() => { onDirtyChange?.(false); setShowDraftPanel(false) }}
         onClosePanel={onClose}
+        onDirtyChange={onDirtyChange}
       />
     )
   }
@@ -83,9 +86,10 @@ export default function DetailPanel({
       <OrderEditPanel
         roomId={roomId}
         order={editingOrder}
-        onBack={() => setEditingOrder(null)}
+        onBack={() => { onDirtyChange?.(false); setEditingOrder(null) }}
         onClosePanel={onClose}
         onOrderUpdated={setEditingOrder}
+        onDirtyChange={onDirtyChange}
       />
     )
   }

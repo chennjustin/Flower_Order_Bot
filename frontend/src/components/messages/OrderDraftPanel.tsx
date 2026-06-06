@@ -30,6 +30,7 @@ interface OrderDraftPanelProps {
   open: boolean
   onBack: () => void
   onClosePanel: () => void
+  onDirtyChange?: (dirty: boolean) => void
 }
 
 export default function OrderDraftPanel({
@@ -37,6 +38,7 @@ export default function OrderDraftPanel({
   open,
   onBack,
   onClosePanel: _onClosePanel,
+  onDirtyChange,
 }: OrderDraftPanelProps) {
   const draftQuery = useOrderDraft(roomId, open)
   const updateDraft = useUpdateOrderDraft(roomId)
@@ -189,6 +191,10 @@ export default function OrderDraftPanel({
     const baseline = formStateFromDraft(draft)
     return (Object.keys(form) as (keyof FormState)[]).some(k => form[k] !== baseline[k])
   }, [form, draft, isEditing])
+
+  useEffect(() => {
+    onDirtyChange?.(isDirty)
+  }, [isDirty, onDirtyChange])
 
   function handleBack() {
     if (isDirty) {

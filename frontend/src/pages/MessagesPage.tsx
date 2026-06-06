@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useBlocker } from 'react-router-dom'
 import ChatList from '@/components/messages/ChatList'
 import ChatRoom from '@/components/messages/ChatRoom'
 import DetailPanel, {
@@ -19,8 +20,16 @@ export default function MessagesPage() {
   const [selectedRoomId, setSelectedRoomId] = useState<number | null>(null)
   const [showDetail, setShowDetail] = useState(false)
   const [openDraftOnDetail, setOpenDraftOnDetail] = useState(false)
-  const [detailSubView, setDetailSubView] =
-    useState<DetailPanelSubView>('main')
+  const [detailSubView, setDetailSubView] = useState<DetailPanelSubView>('main')
+  const [showLeaveDialog, setShowLeaveDialog] = useState(false)
+  const pendingRoomRef = useRef<ChatRoomType | null>(null)
+  const isDirtyRef = useRef(false)
+
+  const handleDirtyChange = useCallback((dirty: boolean) => {
+    isDirtyRef.current = dirty
+  }, [])
+
+  const blocker = useBlocker(() => isDirtyRef.current)
 
   const organizeMutation = useOrganizeData(selectedRoomId)
   const { sseAvailable } = useChatRealtime(currentStoreId, selectedRoomId)
@@ -49,10 +58,30 @@ export default function MessagesPage() {
   const selectedRoom: ChatRoomType | null =
     rooms.find(r => r.room_id === selectedRoomId) ?? null
 
+  useEffect(() => {
+    function onBeforeUnload(e: BeforeUnloadEvent) {
+      if (isDirtyRef.current) {
+        e.preventDefault()
+      }
+    }
+    window.addEventListener('beforeunload', onBeforeUnload)
+    return () => window.removeEventListener('beforeunload', onBeforeUnload)
+  }, [])
+
   function handleSelect(room: ChatRoomType) {
+    if (isDirtyRef.current) {
+      pendingRoomRef.current = room
+      setShowLeaveDialog(true)
+      return
+    }
+    doSelect(room)
+  }
+
+  function doSelect(room: ChatRoomType) {
     setSelectedRoomId(room.room_id)
     setShowDetail(false)
     setDetailSubView('main')
+    isDirtyRef.current = false
   }
 
   async function handleOrganizeOrder() {
@@ -109,7 +138,47 @@ export default function MessagesPage() {
           openDraftInitially={openDraftOnDetail}
           onDraftViewOpened={() => setOpenDraftOnDetail(false)}
           onSubViewChange={setDetailSubView}
+          onDirtyChange={handleDirtyChange}
         />
+      )}
+
+      {(showLeaveDialog || blocker.state === 'blocked') && (
+        <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/30">
+          <div className="w-[280px] rounded-2xl bg-white px-6 py-5 shadow-xl font-['Noto_Sans_TC',sans-serif]">
+            <p className="mb-1 text-base font-bold text-black">確定要離開？</p>
+            <p className="mb-5 text-sm text-black/50">尚未儲存的變更將會遺失。</p>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowLeaveDialog(false)
+                  pendingRoomRef.current = null
+                  if (blocker.state === 'blocked') blocker.reset()
+                }}
+                className="flex h-10 flex-1 items-center justify-center rounded-xl border border-[#e0e3ed] text-sm font-bold text-black/60 transition hover:bg-[#F5F5F5]"
+              >
+                繼續編輯
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  isDirtyRef.current = false
+                  setShowLeaveDialog(false)
+                  const pending = pendingRoomRef.current
+                  pendingRoomRef.current = null
+                  if (blocker.state === 'blocked') {
+                    blocker.proceed()
+                  } else if (pending) {
+                    doSelect(pending)
+                  }
+                }}
+                className="flex h-10 flex-1 items-center justify-center rounded-xl bg-red-500 text-sm font-bold text-white transition hover:bg-red-600"
+              >
+                離開
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )
