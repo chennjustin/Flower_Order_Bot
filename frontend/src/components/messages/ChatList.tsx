@@ -23,6 +23,7 @@ interface ChatListProps {
   selectedRoomId: number | null
   onSelect: (room: ChatRoom) => void
   isLoading?: boolean
+  storeId: number | null
 }
 
 export default function ChatList({
@@ -30,6 +31,7 @@ export default function ChatList({
   selectedRoomId,
   onSelect,
   isLoading,
+  storeId,
 }: ChatListProps) {
   const qc = useQueryClient()
   const [currentTab, setCurrentTab] = useState<(typeof FILTER_TABS)[number]['key']>('ALL')
@@ -97,7 +99,9 @@ export default function ChatList({
                   room={room}
                   active={selectedRoomId === room.room_id}
                   onSelect={onSelect}
-                  onPrefetch={() => prefetchRoomMessages(qc, room.room_id)}
+                  onPrefetch={() => {
+                    if (storeId != null) prefetchRoomMessages(qc, storeId, room.room_id)
+                  }}
                 />
               </li>
             ))}

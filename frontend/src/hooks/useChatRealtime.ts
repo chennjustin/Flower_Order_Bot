@@ -22,13 +22,20 @@ function parseStreamPayload(data: string): ChatStreamEvent | null {
   }
 }
 
-export function useChatRealtime(selectedRoomId: number | null) {
+export function useChatRealtime(
+  storeId: number | null,
+  selectedRoomId: number | null,
+) {
   const qc = useQueryClient()
   const [sseAvailable, setSseAvailable] = useState(true)
   const selectedRef = useRef(selectedRoomId)
+  const storeRef = useRef(storeId)
   selectedRef.current = selectedRoomId
+  storeRef.current = storeId
 
   useEffect(() => {
+    if (storeId == null) return
+
     const es = new EventSource(`${API_BASE}/chat_rooms/stream`)
 
     es.addEventListener('error', () => {
@@ -37,9 +44,11 @@ export function useChatRealtime(selectedRoomId: number | null) {
 
     es.onmessage = ev => {
       const payload = parseStreamPayload(ev.data)
-      if (!payload) return
+      const activeStoreId = storeRef.current
+      if (!payload || activeStoreId == null) return
       applyStreamMessageToCache(
         qc,
+        activeStoreId,
         payload.room_id,
         payload.message,
         selectedRef.current,
@@ -53,10 +62,10 @@ export function useChatRealtime(selectedRoomId: number | null) {
     }
 
     return () => es.close()
-  }, [qc])
+  }, [qc, storeId])
 
   useEffect(() => {
-    if (selectedRoomId == null) return
+    if (selectedRoomId == null || storeId == null) return
 
     const es = new EventSource(`${API_BASE}/chat_rooms/${selectedRoomId}/stream`)
 
@@ -66,9 +75,11 @@ export function useChatRealtime(selectedRoomId: number | null) {
 
     es.onmessage = ev => {
       const payload = parseStreamPayload(ev.data)
-      if (!payload) return
+      const activeStoreId = storeRef.current
+      if (!payload || activeStoreId == null) return
       applyStreamMessageToCache(
         qc,
+        activeStoreId,
         selectedRoomId,
         payload.message,
         selectedRef.current,
@@ -82,7 +93,7 @@ export function useChatRealtime(selectedRoomId: number | null) {
     }
 
     return () => es.close()
-  }, [qc, selectedRoomId])
+  }, [qc, storeId, selectedRoomId])
 
   return { sseAvailable }
 }

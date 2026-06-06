@@ -20,7 +20,7 @@ from app.repositories.order_repository import (
     get_latest_confirmed_order_by_room,
     get_latest_order_draft_by_room,
     get_order_by_id,
-    list_all_orders,
+    list_active_orders,
     list_orders_by_customer_id,
     now_taipei_naive,
     save_order,
@@ -29,6 +29,11 @@ from app.repositories.order_repository import (
 from app.schemas.chat import ChatMessagePayload
 from app.schemas.order import OrderDraftOut, OrderDraftUpdate, OrderOut, OrderPatchUpdate
 from app.services.message_service import get_chat_room_by_room_id
+from app.services.order_field_config_service import get_effective_order_field_config
+from app.services.order_field_values import (
+    collect_missing_catalog_keys,
+    order_draft_catalog_values,
+)
 from app.services.payment_service import get_pay_way_by_order_id, get_payment_method_by_id
 from app.services.user_service import (
     get_line_uid_by_chatroom_id,
@@ -40,6 +45,13 @@ from app.utils.line_send_message import LINE_push_message
 
 async def get_order(db: AsyncSession, order_id: int) -> Order:
     return await get_order_by_id(db, order_id)
+
+
+async def get_order_out_by_id(db: AsyncSession, order_id: int) -> Optional[OrderOut]:
+    order = await get_order_by_id(db, order_id)
+    if not order:
+        return None
+    return await _build_order_out(db, order)
 
 
 async def _build_order_out(db: AsyncSession, order: Order) -> Optional[OrderOut]:
@@ -67,9 +79,9 @@ async def _build_order_out(db: AsyncSession, order: Order) -> Optional[OrderOut]
     )
 
 
-async def get_all_orders(db: AsyncSession) -> Optional[List[OrderOut]]:
+async def get_all_orders(db: AsyncSession, store_id: int) -> Optional[List[OrderOut]]:
     results: list[OrderOut] = []
-    for order in await list_all_orders(db):
+    for order in await list_active_orders(db, store_id):
         out = await _build_order_out(db, order)
         if out:
             results.append(out)
@@ -100,25 +112,17 @@ async def validate_order_draft_required_fields(
     if not order_draft:
         return False, ["order_draft"]
 
-    missing_fields: list[str] = []
-    for field in ("customer_id", "item_type", "total_amount", "delivery_datetime"):
-        value = getattr(order_draft, field, None)
-        if field == "total_amount":
-            if value is None or value <= 0:
-                missing_fields.append(field)
-            continue
-        if value is None:
-            missing_fields.append(field)
+    room = await get_chat_room_by_room_id(db, order_draft.room_id)
+    if not room:
+        return False, ["order_draft"]
 
+    field_config = await get_effective_order_field_config(db, room.store_id)
     customer = await get_user_by_id(db, order_draft.customer_id)
-    if not customer:
-        missing_fields.append("customer")
-    else:
-        if not customer.name:
-            missing_fields.append("customer_name")
-        if not customer.phone:
-            missing_fields.append("customer_phone")
 
+    effective_values = order_draft_catalog_values(order_draft, customer)
+    missing_fields = collect_missing_catalog_keys(
+        effective_values, field_config.organize_required_fields
+    )
     return len(missing_fields) == 0, missing_fields
 
 
@@ -401,6 +405,11 @@ async def create_order_draft_by_room_id(db: AsyncSession, room_id: int) -> Order
     return order_draft
 
 
+def _draft_field_was_sent(draft_in: OrderDraftUpdate, field: str) -> bool:
+    """True when the client included this key in the PATCH body (null means clear)."""
+    return field in draft_in.model_fields_set
+
+
 async def update_order_draft_by_room_id(
     db: AsyncSession,
     room_id: int,
@@ -420,7 +429,8 @@ async def update_order_draft_by_room_id(
         )
 
     if allow_customer_update and (
-        draft_in.customer_name is not None or draft_in.customer_phone is not None
+        _draft_field_was_sent(draft_in, "customer_name")
+        or _draft_field_was_sent(draft_in, "customer_phone")
     ):
         customer = await get_user_by_id(db, order_draft.customer_id)
         if not customer:
@@ -431,27 +441,31 @@ async def update_order_draft_by_room_id(
         await update_user_info(
             db,
             customer.id,
-            name=draft_in.customer_name or customer.name,
-            phone=draft_in.customer_phone or customer.phone,
+            name=draft_in.customer_name,
+            phone=draft_in.customer_phone,
+            update_name=_draft_field_was_sent(draft_in, "customer_name"),
+            update_phone=_draft_field_was_sent(draft_in, "customer_phone"),
         )
 
-    if draft_in.item is not None:
+    if _draft_field_was_sent(draft_in, "item"):
         order_draft.item_type = draft_in.item
-    if draft_in.quantity is not None:
+    if _draft_field_was_sent(draft_in, "quantity"):
         order_draft.quantity = draft_in.quantity
-    if draft_in.total_amount is not None:
+    if _draft_field_was_sent(draft_in, "total_amount"):
         order_draft.total_amount = draft_in.total_amount
-    if draft_in.note is not None:
+    if _draft_field_was_sent(draft_in, "note"):
         order_draft.notes = draft_in.note
-    if draft_in.shipment_method is not None:
+    if _draft_field_was_sent(draft_in, "shipment_method"):
         order_draft.shipment_method = draft_in.shipment_method
-    if draft_in.send_datetime is not None:
-        order_draft.delivery_datetime = to_taipei_naive(draft_in.send_datetime)
-    if draft_in.delivery_address is not None:
+    if _draft_field_was_sent(draft_in, "send_datetime"):
+        order_draft.delivery_datetime = (
+            to_taipei_naive(draft_in.send_datetime) if draft_in.send_datetime else None
+        )
+    if _draft_field_was_sent(draft_in, "delivery_address"):
         order_draft.delivery_address = draft_in.delivery_address
-    if draft_in.pay_way is not None:
+    if _draft_field_was_sent(draft_in, "pay_way"):
         order_draft.pay_way = draft_in.pay_way
-    if draft_in.pay_status is not None:
+    if _draft_field_was_sent(draft_in, "pay_status"):
         order_draft.pay_status = draft_in.pay_status
     order_draft.updated_at = now_taipei_naive()
 

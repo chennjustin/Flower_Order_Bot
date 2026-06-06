@@ -1,11 +1,13 @@
+import { useMemo } from 'react'
 import { ChevronDown, Plus, X } from 'lucide-react'
 import {
-  ORDER_FORM_FIELDS,
+  getVisibleOrderFormFields,
   orderFormTitle,
   type OrderFormMode,
 } from '@/config/orderFormFields'
+import { useOrderDisplayConfig } from '@/context/OrderDisplayConfigContext'
+import { formatOrderFormFieldValue } from '@/lib/orderFieldPresentation'
 import type { Order } from '@/types/domain'
-import { formatOrderFormDisplayValue } from '@/utils/orderFormDisplay'
 import { cn } from '@/lib/utils'
 
 interface OrderFormCardProps {
@@ -28,8 +30,14 @@ export default function OrderFormCard({
   onPrimaryAction,
   onClose,
 }: OrderFormCardProps) {
+  const { savedConfig } = useOrderDisplayConfig()
   const title = orderFormTitle(mode)
   const isView = mode === 'view'
+
+  const formFields = useMemo(
+    () => getVisibleOrderFormFields(savedConfig),
+    [savedConfig],
+  )
 
   return (
     <div
@@ -63,7 +71,7 @@ export default function OrderFormCard({
       <div className="flex max-h-[min(442px,calc(90vh-10rem))] overflow-y-auto px-10 py-4">
         <div className="flex w-full gap-5">
           <div className="flex w-[152px] shrink-0 flex-col gap-2">
-            {ORDER_FORM_FIELDS.map(field => (
+            {formFields.map(field => (
               <div key={field.key} className="flex h-[30px] items-center py-1">
                 <span className={labelClass}>{field.label}</span>
               </div>
@@ -71,9 +79,9 @@ export default function OrderFormCard({
           </div>
 
           <div className="flex w-[200px] shrink-0 flex-col gap-2">
-            {ORDER_FORM_FIELDS.map(field => {
+            {formFields.map(field => {
               const display =
-                order != null ? formatOrderFormDisplayValue(field.key, order) : '—'
+                order != null ? formatOrderFormFieldValue(field.key, order) : '—'
               const isSelect = field.type === 'select'
               const isPlain = field.plain === true
 

@@ -1,24 +1,32 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { deleteOrder, fetchOrders, updateOrderStatus } from '@/api/orders'
+import { useStoreQueryGate } from '@/hooks/useStoreQuery'
+import { ordersQueryKey, statsQueryKey } from '@/lib/storeQueryKeys'
 import type { Order } from '@/types/domain'
 import type { OrderStatus } from '@/types/enums'
 
+/** @deprecated Use ordersQueryKey(storeId) from storeQueryKeys. */
 export const ORDERS_QUERY_KEY = ['orders'] as const
 
 export function useOrders() {
+  const { storeId, enabled } = useStoreQueryGate()
   return useQuery<Order[]>({
-    queryKey: ORDERS_QUERY_KEY,
+    queryKey: storeId != null ? ordersQueryKey(storeId) : ['orders', 'pending'],
     queryFn: fetchOrders,
+    enabled,
   })
 }
 
 export function useDeleteOrder() {
   const qc = useQueryClient()
+  const { storeId } = useStoreQueryGate()
   return useMutation({
     mutationFn: (orderId: number) => deleteOrder(orderId),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ORDERS_QUERY_KEY })
-      qc.invalidateQueries({ queryKey: ['stats'] })
+      if (storeId != null) {
+        qc.invalidateQueries({ queryKey: ordersQueryKey(storeId) })
+        qc.invalidateQueries({ queryKey: statsQueryKey(storeId) })
+      }
     },
   })
 }
@@ -39,14 +47,18 @@ function patchOrdersCache(
 
 export function useUpdateOrderStatus() {
   const qc = useQueryClient()
+  const { storeId } = useStoreQueryGate()
+  const ordersKey = storeId != null ? ordersQueryKey(storeId) : ORDERS_QUERY_KEY
+  const statsKey = storeId != null ? statsQueryKey(storeId) : (['stats'] as const)
+
   return useMutation({
     mutationFn: ({ orderId, status }: { orderId: number; status: OrderStatus }) =>
       updateOrderStatus(orderId, status),
     onMutate: async ({ orderId, status }) => {
-      await qc.cancelQueries({ queryKey: ORDERS_QUERY_KEY })
+      await qc.cancelQueries({ queryKey: ordersKey })
 
-      const previousOrders = qc.getQueryData<Order[]>(ORDERS_QUERY_KEY)
-      qc.setQueryData<Order[]>(ORDERS_QUERY_KEY, orders =>
+      const previousOrders = qc.getQueryData<Order[]>(ordersKey)
+      qc.setQueryData<Order[]>(ordersKey, orders =>
         patchOrdersCache(orders, orderId, status) ?? [],
       )
 
@@ -54,17 +66,17 @@ export function useUpdateOrderStatus() {
     },
     onError: (_err, _vars, context) => {
       if (context?.previousOrders !== undefined) {
-        qc.setQueryData(ORDERS_QUERY_KEY, context.previousOrders)
+        qc.setQueryData(ordersKey, context.previousOrders)
       }
     },
     onSuccess: (updatedOrder, { orderId, status }) => {
-      qc.setQueryData<Order[]>(ORDERS_QUERY_KEY, orders =>
+      qc.setQueryData<Order[]>(ordersKey, orders =>
         patchOrdersCache(orders, orderId, status, updatedOrder) ?? [],
       )
     },
     onSettled: () => {
-      qc.invalidateQueries({ queryKey: ORDERS_QUERY_KEY })
-      qc.invalidateQueries({ queryKey: ['stats'] })
+      qc.invalidateQueries({ queryKey: ordersKey })
+      qc.invalidateQueries({ queryKey: statsKey })
     },
   })
 }

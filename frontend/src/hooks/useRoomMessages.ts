@@ -1,27 +1,32 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { sendMessage } from '@/api/messages'
+import { useStoreQueryGate } from '@/hooks/useStoreQuery'
+import { chatRoomsQueryKey, roomMessagesQueryKey } from '@/lib/storeQueryKeys'
 import type { ChatMessage, ChatMessageBody } from '@/types/domain'
 import {
-  CHAT_ROOMS_QUERY_KEY,
   createOptimisticOutgoingMessage,
   fetchRoomMessagesIncremental,
   patchChatRoomLastMessage,
   prefetchRoomMessages,
   previewTextFromMessage,
   replaceOptimisticMessage,
-  roomMessagesQueryKey,
 } from '@/utils/chatRoomCache'
 
 export { roomMessagesQueryKey, prefetchRoomMessages }
 
 export function useRoomMessages(roomId: number | null) {
   const qc = useQueryClient()
+  const { storeId, enabled: storeReady } = useStoreQueryGate()
+  const enabled = storeReady && roomId != null && storeId != null
 
   return useQuery<ChatMessage[]>({
-    queryKey: roomId == null ? ['chatRooms', 'pending'] : roomMessagesQueryKey(roomId),
-    queryFn: () => fetchRoomMessagesIncremental(qc, roomId as number),
-    enabled: roomId != null,
+    queryKey:
+      storeId != null && roomId != null
+        ? roomMessagesQueryKey(storeId, roomId)
+        : ['chatRooms', 'pending', 'messages'],
+    queryFn: () => fetchRoomMessagesIncremental(qc, storeId as number, roomId as number),
+    enabled,
     staleTime: 5 * 60_000,
     gcTime: 30 * 60_000,
     refetchInterval: false,
@@ -31,6 +36,7 @@ export function useRoomMessages(roomId: number | null) {
 
 export function useSendMessage(roomId: number | null) {
   const qc = useQueryClient()
+  const { storeId } = useStoreQueryGate()
 
   return useMutation({
     mutationFn: (body: ChatMessageBody) => {
@@ -40,21 +46,20 @@ export function useSendMessage(roomId: number | null) {
       return sendMessage(roomId, body)
     },
     onMutate: async body => {
-      if (roomId == null) return
+      if (roomId == null || storeId == null) return
 
-      await qc.cancelQueries({ queryKey: roomMessagesQueryKey(roomId) })
-      await qc.cancelQueries({ queryKey: CHAT_ROOMS_QUERY_KEY })
+      const messagesKey = roomMessagesQueryKey(storeId, roomId)
+      const roomsKey = chatRoomsQueryKey(storeId)
 
-      const previousMessages = qc.getQueryData<ChatMessage[]>(
-        roomMessagesQueryKey(roomId),
-      )
-      const previousRooms = qc.getQueryData(CHAT_ROOMS_QUERY_KEY)
+      await qc.cancelQueries({ queryKey: messagesKey })
+      await qc.cancelQueries({ queryKey: roomsKey })
+
+      const previousMessages = qc.getQueryData<ChatMessage[]>(messagesKey)
+      const previousRooms = qc.getQueryData(roomsKey)
 
       const optimistic = createOptimisticOutgoingMessage(body)
-      qc.setQueryData<ChatMessage[]>(roomMessagesQueryKey(roomId), msgs =>
-        [...(msgs ?? []), optimistic],
-      )
-      patchChatRoomLastMessage(qc, roomId, {
+      qc.setQueryData<ChatMessage[]>(messagesKey, msgs => [...(msgs ?? []), optimistic])
+      patchChatRoomLastMessage(qc, storeId, roomId, {
         text: previewTextFromMessage(optimistic),
         timestamp: optimistic.created_at,
       })
@@ -62,24 +67,28 @@ export function useSendMessage(roomId: number | null) {
       return { previousMessages, previousRooms }
     },
     onSuccess: (sent, _body, context) => {
-      if (roomId == null) return
+      if (roomId == null || storeId == null) return
 
-      qc.setQueryData<ChatMessage[]>(roomMessagesQueryKey(roomId), msgs =>
+      const messagesKey = roomMessagesQueryKey(storeId, roomId)
+      qc.setQueryData<ChatMessage[]>(messagesKey, msgs =>
         replaceOptimisticMessage(msgs ?? context?.previousMessages ?? [], sent),
       )
-      patchChatRoomLastMessage(qc, roomId, {
+      patchChatRoomLastMessage(qc, storeId, roomId, {
         text: previewTextFromMessage(sent),
         timestamp: sent.created_at,
       })
     },
     onError: (_err, _body, context) => {
-      if (roomId == null) return
+      if (roomId == null || storeId == null) return
+
+      const messagesKey = roomMessagesQueryKey(storeId, roomId)
+      const roomsKey = chatRoomsQueryKey(storeId)
 
       if (context?.previousMessages !== undefined) {
-        qc.setQueryData(roomMessagesQueryKey(roomId), context.previousMessages)
+        qc.setQueryData(messagesKey, context.previousMessages)
       }
       if (context?.previousRooms !== undefined) {
-        qc.setQueryData(CHAT_ROOMS_QUERY_KEY, context.previousRooms)
+        qc.setQueryData(roomsKey, context.previousRooms)
       }
     },
   })

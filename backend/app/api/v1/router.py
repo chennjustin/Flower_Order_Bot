@@ -12,10 +12,12 @@ from app.routes.order_field_config import api_router as order_field_config_route
 from app.routes.organize_data import api_router as organize_data_router
 from app.routes.payment import api_router as payment_router
 from app.routes.statistics import api_router as stats_router
+from app.routes.stores import api_router as stores_router
 
 api_router = APIRouter()
 
 api_router.include_router(health_router, tags=["Health"])
+api_router.include_router(stores_router)
 api_router.include_router(orders_router, tags=["Orders"])
 api_router.include_router(order_field_config_router, tags=["Order Field Config"])
 api_router.include_router(export_docx_router, tags=["Orders"])

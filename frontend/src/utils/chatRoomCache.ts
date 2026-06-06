@@ -1,13 +1,11 @@
 import type { QueryClient } from '@tanstack/react-query'
 
 import { fetchRoomMessages } from '@/api/messages'
+import { chatRoomsQueryKey, roomMessagesQueryKey } from '@/lib/storeQueryKeys'
 import type { ChatMessage, ChatMessageBody, ChatRoom } from '@/types/domain'
 import { ChatMessageDirection, ChatMessageStatus } from '@/types/enums'
 
-export const CHAT_ROOMS_QUERY_KEY = ['chatRooms'] as const
-
-export const roomMessagesQueryKey = (roomId: number) =>
-  ['chatRooms', roomId, 'messages'] as const
+export { roomMessagesQueryKey } from '@/lib/storeQueryKeys'
 
 export function previewTextFromBody(body: ChatMessageBody): string {
   const text = (body.text ?? '').trim()
@@ -37,11 +35,12 @@ export function sortChatRoomsByLastMessage(rooms: ChatRoom[]): ChatRoom[] {
 
 export function patchChatRoomLastMessage(
   qc: QueryClient,
+  storeId: number,
   roomId: number,
   patch: { text: string; timestamp: string },
   options?: { bumpUnread?: boolean; selectedRoomId?: number | null },
 ): void {
-  qc.setQueryData<ChatRoom[]>(CHAT_ROOMS_QUERY_KEY, rooms => {
+  qc.setQueryData<ChatRoom[]>(chatRoomsQueryKey(storeId), rooms => {
     if (!rooms) return rooms
     const updated = rooms.map(room => {
       if (room.room_id !== roomId) return room
@@ -95,9 +94,10 @@ export function createOptimisticOutgoingMessage(body: ChatMessageBody): ChatMess
 
 export async function fetchRoomMessagesIncremental(
   qc: QueryClient,
+  storeId: number,
   roomId: number,
 ): Promise<ChatMessage[]> {
-  const key = roomMessagesQueryKey(roomId)
+  const key = roomMessagesQueryKey(storeId, roomId)
   const cached = qc.getQueryData<ChatMessage[]>(key)
   if (!cached || cached.length === 0) {
     const full = await fetchRoomMessages(roomId)
@@ -114,7 +114,7 @@ export async function fetchRoomMessagesIncremental(
   qc.setQueryData(key, merged)
 
   const lastMsg = delta[delta.length - 1]
-  patchChatRoomLastMessage(qc, roomId, {
+  patchChatRoomLastMessage(qc, storeId, roomId, {
     text: previewTextFromMessage(lastMsg),
     timestamp: lastMsg.created_at,
   })
@@ -123,12 +123,14 @@ export async function fetchRoomMessagesIncremental(
 
 export function applyStreamMessageToCache(
   qc: QueryClient,
+  storeId: number,
   roomId: number,
   message: ChatMessage,
   selectedRoomId: number | null,
 ): void {
   patchChatRoomLastMessage(
     qc,
+    storeId,
     roomId,
     {
       text: previewTextFromMessage(message),
@@ -140,7 +142,7 @@ export function applyStreamMessageToCache(
     },
   )
 
-  const key = roomMessagesQueryKey(roomId)
+  const key = roomMessagesQueryKey(storeId, roomId)
   const hasCache =
     qc.getQueryData<ChatMessage[]>(key) !== undefined || roomId === selectedRoomId
   if (!hasCache) return
@@ -154,10 +156,14 @@ export function applyStreamMessageToCache(
   })
 }
 
-export function prefetchRoomMessages(qc: QueryClient, roomId: number): void {
+export function prefetchRoomMessages(
+  qc: QueryClient,
+  storeId: number,
+  roomId: number,
+): void {
   void qc.prefetchQuery({
-    queryKey: roomMessagesQueryKey(roomId),
-    queryFn: () => fetchRoomMessagesIncremental(qc, roomId),
+    queryKey: roomMessagesQueryKey(storeId, roomId),
+    queryFn: () => fetchRoomMessagesIncremental(qc, storeId, roomId),
     staleTime: 5 * 60_000,
   })
 }

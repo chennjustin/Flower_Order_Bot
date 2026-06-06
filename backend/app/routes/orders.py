@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List, Optional
 
+from app.core.store_context import get_resolved_store_id
 from app.services.order_service import (
     create_order_by_room,
     delete_order_by_id,
@@ -27,8 +28,11 @@ from app.usecases.suggest_order_from_chat import suggest_order_from_chat
 api_router = APIRouter()
 
 @api_router.get("/orders", response_model=Optional[List[OrderOut]])
-async def get_orders(db: AsyncSession = Depends(get_db)):
-    return await get_all_orders(db)
+async def get_orders(
+    db: AsyncSession = Depends(get_db),
+    store_id: int = Depends(get_resolved_store_id),
+):
+    return await get_all_orders(db, store_id)
 
 
 @api_router.get("/orders/room/{room_id}", response_model=List[OrderOut])

@@ -2,7 +2,6 @@ import { useState } from 'react'
 import BrandLogo from './BrandLogo'
 import Sidebar from './Sidebar'
 import SidebarMenuIcon from './SidebarMenuIcon'
-
 export default function Navbar() {
   const [showSidebar, setShowSidebar] = useState(false)
 

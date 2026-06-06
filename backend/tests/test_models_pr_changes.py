@@ -196,7 +196,15 @@ def test_store_order_field_config_tablename():
 
 def test_store_order_field_config_has_required_columns():
     cols = _column_names(StoreOrderFieldConfig)
-    for c in ("id", "store_id", "visible_fields", "organize_required_fields", "created_at", "updated_at"):
+    for c in (
+        "id",
+        "store_id",
+        "visible_fields",
+        "display_config",
+        "organize_required_fields",
+        "created_at",
+        "updated_at",
+    ):
         assert c in cols, f"Missing: {c}"
 
 

@@ -50,12 +50,16 @@ function MenuRow({
         data-active={active}
         className={cn(
           'flex h-10 w-full items-center gap-4 rounded-[24px] px-[22px] py-2 text-left transition-colors',
-          "font-['Noto_Sans_TC',sans-serif] text-base font-normal leading-[140%] text-black/[0.87]",
-          'hover:bg-[#C5C7FF]/70',
-          'data-[active=true]:bg-[#C5C7FF]',
+          "font-['Noto_Sans_TC',sans-serif] text-base leading-[140%]",
+          'text-gray-600 font-normal',
+          'hover:bg-[#C5C7FF]/70 hover:text-gray-900',
+          'data-[active=true]:bg-transparent data-[active=true]:text-gray-900 data-[active=true]:font-semibold',
         )}
       >
-        <Icon className="h-6 w-6 shrink-0 text-[#1E1E1E]" strokeWidth={2.5} />
+        <Icon
+          className={cn('h-6 w-6 shrink-0 transition-colors', active ? 'text-[#1E1E1E]' : 'text-gray-600')}
+          strokeWidth={active ? 2.5 : 2}
+        />
         {item.label}
       </button>
     </li>

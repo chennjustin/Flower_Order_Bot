@@ -50,8 +50,8 @@ async def get_latest_message(db: AsyncSession, room_id: int) -> Optional[ChatMes
     )
     return message
 
-async def get_chat_room_list(db: AsyncSession) -> Optional[List[ChatRoomOut]]:
-    rooms = await list_chat_rooms(db)
+async def get_chat_room_list(db: AsyncSession, store_id: int) -> Optional[List[ChatRoomOut]]:
+    rooms = await list_chat_rooms(db, store_id)
 
     response = []
     for room in rooms:

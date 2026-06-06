@@ -14,6 +14,10 @@ from app.models.chat import ChatMessage, ChatRoom
 from app.schemas.chat import ChatMessagePayload
 from app.schemas.order import OrderDraftOut, OrderDraftUpdate
 from app.services.order_field_config_service import get_effective_order_field_config
+from app.services.order_field_values import (
+    collect_missing_catalog_labels,
+    draft_out_catalog_values,
+)
 from app.services.order_service import (
     create_order_draft_by_room_id,
     get_order_draft_out_by_room,
@@ -25,21 +29,6 @@ from app.managers.prompt_manager import PromptManager
 
 
 prompt_manager = PromptManager()
-CORE_REQUIRED_FIELD_LABELS: dict[str, str] = {
-    "customer_name": "顧客姓名",
-    "customer_phone": "顧客電話",
-    "item": "商品項目",
-    "send_datetime": "取貨時間",
-    "total_amount": "總金額",
-}
-OPTIONAL_FIELD_LABELS: dict[str, str] = {
-    "quantity": "數量",
-    "note": "備註",
-    "shipment_method": "配送方式",
-    "delivery_address": "配送地址",
-    "pay_way": "付款方式",
-    "pay_status": "付款狀態",
-}
 
 
 def _normalize_payment_status(value: object) -> PaymentStatus | None:
@@ -98,42 +87,8 @@ def _collect_missing_fields(
     order_draft_update: OrderDraftUpdate,
     required_fields: set[str],
 ) -> list[str]:
-    effective_values = {
-        "customer_name": order_draft_update.customer_name or draft.customer_name,
-        "customer_phone": order_draft_update.customer_phone or draft.customer_phone,
-        "item": order_draft_update.item or draft.item,
-        "send_datetime": order_draft_update.send_datetime or draft.send_datetime,
-        "total_amount": (
-            order_draft_update.total_amount
-            if order_draft_update.total_amount is not None
-            else draft.total_amount
-        ),
-        "quantity": (
-            order_draft_update.quantity
-            if order_draft_update.quantity is not None
-            else draft.quantity
-        ),
-        "note": order_draft_update.note or draft.note,
-        "shipment_method": order_draft_update.shipment_method or draft.shipment_method,
-        "delivery_address": order_draft_update.delivery_address or draft.delivery_address,
-        "pay_way": order_draft_update.pay_way or draft.pay_way,
-        "pay_status": order_draft_update.pay_status or draft.pay_status,
-    }
-
-    missing_labels: list[str] = []
-    label_map = {**CORE_REQUIRED_FIELD_LABELS, **OPTIONAL_FIELD_LABELS}
-    for field, label in label_map.items():
-        if field not in required_fields:
-            continue
-        value = effective_values.get(field)
-        if field in {"total_amount", "quantity"}:
-            # total_amount <= 0 視同未填（LLM 預設常為 -1）。
-            if value is None or value <= 0:
-                missing_labels.append(label)
-            continue
-        if value in (None, ""):
-            missing_labels.append(label)
-    return missing_labels
+    effective_values = draft_out_catalog_values(draft, order_draft_update)
+    return collect_missing_catalog_labels(effective_values, required_fields)
 
 
 def _filter_update_by_required_fields(

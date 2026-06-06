@@ -6,6 +6,7 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
+from app.core.store_context import get_resolved_store_id
 from app.core.deps import get_settings
 from app.core.redis_client import is_redis_enabled
 from app.schemas.chat import (
@@ -31,8 +32,11 @@ _ALLOWED_IMAGE_CT = frozenset({"image/jpeg", "image/png", "image/gif", "image/we
 api_router = APIRouter(prefix="/chat_rooms", tags=["Chat"])
 
 @api_router.get("", response_model=List[ChatRoomOut])
-async def list_chat_rooms(db: AsyncSession = Depends(get_db)):
-    return await get_chat_room_list(db)
+async def list_chat_rooms(
+    db: AsyncSession = Depends(get_db),
+    store_id: int = Depends(get_resolved_store_id),
+):
+    return await get_chat_room_list(db, store_id)
 
 
 async def _sse_event_generator(event_source):
