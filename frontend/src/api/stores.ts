@@ -6,8 +6,8 @@ export interface StoreListItem {
   slug: string | null
 }
 
-/** List active stores for the staff store picker (no X-Store-Id required). */
-export async function fetchStores(): Promise<StoreListItem[]> {
-  const { data } = await api.get<StoreListItem[]>('/stores')
+/** OAuth-bound store for the logged-in owner. */
+export async function fetchMyStore(): Promise<StoreListItem> {
+  const { data } = await api.get<StoreListItem>('/stores/me')
   return data
 }

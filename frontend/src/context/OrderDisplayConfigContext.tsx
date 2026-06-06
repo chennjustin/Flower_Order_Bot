@@ -13,7 +13,6 @@ import {
 } from '@/api/orderFieldConfig'
 import { useAuth } from '@/contexts/AuthContext'
 import { getDefaultConfig, isFieldLockedVisible } from '@/config/orderDisplayFields'
-import { useStore } from '@/context/StoreContext'
 import {
   buildConfigFromApiResponse,
   buildOrderDisplayStorageKey,
@@ -78,6 +77,7 @@ interface OrderDisplayConfigProviderProps {
 
 export function OrderDisplayConfigProvider({ children }: OrderDisplayConfigProviderProps) {
   const { session, loading: authLoading } = useAuth()
+  const [storageKey, setStorageKey] = useState<string | null>(null)
   const [savedConfig, setSavedConfig] = useState<OrderDisplayConfig>(() =>
     mergeWithRegistry(getDefaultConfig()),
   )
@@ -90,6 +90,7 @@ export function OrderDisplayConfigProvider({ children }: OrderDisplayConfigProvi
     if (authLoading) return
 
     if (!session?.access_token) {
+      setStorageKey(null)
       const local = mergeWithRegistry(loadConfig())
       setSavedConfig(local)
       setDraftConfig(cloneConfig(local))
@@ -102,21 +103,24 @@ export function OrderDisplayConfigProvider({ children }: OrderDisplayConfigProvi
     setLoading(true)
     ;(async () => {
       try {
-        const remote = await fetchOrderFieldConfig(currentStoreId)
+        const remote = await fetchOrderFieldConfig()
         if (cancelled) {
           return
         }
-        const normalized = buildConfigFromApiResponse(remote, storageKey)
+        const key = buildOrderDisplayStorageKey(remote.store_id)
+        setStorageKey(key)
+        const normalized = buildConfigFromApiResponse(remote, key)
         setSavedConfig(normalized)
         setDraftConfig(cloneConfig(normalized))
-        saveConfig(normalized, storageKey)
+        saveConfig(normalized, key)
         setLoadError(null)
       } catch (err) {
         if (cancelled) {
           return
         }
         const message = err instanceof Error ? err.message : String(err)
-        const fromLocal = mergeWithRegistry(loadConfig(storageKey))
+        const fallbackKey = storageKey ?? 'order-display-config:unknown'
+        const fromLocal = mergeWithRegistry(loadConfig(fallbackKey))
         setSavedConfig(fromLocal)
         setDraftConfig(cloneConfig(fromLocal))
         setLoadError(`讀取後端欄位設定失敗，已改用本機暫存：${message}`)
@@ -130,7 +134,7 @@ export function OrderDisplayConfigProvider({ children }: OrderDisplayConfigProvi
     return () => {
       cancelled = true
     }
-  }, [authLoading, session?.access_token, buildConfigFromVisibleFields])
+  }, [authLoading, session?.access_token])
 
   const hasChanges = useMemo(
     () => !configsEqual(savedConfig, draftConfig),
@@ -166,25 +170,27 @@ export function OrderDisplayConfigProvider({ children }: OrderDisplayConfigProvi
   }, [savedConfig])
 
   const save = useCallback(async () => {
-    if (currentStoreId == null || storageKey == null) {
-      throw new Error('No store selected')
+    if (!session?.access_token) {
+      throw new Error('Not signed in')
     }
     setSavePending(true)
     const normalized = mergeWithRegistry(draftConfig)
     try {
-      const remote = await updateOrderFieldConfig(currentStoreId, {
+      const remote = await updateOrderFieldConfig({
         visible_fields: extractVisibleFieldKeys(normalized),
         field_order: extractFieldOrderKeys(normalized),
       })
-      const applied = buildConfigFromApiResponse(remote, storageKey)
-      saveConfig(applied, storageKey)
+      const key = buildOrderDisplayStorageKey(remote.store_id)
+      setStorageKey(key)
+      const applied = buildConfigFromApiResponse(remote, key)
+      saveConfig(applied, key)
       setSavedConfig(applied)
       setDraftConfig(cloneConfig(applied))
       setLoadError(null)
     } finally {
       setSavePending(false)
     }
-  }, [currentStoreId, draftConfig, storageKey])
+  }, [draftConfig, session?.access_token])
 
   const value = useMemo<OrderDisplayConfigContextValue>(
     () => ({

@@ -250,31 +250,32 @@ PYTHONPATH=. python app/seeds/seed_all.py
 
 ---
 
-## 多店後台 API 與欄位設定
+## 後台 API 與欄位設定（OAuth 單店）
 
 ### 目前店家（Staff Dashboard）
 
-後台 React 應用在 Navbar 選店，將 `active-store-id` 寫入 `localStorage`，並由 axios 對下列 API 帶 **`X-Store-Id: <storeId>`**（亦可改用 query `?store_id=`，header 優先）：
+登入後，後端以 **`get_current_store`** 將 Supabase JWT 解析為店主綁定的唯一 `store`（1:1）。前端 Navbar 顯示店名（`GET /stores/me`），**不需**手動選店或帶 `X-Store-Id`。
 
 | 端點 | 說明 |
 |------|------|
-| `GET /stores` | 選店列表（`id`, `name`, `slug`），**不需** `X-Store-Id` |
-| `GET /orders` | 僅該店訂單（經 `order` → `chat_room.store_id`） |
-| `GET /chat_rooms` | 僅該店聊天室 |
-| `GET /stats` | 僅該店統計 |
-| `GET/PUT /stores/{store_id}/order-field-config` | 路徑 `store_id` 必須與 header/query 一致，否則 403 |
+| `GET /stores/me` | 登入店主綁定的店家（需 Bearer JWT） |
+| `GET /stores` | 全部 active 店列表（管理／開發用，前端不再使用） |
+| `GET /orders` | 僅綁定店訂單 |
+| `GET /chat_rooms` | 僅綁定店聊天室 |
+| `GET /stats` | 僅綁定店統計 |
+| `GET/PUT /store/order-field-config/default` | 綁定店的欄位顯示設定（前端使用） |
 
-缺少店家 context 時回 **400**；店家不存在回 **404**。
+帳號未綁定店時回 **403**；JWT 無效或過期回 **401**。
 
-開發用舊端點 `GET/PUT /store/order-field-config/default`（取 DB 第一筆 store）仍保留，**正式前端已改打** `/stores/{id}/order-field-config`。
+舊多店設計的 `X-Store-Id` header 與 `GET/PUT /stores/{store_id}/order-field-config` 仍保留於後端，但前端已改為 OAuth 單店模式。
 
 ### DOCX 工單
 
 `GET /orders/{order_id}.docx` 依訂單所屬 `chat_room.store_id` 讀欄位設定；預設模板為 `backend/docs/工單模板.docx`（可用環境變數 `DOCX_TEMPLATE_FILE` 覆寫）。占位符使用 catalog key（例如 `{{ customer_name }}`、`{{ item }}`），隱藏欄位填空字串。若自行編輯 Word 模板，請用 docxtpl 語法 `{{ 變數名 }}`，變數名須與 catalog key 一致。
 
-### 安全說明（重要）
+### 安全說明
 
-目前後台**沒有登入／授權**；`X-Store-Id` 屬「信任前端帶入」模式，任何人只要能呼叫 API 即可指定店家。正式上線前應將 `store_id` 與 `owner_auth_user_id`（或 Supabase Auth JWT）綁定。LINE Bot 新顧客仍使用 `get_first_store_id()` 掛到最小 `id` 的 store，與後台選店無關。
+後台 API 需 Supabase Auth JWT；`get_current_store` 將 `owner_auth_user_id` 與登入帳號綁定，僅能存取自己的店。首次登入時以 Gmail 認領 `owner_email` 相符且尚未綁定的 store。LINE Bot 新顧客仍使用 `get_first_store_id()` 掛到最小 `id` 的 store，與後台無關。
 
 ### 相關測試
 
@@ -393,11 +394,11 @@ pytest tests/test_contract_smoke.py
 
 - Vite、TanStack Query、React Router（`/`、`/orders`、`/messages`、`/stats`、`/settings/order-fields`）
 - `frontend/.env`：`VITE_API_BASE_URL`（預設 `http://localhost:8000`）
-- `StoreContext` + Navbar 選店 → axios `X-Store-Id`；欄位設定 per-store：`order-display-config:{storeId}`
+- `StoreContext` + Navbar 顯示綁定店名（`GET /stores/me`）；欄位設定 per-store：`order-display-config:{storeId}`
 
 ### 重構後手動 smoke
 
-- Navbar 選店後，Network 中 `/orders`、`/chat_rooms`、`/stats` 帶正確 `X-Store-Id`；切店後列表與統計數字改變。
+- 登入後 Navbar 顯示正確店名；Network 中 `/orders`、`/chat_rooms`、`/stats`、`/store/order-field-config/default` 皆 200。
 - 首頁訂單表與統計可載入；刪除訂單後列表刷新。
 - `Messages`：切換聊天室、送訊、右側草稿面板、「建立新訂單」。
 - DOCX 下載、CSV 瀏覽器下載。

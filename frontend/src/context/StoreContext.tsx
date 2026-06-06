@@ -7,7 +7,8 @@ import {
   useState,
   type ReactNode,
 } from 'react'
-import { fetchStores, type StoreListItem } from '@/api/stores'
+import { fetchMyStore, type StoreListItem } from '@/api/stores'
+import { useAuth } from '@/contexts/AuthContext'
 import { getActiveStoreId, setActiveStoreId } from '@/lib/activeStoreStorage'
 
 export interface StoreContextValue {
@@ -22,24 +23,12 @@ export interface StoreContextValue {
 
 const StoreContext = createContext<StoreContextValue | null>(null)
 
-function resolveInitialStoreId(
-  stores: StoreListItem[],
-  storedId: number | null,
-): number | null {
-  if (stores.length === 0) {
-    return null
-  }
-  if (storedId != null && stores.some(s => s.id === storedId)) {
-    return storedId
-  }
-  return stores[0].id
-}
-
 interface StoreProviderProps {
   children: ReactNode
 }
 
 export function StoreProvider({ children }: StoreProviderProps) {
+  const { session, loading: authLoading } = useAuth()
   const [stores, setStores] = useState<StoreListItem[]>([])
   const [currentStoreId, setCurrentStoreIdState] = useState<number | null>(() =>
     getActiveStoreId(),
@@ -48,20 +37,30 @@ export function StoreProvider({ children }: StoreProviderProps) {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
+    if (authLoading) return
+
+    if (!session?.access_token) {
+      setStores([])
+      setCurrentStoreIdState(null)
+      setActiveStoreId(null)
+      setError(null)
+      setLoading(false)
+      return
+    }
+
     let cancelled = false
 
     async function load() {
       setLoading(true)
       setError(null)
       try {
-        const list = await fetchStores()
+        const myStore = await fetchMyStore()
         if (cancelled) {
           return
         }
-        setStores(list)
-        const resolved = resolveInitialStoreId(list, getActiveStoreId())
-        setCurrentStoreIdState(resolved)
-        setActiveStoreId(resolved)
+        setStores([myStore])
+        setCurrentStoreIdState(myStore.id)
+        setActiveStoreId(myStore.id)
       } catch (err) {
         if (cancelled) {
           return
@@ -82,7 +81,7 @@ export function StoreProvider({ children }: StoreProviderProps) {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [authLoading, session?.access_token])
 
   const setCurrentStoreId = useCallback((storeId: number) => {
     setCurrentStoreIdState(storeId)

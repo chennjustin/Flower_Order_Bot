@@ -18,9 +18,11 @@ createRoot(rootElement).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <OrderDisplayConfigProvider>
-          <RouterProvider router={router} />
-        </OrderDisplayConfigProvider>
+        <StoreProvider>
+          <OrderDisplayConfigProvider>
+            <RouterProvider router={router} />
+          </OrderDisplayConfigProvider>
+        </StoreProvider>
       </AuthProvider>
     </QueryClientProvider>
   </StrictMode>,
