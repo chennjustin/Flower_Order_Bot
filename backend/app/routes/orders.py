@@ -41,7 +41,7 @@ async def get_orders(
     store: Store = Depends(get_current_store),
     db: AsyncSession = Depends(get_db),
     page: int = Query(1, ge=1),
-    page_size: int = Query(20, ge=1, le=200),
+    page_size: int = Query(20, ge=1, le=500),
     status: Optional[str] = Query(None, pattern="^(in_progress|completed)$"),
     pickup_date: Optional[date] = None,
     pickup_from: Optional[datetime] = None,
