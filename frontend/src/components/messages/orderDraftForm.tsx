@@ -205,6 +205,11 @@ function combineDateTimeIso(date: string, time: string): string | null {
   return d.toISOString()
 }
 
+/** True when pickup/delivery date is missing (time is optional; defaults to 00:00). */
+export function isSendDatetimeMissing(form: FormState): boolean {
+  return !form.send_datetime_date.trim()
+}
+
 export function formStateFromDraft(draft: OrderDraft | null | undefined): FormState {
   if (!draft) return EMPTY_FORM
   const { date, time } = splitDateTime(draft.send_datetime)
