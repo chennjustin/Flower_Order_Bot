@@ -10,7 +10,7 @@ import type {
   OrderFieldKey,
 } from '@/types/orderDisplay'
 
-/** localStorage key; suffix is store id (Phase 1: single-tenant default). */
+/** @deprecated Use buildOrderDisplayStorageKey(storeId) from orderDisplayFromApi. */
 export const STORAGE_KEY = 'order-display-config:default'
 
 const VALID_KEYS = new Set<OrderFieldKey>(getAllFieldKeys())

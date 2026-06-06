@@ -20,7 +20,7 @@ from app.repositories.order_repository import (
     get_latest_confirmed_order_by_room,
     get_latest_order_draft_by_room,
     get_order_by_id,
-    list_all_orders,
+    list_active_orders,
     list_orders_by_customer_id,
     now_taipei_naive,
     save_order,
@@ -29,6 +29,11 @@ from app.repositories.order_repository import (
 from app.schemas.chat import ChatMessagePayload
 from app.schemas.order import OrderDraftOut, OrderDraftUpdate, OrderOut, OrderPatchUpdate
 from app.services.message_service import get_chat_room_by_room_id
+from app.services.order_field_config_service import get_effective_order_field_config
+from app.services.order_field_values import (
+    collect_missing_catalog_keys,
+    order_draft_catalog_values,
+)
 from app.services.payment_service import get_pay_way_by_order_id, get_payment_method_by_id
 from app.services.user_service import (
     get_line_uid_by_chatroom_id,
@@ -40,6 +45,13 @@ from app.utils.line_send_message import LINE_push_message
 
 async def get_order(db: AsyncSession, order_id: int) -> Order:
     return await get_order_by_id(db, order_id)
+
+
+async def get_order_out_by_id(db: AsyncSession, order_id: int) -> Optional[OrderOut]:
+    order = await get_order_by_id(db, order_id)
+    if not order:
+        return None
+    return await _build_order_out(db, order)
 
 
 async def _build_order_out(db: AsyncSession, order: Order) -> Optional[OrderOut]:
@@ -67,9 +79,9 @@ async def _build_order_out(db: AsyncSession, order: Order) -> Optional[OrderOut]
     )
 
 
-async def get_all_orders(db: AsyncSession) -> Optional[List[OrderOut]]:
+async def get_all_orders(db: AsyncSession, store_id: int) -> Optional[List[OrderOut]]:
     results: list[OrderOut] = []
-    for order in await list_all_orders(db):
+    for order in await list_active_orders(db, store_id):
         out = await _build_order_out(db, order)
         if out:
             results.append(out)
@@ -100,25 +112,17 @@ async def validate_order_draft_required_fields(
     if not order_draft:
         return False, ["order_draft"]
 
-    missing_fields: list[str] = []
-    for field in ("customer_id", "item_type", "total_amount", "delivery_datetime"):
-        value = getattr(order_draft, field, None)
-        if field == "total_amount":
-            if value is None or value <= 0:
-                missing_fields.append(field)
-            continue
-        if value is None:
-            missing_fields.append(field)
+    room = await get_chat_room_by_room_id(db, order_draft.room_id)
+    if not room:
+        return False, ["order_draft"]
 
+    field_config = await get_effective_order_field_config(db, room.store_id)
     customer = await get_user_by_id(db, order_draft.customer_id)
-    if not customer:
-        missing_fields.append("customer")
-    else:
-        if not customer.name:
-            missing_fields.append("customer_name")
-        if not customer.phone:
-            missing_fields.append("customer_phone")
 
+    effective_values = order_draft_catalog_values(order_draft, customer)
+    missing_fields = collect_missing_catalog_keys(
+        effective_values, field_config.organize_required_fields
+    )
     return len(missing_fields) == 0, missing_fields
 
 
