@@ -9,6 +9,7 @@ import { ChatMessageStatus } from '@/types/enums'
 interface ChatRoomProps {
   room: ChatRoomType
   detailPanelOpen?: boolean
+  onBack?: () => void
   onOpenDetail: () => void
   onOrganizeOrder: () => void
   isOrganizing?: boolean
@@ -20,6 +21,7 @@ interface ChatRoomProps {
 export default function ChatRoom({
   room,
   detailPanelOpen,
+  onBack,
   onOpenDetail,
   onOrganizeOrder,
   isOrganizing,
@@ -37,6 +39,7 @@ export default function ChatRoom({
         avatar={room.user_avatar_url ?? null}
         status={room.status}
         detailPanelOpen={detailPanelOpen}
+        onBack={onBack}
         onOpenDetail={onOpenDetail}
         onOrganizeOrder={onOrganizeOrder}
         isOrganizing={isOrganizing}
