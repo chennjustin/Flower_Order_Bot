@@ -169,15 +169,10 @@ export default function OrderEditPanel({
         <button
           type="button"
           onClick={onBack}
-          className={cn(
-            'flex flex-shrink-0 items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-bold text-[#528DD2] transition',
-            "font-['Noto_Sans_TC',sans-serif]",
-            'hover:bg-[#D8EAFF]/60 active:scale-95',
-          )}
+          className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full text-gray-600 transition hover:bg-[#F5F6FF] hover:text-[#6168FC] active:scale-95"
           aria-label="返回訂單詳情"
         >
-          <ChevronLeft className="h-4 w-4" aria-hidden />
-          <span>返回</span>
+          <ChevronLeft className="h-6 w-6" strokeWidth={2.5} aria-hidden />
         </button>
         <span className="min-w-0 flex-1 truncate text-lg font-bold text-black font-['Noto_Sans_TC',sans-serif]">
           訂單 #{order.id}

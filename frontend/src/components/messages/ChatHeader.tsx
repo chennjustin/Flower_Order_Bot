@@ -1,4 +1,4 @@
-import { Archive, ChevronDown, Loader2, PanelRightOpen } from 'lucide-react'
+import { Archive, ChevronDown, ClipboardList, Loader2 } from 'lucide-react'
 import { useState } from 'react'
 import { useSwitchChatRoomMode } from '@/hooks/useChatRooms'
 import {
@@ -128,7 +128,7 @@ export default function ChatHeader({
             )}
             aria-label="開啟訂單詳情"
           >
-            <PanelRightOpen className="h-4 w-4" aria-hidden />
+            <ClipboardList className="h-4 w-4" aria-hidden />
             <span>訂單詳情</span>
           </button>
         )}

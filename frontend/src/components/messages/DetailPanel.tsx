@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { ChevronRight } from 'lucide-react'
-import OrderSidePanelToggle from './OrderSidePanelToggle'
+import { ChevronRight, ChevronsRight } from 'lucide-react'
 import { useOrderDraft } from '@/hooks/useOrderDraft'
 import { useRoomOrders } from '@/hooks/useRoomOrders'
 import OrderDraftPanel from './OrderDraftPanel'
@@ -93,12 +92,18 @@ export default function DetailPanel({
 
   return (
     <aside className="relative flex h-full w-[336px] flex-shrink-0 flex-col border-l border-[#B3B3B3] bg-white">
-      <OrderSidePanelToggle mode="close" onClick={onClose} />
-
-      <header className="flex h-20 flex-shrink-0 items-center border-b-[1.5px] border-[#e9e9e9] px-6">
+      <header className="flex h-20 flex-shrink-0 items-center justify-between border-b-[1.5px] border-[#e9e9e9] px-6">
         <span className="text-lg font-bold text-black font-['Noto_Sans_TC',sans-serif]">
           訂單詳情
         </span>
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="收起訂單詳情"
+          className="flex h-8 w-8 items-center justify-center rounded-lg text-black/40 transition hover:bg-[#F5F5F5] hover:text-[#6168FC] active:scale-95"
+        >
+          <ChevronsRight className="h-5 w-5" strokeWidth={2.5} aria-hidden />
+        </button>
       </header>
 
       <div className="flex-1 overflow-y-auto px-6 pt-6 pb-6">
