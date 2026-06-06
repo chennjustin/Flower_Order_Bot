@@ -23,6 +23,16 @@ class Settings:
     # 預留：未來本機驗證 JWT（HS256）時使用，目前未用到
     supabase_jwt_secret: str | None
 
+    # Google Calendar 整合（店主自行授權後同步訂單到自己的 Google 日曆）
+    google_client_id: str | None = None
+    google_client_secret: str | None = None
+    # OAuth 完成後 Google 導回的後端 callback；須與 Google Cloud 設定一致
+    google_oauth_redirect_uri: str | None = None
+    # 加密儲存 refresh token 用的 Fernet 金鑰
+    google_token_encryption_key: str | None = None
+    # callback 完成後導回前端的網址（顯示連結結果）
+    frontend_base_url: str = "http://localhost:5173"
+
 
 def _postgres_connection_params() -> tuple[str, str, str, str, str]:
     load_dotenv()
@@ -144,6 +154,9 @@ def load_settings() -> Settings:
     # deps 會組 f"{supabase_url}/auth/v1/user"，故去掉尾端斜線避免雙斜線
     supabase_url = (os.getenv("SUPABASE_URL") or "").strip().rstrip("/") or None
     redis_url = (os.getenv("REDIS_URL") or "").strip() or None
+    frontend_base = (os.getenv("FRONTEND_BASE_URL") or "").strip().rstrip("/")
+    frontend_base_url = frontend_base if frontend_base else "http://localhost:5173"
+    google_redirect = (os.getenv("GOOGLE_OAUTH_REDIRECT_URI") or "").strip() or None
     return Settings(
         openai_api_key=os.getenv("OPENAI_API_KEY"),
         line_channel_access_token=os.getenv("LINE_CHANNEL_ACCESS_TOKEN"),
@@ -154,5 +167,10 @@ def load_settings() -> Settings:
         supabase_url=supabase_url,
         supabase_anon_key=os.getenv("SUPABASE_ANON_KEY") or None,
         supabase_jwt_secret=os.getenv("SUPABASE_JWT_SECRET") or None,
+        google_client_id=os.getenv("GOOGLE_CLIENT_ID") or None,
+        google_client_secret=os.getenv("GOOGLE_CLIENT_SECRET") or None,
+        google_oauth_redirect_uri=google_redirect,
+        google_token_encryption_key=os.getenv("GOOGLE_TOKEN_ENCRYPTION_KEY") or None,
+        frontend_base_url=frontend_base_url,
     )
 

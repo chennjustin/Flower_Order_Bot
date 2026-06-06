@@ -16,6 +16,7 @@ import OnboardingNamePage from './pages/onboarding/OnboardingNamePage'
 import OnboardingLineOfficialPage from './pages/onboarding/OnboardingLineOfficialPage'
 import OrderFieldsPage from './pages/settings/OrderFieldsPage'
 import OrderFieldSettingsPage from './pages/OrderFieldSettingsPage'
+import IntegrationsPage from './pages/settings/IntegrationsPage'
 import { useAuth } from '@/hooks/useAuth'
 
 /** Wraps main back-office pages; blocks until onboarding is DONE. */
@@ -121,6 +122,14 @@ export const router = createBrowserRouter([
       {
         path: 'settings/order-fields',
         element: <OrderFieldsRoute />,
+      },
+      {
+        path: 'settings/integrations',
+        element: (
+          <ProtectedPage>
+            <IntegrationsPage />
+          </ProtectedPage>
+        ),
       },
     ],
   },
