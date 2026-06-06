@@ -23,11 +23,13 @@ const DEFAULT_STORE_KEY = 'demo-store'
 
 export interface AuthContextValue {
   session: StaffSession | null
+  avatarUrl: string | null
   isAuthenticated: boolean
   isLoading: boolean
   signInWithGoogle: () => Promise<void>
   signOut: () => Promise<void>
   updateDisplayName: (name: string) => StaffSession
+  completeStoreNameStep: () => StaffSession
   confirmLineOfficial: () => StaffSession
   completeOnboarding: () => StaffSession
   rejectWrongAccount: () => Promise<void>
@@ -43,12 +45,14 @@ function createStaffSessionFromUser(user: User): StaffSession {
     (user.user_metadata?.full_name as string | undefined) ??
     user.email ??
     '管理員'
+  const avatarUrl = user.user_metadata?.avatar_url as string | undefined
 
   const session: StaffSession = {
     staffId: nextMockStaffId(),
     storeKey: DEFAULT_STORE_KEY,
     displayName,
-    onboardingStep: 'NAME',
+    avatarUrl,
+    onboardingStep: 'LINE_OA',
     role: 'OWNER',
   }
   setStaffSession(session)
@@ -76,6 +80,7 @@ interface AuthProviderProps {
 
 export function AuthProvider({ children }: AuthProviderProps) {
   const [session, setSession] = useState<StaffSession | null>(null)
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
 
@@ -86,6 +91,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
       const authed = Boolean(supabaseSession?.access_token)
       setIsAuthenticated(authed)
       setSession(authed ? bridgeStaffSession(supabaseSession) : null)
+      setAvatarUrl(
+        authed ? (supabaseSession?.user.user_metadata?.avatar_url as string | undefined) ?? null : null
+      )
       if (!authed) {
         clearStaffSession()
       }
@@ -133,6 +141,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
     return next
   }, [])
 
+  const completeStoreNameStep = useCallback(() => {
+    const next = authApi.completeStoreNameStep()
+    setSession(next)
+    return next
+  }, [])
+
   const confirmLineOfficial = useCallback(() => {
     const next = authApi.confirmLineOfficial()
     setSession(next)
@@ -165,11 +179,13 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const value = useMemo<AuthContextValue>(
     () => ({
       session,
+      avatarUrl,
       isAuthenticated,
       isLoading,
       signInWithGoogle,
       signOut,
       updateDisplayName,
+      completeStoreNameStep,
       confirmLineOfficial,
       completeOnboarding,
       rejectWrongAccount,
@@ -178,11 +194,13 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }),
     [
       session,
+      avatarUrl,
       isAuthenticated,
       isLoading,
       signInWithGoogle,
       signOut,
       updateDisplayName,
+      completeStoreNameStep,
       confirmLineOfficial,
       completeOnboarding,
       rejectWrongAccount,

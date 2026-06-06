@@ -3,7 +3,7 @@ import { cn } from '@/lib/utils'
 
 interface OnboardingCardProps {
   title?: string
-  description?: string
+  description?: ReactNode
   children: ReactNode
   className?: string
 }

@@ -16,6 +16,7 @@ logger = logging.getLogger(__name__)
 
 ROOM_CHANNEL_PREFIX = "flower:chat:room:"
 ROOMS_CHANNEL = "flower:chat:rooms"
+_CHAT_EVENT_TYPES = frozenset({"message", "stage"})
 
 
 def room_channel(room_id: int) -> str:
@@ -71,17 +72,33 @@ async def publish_event(channel: str, payload: dict[str, Any]) -> None:
 
 
 async def publish_chat_message(
-    db: AsyncSession, room_id: int, message: ChatMessage
+    db: AsyncSession, room_id: int, message: ChatMessage, *, store_id: int
 ) -> None:
     out = await build_chat_message_out(db, room_id, message)
-    await publish_chat_message_out(room_id, out)
+    await publish_chat_message_out(room_id, out, store_id=store_id)
 
 
-async def publish_chat_message_out(room_id: int, out: ChatMessageOut) -> None:
+async def publish_chat_message_out(
+    room_id: int, out: ChatMessageOut, *, store_id: int
+) -> None:
     payload = {
         "type": "message",
         "room_id": room_id,
+        "store_id": store_id,
         "message": out.model_dump(mode="json"),
+    }
+    await publish_event(room_channel(room_id), payload)
+    await publish_event(ROOMS_CHANNEL, payload)
+
+
+async def publish_chat_room_stage(
+    room_id: int, stage: str, *, store_id: int
+) -> None:
+    payload = {
+        "type": "stage",
+        "room_id": room_id,
+        "store_id": store_id,
+        "stage": stage,
     }
     await publish_event(room_channel(room_id), payload)
     await publish_event(ROOMS_CHANNEL, payload)
@@ -104,11 +121,16 @@ async def subscribe_room_events(room_id: int) -> AsyncIterator[str]:
             if raw is None:
                 yield ""
                 continue
-            if raw.get("type") != "message":
-                continue
             data = raw.get("data")
-            if data:
-                yield data
+            if not isinstance(data, str) or not data:
+                continue
+            try:
+                event_type = json.loads(data).get("type")
+            except json.JSONDecodeError:
+                continue
+            if event_type not in _CHAT_EVENT_TYPES:
+                continue
+            yield data
     finally:
         await pubsub.unsubscribe(channel)
         await pubsub.aclose()
@@ -130,11 +152,16 @@ async def subscribe_rooms_events() -> AsyncIterator[str]:
             if raw is None:
                 yield ""
                 continue
-            if raw.get("type") != "message":
-                continue
             data = raw.get("data")
-            if data:
-                yield data
+            if not isinstance(data, str) or not data:
+                continue
+            try:
+                event_type = json.loads(data).get("type")
+            except json.JSONDecodeError:
+                continue
+            if event_type not in _CHAT_EVENT_TYPES:
+                continue
+            yield data
     finally:
         await pubsub.unsubscribe(ROOMS_CHANNEL)
         await pubsub.aclose()

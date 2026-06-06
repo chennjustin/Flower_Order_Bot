@@ -8,7 +8,7 @@ interface StepIndicatorProps {
   className?: string
 }
 
-/** Shows progress within the two-step onboarding wizard (name + LINE OA). */
+/** Shows progress within the two-step onboarding wizard (LINE OA + store name). */
 export default function StepIndicator({
   current,
   total = 2,
@@ -17,7 +17,7 @@ export default function StepIndicator({
   return (
     <p
       className={cn(
-        'm-0 text-center text-sm font-medium tracking-wide text-white/90',
+        'm-0 text-center text-sm font-medium tracking-wide text-black',
         className,
       )}
       aria-live="polite"

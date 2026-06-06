@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import csv
 import io
 from datetime import date, datetime
@@ -12,7 +13,6 @@ from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.time import to_taipei_aware, to_taipei_naive
-from app.domain.order_fields import ORDER_CSV_EXPORT_KEYS, get_field_label
 from app.enums.chat import ChatMessageDirection, ChatMessageStatus, ChatRoomStage
 from app.enums.order import OrderStatus
 from app.enums.payment import PaymentStatus
@@ -55,7 +55,42 @@ from app.services.user_service import (
 )
 from app.core.line_client import line_bot_api_for_store
 from app.repositories.store_repository import get_store_by_id
+from app.services.google_calendar_service import (
+    delete_order_event,
+    is_connected,
+    sync_order_event,
+)
 from app.utils.line_send_message import LINE_push_message
+
+logger = logging.getLogger(__name__)
+
+
+async def _sync_order_to_calendar(db: AsyncSession, order: Order, *, delete: bool = False) -> None:
+    """Best-effort: mirror an order onto the store owner's Google Calendar.
+
+    Resolves the store via ``order.store_id`` (direct orders) or the order's chat room.
+    Never raises — a calendar problem must not break the order operation that triggered it.
+    """
+    try:
+        store_id = order.store_id
+        if store_id is None and order.room_id is not None:
+            room = await get_chat_room_by_room_id(db, order.room_id)
+            if not room:
+                return
+            store_id = room.store_id
+        if store_id is None:
+            return
+
+        store = await get_store_by_id(db, store_id)
+        if not store or not is_connected(store):
+            return
+
+        if delete:
+            await delete_order_event(db, store, order)
+        else:
+            await sync_order_event(db, store, order)
+    except Exception:
+        logger.exception("Calendar sync skipped for order %s", getattr(order, "id", "?"))
 
 
 async def get_order(db: AsyncSession, order_id: int) -> Order:
@@ -162,7 +197,19 @@ async def export_orders_csv(db: AsyncSession, filters: OrderListFilters) -> str:
     items = await _build_orders_out_batch(db, orders)
     buffer = io.StringIO()
     writer = csv.writer(buffer)
-    writer.writerow([get_field_label(key) for key in ORDER_CSV_EXPORT_KEYS])
+    writer.writerow(
+        [
+            "訂單編號",
+            "顧客姓名",
+            "顧客電話",
+            "狀態",
+            "品項",
+            "數量",
+            "總金額",
+            "取貨時間",
+            "備註",
+        ]
+    )
     for row in items:
         writer.writerow(
             [
@@ -298,6 +345,7 @@ async def create_order_by_room(db: AsyncSession, room_id: int) -> list[str]:
         )
     )
     await db.commit()
+    await _sync_order_to_calendar(db, order)
     return []
 
 
@@ -350,6 +398,7 @@ async def update_order_by_room_id(db: AsyncSession, room_id: int) -> bool:
     db.add(order)
     await db.commit()
     await db.refresh(order)
+    await _sync_order_to_calendar(db, order)
     return True
 
 
@@ -363,6 +412,7 @@ async def delete_order_by_id(db: AsyncSession, order_id: int) -> bool:
     order.status = OrderStatus.CANCELLED
     await db.commit()
     await db.refresh(order)
+    await _sync_order_to_calendar(db, order, delete=True)
     return True
 
 
@@ -469,6 +519,11 @@ async def update_order_fields_by_id(
     await db.commit()
     await db.refresh(order)
 
+    if order.status == OrderStatus.CANCELLED:
+        await _sync_order_to_calendar(db, order, delete=True)
+    else:
+        await _sync_order_to_calendar(db, order)
+
     out = await _build_order_out(db, order)
     if not out:
         raise HTTPException(
@@ -493,6 +548,11 @@ async def update_order_status_by_id(
     db.add(order)
     await db.commit()
     await db.refresh(order)
+
+    if order.status == OrderStatus.CANCELLED:
+        await _sync_order_to_calendar(db, order, delete=True)
+    else:
+        await _sync_order_to_calendar(db, order)
 
     out = await _build_order_out(db, order)
     if not out:

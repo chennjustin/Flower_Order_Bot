@@ -24,9 +24,9 @@ export function statsQueryKey(storeId: number) {
 }
 
 export function roomMessagesQueryKey(storeId: number, roomId: number) {
-  return ['chatRooms', storeId, roomId, 'messages'] as const
+  return ['roomMessages', storeId, roomId] as const
 }
 
 export function orderDraftQueryKey(storeId: number, roomId: number) {
-  return ['chatRooms', storeId, roomId, 'orderDraft'] as const
+  return ['orderDraft', storeId, roomId] as const
 }

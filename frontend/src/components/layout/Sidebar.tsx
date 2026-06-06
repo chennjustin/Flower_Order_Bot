@@ -1,13 +1,17 @@
 import {
   BarChart2,
+  Calendar,
   Home,
+  LogOut,
   MessageCircle,
+  Settings,
   ShoppingBag,
   type LucideIcon,
 } from 'lucide-react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import BrandLogo from './BrandLogo'
 import SidebarMenuIcon from './SidebarMenuIcon'
+import { useAuth } from '@/hooks/useAuth'
 import { cn } from '@/lib/utils'
 
 interface MenuItem {
@@ -23,7 +27,8 @@ const PRIMARY_MENU: MenuItem[] = [
 ]
 
 const SECONDARY_MENU: MenuItem[] = [
-  { label: '訂單欄位設定', icon: MessageCircle, route: '/settings/order-fields' },
+  { label: '訂單欄位設定', icon: Settings, route: '/settings/order-fields' },
+  { label: 'Google 日曆', icon: Calendar, route: '/settings/integrations' },
   { label: '統計資料', icon: BarChart2, route: '/stats' },
 ]
 
@@ -69,6 +74,7 @@ function MenuRow({
 export default function Sidebar({ show, onClose }: SidebarProps) {
   const navigate = useNavigate()
   const location = useLocation()
+  const { session, avatarUrl, signOut } = useAuth()
 
   function isActive(route: string) {
     return route === '/'
@@ -138,6 +144,36 @@ export default function Sidebar({ show, onClose }: SidebarProps) {
             ))}
           </ul>
         </nav>
+
+        {session && (
+          <div className="shrink-0 border-t border-black/[0.38] px-4 py-3">
+            <div className="flex items-center gap-3">
+              {avatarUrl ? (
+                <img
+                  src={avatarUrl}
+                  alt={session.displayName}
+                  className="h-9 w-9 shrink-0 rounded-full object-cover"
+                />
+              ) : (
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#C5C7FF] text-sm font-bold text-[#6168FC] font-['Noto_Sans_TC',sans-serif]">
+                  {session.displayName.slice(0, 1)}
+                </div>
+              )}
+              <span className="min-w-0 flex-1 truncate text-sm font-semibold text-gray-700 font-['Noto_Sans_TC',sans-serif]">
+                {session.displayName}
+              </span>
+              <button
+                type="button"
+                onClick={() => { signOut(); onClose() }}
+                tabIndex={show ? 0 : -1}
+                aria-label="登出"
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-gray-500 transition hover:bg-red-50 hover:text-red-500"
+              >
+                <LogOut className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        )}
       </aside>
     </>
   )

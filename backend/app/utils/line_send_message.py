@@ -76,6 +76,7 @@ def send_confirm(
     line_bot_api: LineBotApi,
     reply_token: str,
     text: str,
+    preface_text: str | None = None,
     yes_txt="是",
     no_txt="否",
     yes_reply="yes",
@@ -88,7 +89,8 @@ def send_confirm(
             MessageAction(label=no_txt, text=no_reply),
         ],
     )
-    line_bot_api.reply_message(
-        reply_token,
-        TemplateSendMessage(alt_text=text, template=tpl),
-    )
+    messages: list[TextSendMessage | TemplateSendMessage] = []
+    if preface_text:
+        messages.append(TextSendMessage(text=preface_text))
+    messages.append(TemplateSendMessage(alt_text=text, template=tpl))
+    line_bot_api.reply_message(reply_token, messages)

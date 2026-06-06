@@ -4,6 +4,7 @@ from fastapi import APIRouter
 
 from app.routes.export_docx import api_router as export_docx_router
 from app.routes.generate_fake_data import api_router as generate_fake_data_router
+from app.routes.google_calendar import api_router as google_calendar_router
 from app.routes.health import router as health_router
 from app.routes.linebot import api_router as linebot_router
 from app.routes.messages import api_router as messages_router
@@ -27,4 +28,5 @@ api_router.include_router(stats_router, tags=["Statistics"])
 api_router.include_router(payment_router, tags=["Payment"])
 api_router.include_router(linebot_router, tags=["LINE Bot Reply Messages"])
 api_router.include_router(generate_fake_data_router, tags=["Generate Fake Data"])
+api_router.include_router(google_calendar_router)
 

@@ -16,6 +16,7 @@ import OnboardingNamePage from './pages/onboarding/OnboardingNamePage'
 import OnboardingLineOfficialPage from './pages/onboarding/OnboardingLineOfficialPage'
 import OrderFieldsPage from './pages/settings/OrderFieldsPage'
 import OrderFieldSettingsPage from './pages/OrderFieldSettingsPage'
+import IntegrationsPage from './pages/settings/IntegrationsPage'
 import { useAuth } from '@/hooks/useAuth'
 
 /** Wraps main back-office pages; blocks until onboarding is DONE. */
@@ -26,7 +27,7 @@ function ProtectedPage({ children }: { children: ReactNode }) {
 /**
  * Onboarding finale uses OrderFieldsPage (calls completeOnboarding on mount).
  * After DONE, the same path serves the full OrderFieldSettingsPage from the sidebar.
- * Intentionally not wrapped in ProtectedPage so LINE_OA can enter this route.
+ * Intentionally not wrapped in ProtectedPage so NAME can enter this route during onboarding finale.
  */
 function OrderFieldsRoute() {
   const { session, isLoading } = useAuth()
@@ -121,6 +122,14 @@ export const router = createBrowserRouter([
       {
         path: 'settings/order-fields',
         element: <OrderFieldsRoute />,
+      },
+      {
+        path: 'settings/integrations',
+        element: (
+          <ProtectedPage>
+            <IntegrationsPage />
+          </ProtectedPage>
+        ),
       },
     ],
   },
