@@ -31,4 +31,10 @@ describe('getDefaultConfig', () => {
     expect(sorted.map(field => field.key)).toEqual([...EXPECTED_DEFAULT_ORDER])
     expect(getAllFieldKeys()).toEqual([...EXPECTED_DEFAULT_ORDER])
   })
+
+  it('locks order id so it cannot be hidden', () => {
+    const config = getDefaultConfig()
+    const idField = config.fields.find(field => field.key === 'id')
+    expect(idField?.visible).toBe(true)
+  })
 })
