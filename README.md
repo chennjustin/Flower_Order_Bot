@@ -215,6 +215,40 @@ PYTHONPATH=. ./venv/bin/python scripts/provision_stores.py \
 
 選用：更新 token 後再跑一次 `make provision-stores`；若要強制店主重新綁定，加上 `--reset-owner-binding`（會清掉 `owner_auth_user_id`）。
 
+#### 6. 更換店主 Gmail
+
+每家店僅允許 **一個** Google 帳號登入後台（`owner_email` ↔ `owner_auth_user_id` 1:1）。若要改為另一個 Gmail 管理同一個 LINE 官方帳號，依是否已有人登入過而定：
+
+**尚未有人登入**（`owner_auth_user_id` 仍為空）：
+
+1. 編輯 [`backend/config/stores.provision.json`](backend/config/stores.provision.json)，將 `owner_email` 改為新 Gmail
+2. 執行 `make provision-stores`
+3. 新 Gmail 首次登入後台即可自動綁定該店
+
+**已有人登入過**（store 已綁定舊 Google 帳號）：
+
+1. 將 `owner_email` 改為新 Gmail
+2. 執行 provision 並加上 `--reset-owner-binding`，以清除舊帳號綁定：
+
+```bash
+cd backend
+PYTHONPATH=. ./venv/bin/python scripts/provision_stores.py \
+  --file config/stores.provision.json \
+  --reset-owner-binding
+```
+
+3. 新 Gmail 登入後台一次，完成重新綁定
+4. 舊 Gmail 將無法再存取該店
+
+注意事項：
+
+| 項目 | 說明 |
+|------|------|
+| LINE Bot 不受影響 | 顧客對話、訂單資料不變；僅後台登入帳號改變 |
+| 新 Gmail 須唯一 | 每個 `owner_email` 只能對應一家店（`uq_store_owner_email`） |
+| 未加 `--reset-owner-binding` | 只改 `owner_email` **不會**撤銷舊帳號；舊 Google 仍可依 `owner_auth_user_id` 登入 |
+| Supabase | 不需手動建立新 Gmail 的 Auth 帳號；首次 Google 登入時自動處理 |
+
 手動 SQL 仍可用：[`backend/docs/manual_migration_f1a2b3c4d5e6.sql`](backend/docs/manual_migration_f1a2b3c4d5e6.sql)。
 
 ### 測試資料
