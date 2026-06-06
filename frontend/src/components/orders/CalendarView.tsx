@@ -68,7 +68,7 @@ function CalendarDayCell({ day, dayOrders, isToday, onOrderClick }: CalendarDayC
   }
 
   const cellClassName = cn(
-    'flex min-h-[90px] w-full min-w-0 flex-col rounded-xl border border-[rgba(175,175,175,0.3)] p-2 text-left transition-colors',
+    'flex h-full min-h-[90px] w-full min-w-0 flex-col rounded-xl border border-[rgba(175,175,175,0.3)] p-2 text-left transition-colors',
     isToday ? 'bg-[#D8EAFF]' : 'bg-white',
     hasOverflow &&
       'cursor-pointer hover:ring-1 hover:ring-[#6168FC]/40 data-[state=open]:w-full',
@@ -200,13 +200,13 @@ export default function CalendarView({
 
       <div className="grid grid-cols-7 gap-1.5">
         {calendarDays.map((day, i) => {
-          if (!day) return <div key={`empty-${i}`} className="min-h-[90px]" />
+          if (!day) return <div key={`empty-${i}`} className="min-h-[90px] h-full" />
           const key = toLocalDateKey(day)
           const dayOrders = ordersByDate.get(key) ?? []
           const isToday = key === todayKey
 
           return (
-            <div key={key} className="min-w-0">
+            <div key={key} className="min-w-0 h-full">
               <CalendarDayCell
                 day={day}
                 dayOrders={dayOrders}

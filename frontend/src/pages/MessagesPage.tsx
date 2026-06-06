@@ -5,11 +5,13 @@ import DetailPanel, {
   type DetailPanelSubView,
 } from '@/components/messages/DetailPanel'
 import OrderSidePanelToggle from '@/components/messages/OrderSidePanelToggle'
+import { useStore } from '@/context/StoreContext'
 import { useChatRooms } from '@/hooks/useChatRooms'
 import { useOrganizeData } from '@/hooks/useOrderDraft'
 import type { ChatRoom as ChatRoomType } from '@/types/domain'
 
 export default function MessagesPage() {
+  const { currentStoreId } = useStore()
   const roomsQuery = useChatRooms()
   const rooms = useMemo(() => roomsQuery.data ?? [], [roomsQuery.data])
 
@@ -23,6 +25,12 @@ export default function MessagesPage() {
   /** Organize draft is hidden while editing a formal order (use in-panel AI instead). */
   const showOrganizeButton =
     !showDetail || detailSubView !== 'order-edit'
+
+  // Clear selection when switching stores so we do not show another store's room.
+  useEffect(() => {
+    setSelectedRoomId(null)
+    setShowDetail(false)
+  }, [currentStoreId])
 
   useEffect(() => {
     if (rooms.length === 0) {

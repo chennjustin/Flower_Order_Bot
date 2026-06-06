@@ -5,6 +5,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.enums.order import OrderStatus
+from app.models.chat import ChatRoom
 from app.models.order import Order, OrderDraft
 from app.core.time import now_taipei_naive
 

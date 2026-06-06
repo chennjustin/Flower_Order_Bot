@@ -45,6 +45,9 @@ async def put_store_order_field_config(
     return await update_order_field_config(db, store_id, payload)
 
 
+# Dev-only fallback: uses first store in DB. Frontend should use /stores/{id}/... + X-Store-Id.
+
+
 @api_router.get("/store/order-field-config/default", response_model=OrderFieldConfigOut)
 async def get_default_store_order_field_config(
     store: Store = Depends(get_current_store),

@@ -6,7 +6,8 @@
 
 - `API_Spec.md`：API 規格與端點摘要
 - `ARCHITECTURE.md`：後端分層架構與開發規範
-- `order_template.docx`：DOCX 匯出模板（`/orders/{order_id}.docx` 使用）
+- `工單模板.docx`：DOCX 匯出模板（`/orders/{order_id}.docx` 預設使用；占位符為 catalog key，如 `{{ customer_name }}`）
+- `order_template.docx`：舊版模板（保留參考；可設環境變數 `DOCX_TEMPLATE_FILE=order_template.docx` 切回）
 
 ## 文件路徑約定
 

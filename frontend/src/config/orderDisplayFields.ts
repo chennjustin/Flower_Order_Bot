@@ -20,19 +20,19 @@ export interface OrderFieldRegistryEntry {
  */
 export const ORDER_FIELD_REGISTRY: readonly OrderFieldRegistryEntry[] = [
   { key: 'id', label: '訂單編號', hidePolicy: 'optional', editable: false },
+  { key: 'order_status', label: '狀態', hidePolicy: 'never', editable: false },
   { key: 'customer_name', label: '顧客姓名', hidePolicy: 'never', editable: true },
   { key: 'customer_phone', label: '顧客電話', hidePolicy: 'never', editable: true },
   { key: 'item', label: '品項', hidePolicy: 'never', editable: true },
   { key: 'quantity', label: '數量', hidePolicy: 'optional', editable: true },
-  { key: 'note', label: '備註', hidePolicy: 'optional', editable: true },
-  { key: 'shipment_method', label: '取貨方式', hidePolicy: 'optional', editable: true },
-  { key: 'send_datetime', label: '取貨時間', hidePolicy: 'never', editable: true },
   { key: 'total_amount', label: '總金額', hidePolicy: 'never', editable: true },
+  { key: 'note', label: '備註', hidePolicy: 'optional', editable: true },
+  { key: 'send_datetime', label: '取貨時間', hidePolicy: 'never', editable: true },
+  { key: 'shipment_method', label: '取貨方式', hidePolicy: 'optional', editable: true },
   { key: 'pay_way', label: '付款方式', hidePolicy: 'optional', editable: true },
   { key: 'pay_status', label: '付款狀態', hidePolicy: 'optional', editable: true },
   { key: 'delivery_address', label: '送貨地址', hidePolicy: 'optional', editable: true },
   { key: 'order_date', label: '訂單日期', hidePolicy: 'optional', editable: false },
-  { key: 'order_status', label: '狀態', hidePolicy: 'never', editable: false },
 ] as const
 
 /** Fields that cannot be hidden (eye toggle disabled). */
@@ -58,19 +58,6 @@ export const REMOVED_FIELD_KEYS = [
   'card_message',
   'receipt_address',
 ] as const
-
-/**
- * Phase 2 surface hints — not enforced in Phase 1.
- */
-export const SURFACE_NOTES: Partial<
-  Record<
-    OrderFieldKey,
-    { list?: boolean; draft?: boolean; csv?: boolean; docx?: boolean; line?: boolean }
-  >
-> = {
-  delivery_address: { list: false, csv: false },
-  pay_status: { draft: false, csv: false, docx: false },
-}
 
 const REGISTRY_BY_KEY: Map<OrderFieldKey, OrderFieldRegistryEntry> = new Map(
   ORDER_FIELD_REGISTRY.map(entry => [entry.key, entry]),

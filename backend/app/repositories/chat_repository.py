@@ -27,6 +27,7 @@ async def list_chat_rooms(db: AsyncSession, store_id: int | None = None) -> list
     stmt = (
         select(ChatRoom)
         .options(joinedload(ChatRoom.customer))
+        .where(ChatRoom.store_id == store_id)
         .order_by(ChatRoom.updated_at.desc())
     )
     if store_id is not None:

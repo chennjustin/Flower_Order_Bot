@@ -8,6 +8,9 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.core.database import Base
 from app.core.time import now_taipei_naive
 
+# display_config JSON shape (per store):
+# {"visible_fields": list[str], "field_order": list[str]}
+
 
 class StoreOrderFieldConfig(Base):
     __tablename__ = "store_order_field_config"
@@ -19,6 +22,7 @@ class StoreOrderFieldConfig(Base):
         unique=True,
     )
     visible_fields: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
+    display_config: Mapped[dict] = mapped_column(JSON, nullable=False)
     organize_required_fields: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=now_taipei_naive)
     updated_at: Mapped[datetime] = mapped_column(
