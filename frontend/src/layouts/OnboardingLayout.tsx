@@ -15,13 +15,13 @@ export default function OnboardingLayout() {
       style={BACKGROUND_STYLE}
     >
       <header className="mb-8 text-center">
-        <p className="m-0 text-sm font-medium tracking-[2px] text-black">
+        <p className="m-0 text-base font-medium tracking-[2px] text-black">
           奇美花店
         </p>
-        <h1 className="m-0 mt-1 text-2xl font-bold tracking-wide text-black">
+        <h1 className="m-0 mt-1 text-3xl font-bold tracking-wide text-black">
           Chi-Mei Floral
         </h1>
-        <p className="m-0 mt-2 text-sm text-black">帳號設定</p>
+        <p className="m-0 mt-2 text-base text-black">帳號設定</p>
       </header>
 
       <main className="flex w-full max-w-md flex-col items-center">
