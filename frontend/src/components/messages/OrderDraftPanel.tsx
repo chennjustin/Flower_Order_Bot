@@ -289,16 +289,6 @@ export default function OrderDraftPanel({
                 尚無草稿內容，請先點聊天室上方「整理資料」。
               </p>
             )}
-            {aiChangedKeys.size > 0 && (
-              <p
-                className={cn(
-                  'rounded-lg bg-[#FFFDE7] px-3 py-2 text-center text-xs text-black/70',
-                  "font-['Noto_Sans_TC',sans-serif]",
-                )}
-              >
-                螢光標示為 AI 本次整理的變更欄位
-              </p>
-            )}
             {hasMissingFields && (
               <div
                 className={cn(
