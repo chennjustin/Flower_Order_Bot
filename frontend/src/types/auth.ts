@@ -9,6 +9,7 @@ export interface StaffSession {
   staffId: number
   storeKey: string
   displayName: string
+  avatarUrl?: string
   onboardingStep: OnboardingStep
   role?: StaffRole
 }

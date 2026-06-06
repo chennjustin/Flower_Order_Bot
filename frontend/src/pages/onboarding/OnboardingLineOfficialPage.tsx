@@ -78,7 +78,7 @@ export default function OnboardingLineOfficialPage() {
 
   function handleConfirmCorrect() {
     confirmLineOfficial()
-    navigate('/settings/order-fields', { replace: true })
+    navigate('/onboarding/name', { replace: true })
   }
 
   function handleRejectWrongAccount() {
@@ -88,7 +88,7 @@ export default function OnboardingLineOfficialPage() {
 
   return (
     <>
-      <StepIndicator current={2} className="mb-4" />
+      <StepIndicator current={1} className="mb-4" />
       <OnboardingCard
         title="確認綁定的 LINE 官方帳號"
         description={cardDescription}
@@ -143,7 +143,7 @@ export default function OnboardingLineOfficialPage() {
                 'transition active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50',
               )}
             >
-              正確，進入後台
+              正確，下一步
             </button>
           ) : null}
 

@@ -27,7 +27,7 @@ function ProtectedPage({ children }: { children: ReactNode }) {
 /**
  * Onboarding finale uses OrderFieldsPage (calls completeOnboarding on mount).
  * After DONE, the same path serves the full OrderFieldSettingsPage from the sidebar.
- * Intentionally not wrapped in ProtectedPage so LINE_OA can enter this route.
+ * Intentionally not wrapped in ProtectedPage so NAME can enter this route during onboarding finale.
  */
 function OrderFieldsRoute() {
   const { session, isLoading } = useAuth()

@@ -22,13 +22,12 @@ class StoreOnboardingContext(BaseModel):
     id: int
     name: str
     slug: str | None = None
-    owner_display_name: str | None = None
     line_official: LineOfficialDisplay
 
 
-class StoreOwnerDisplayNameUpdateRequest(BaseModel):
-    owner_display_name: str = Field(min_length=1, max_length=32)
+class StoreNameUpdateRequest(BaseModel):
+    name: str = Field(min_length=1, max_length=32)
 
 
-class StoreOwnerDisplayNameResponse(BaseModel):
-    owner_display_name: str
+class StoreNameUpdateResponse(BaseModel):
+    name: str

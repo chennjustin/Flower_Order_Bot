@@ -8,7 +8,7 @@ interface StepIndicatorProps {
   className?: string
 }
 
-/** Shows progress within the two-step onboarding wizard (name + LINE OA). */
+/** Shows progress within the two-step onboarding wizard (LINE OA + store name). */
 export default function StepIndicator({
   current,
   total = 2,

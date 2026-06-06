@@ -1,10 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
-import {
-  updateMyOwnerDisplayName,
-  type StoreOnboardingContext,
-} from '@/api/stores'
+import { updateMyStoreName, type StoreOnboardingContext } from '@/api/stores'
 import OnboardingCard from '@/components/onboarding/OnboardingCard'
 import StepIndicator from '@/components/onboarding/StepIndicator'
 import {
@@ -14,68 +11,63 @@ import {
 import { useAuth } from '@/hooks/useAuth'
 import { cn } from '@/lib/utils'
 
-const DEFAULT_NAME = '管理員'
-const MAX_NAME_LENGTH = 32
+const MAX_STORE_NAME_LENGTH = 32
 
 export default function OnboardingNamePage() {
-  const { session, updateDisplayName } = useAuth()
+  const { completeStoreNameStep } = useAuth()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const { data: onboardingContext } = useOnboardingStoreContext()
-  const [name, setName] = useState(DEFAULT_NAME)
+  const [storeName, setStoreName] = useState('')
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    if (onboardingContext?.ownerDisplayName) {
-      setName(onboardingContext.ownerDisplayName)
-      return
+    if (onboardingContext?.storeName) {
+      setStoreName(onboardingContext.storeName)
     }
-    if (session?.displayName) {
-      setName(session.displayName)
-    }
-  }, [onboardingContext?.ownerDisplayName, session?.displayName])
+  }, [onboardingContext?.storeName])
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setError(null)
 
-    const trimmed = name.trim()
+    const trimmed = storeName.trim()
     if (!trimmed) {
-      setError('請輸入顯示名稱')
+      setError('請輸入店家名稱')
       return
     }
-    if (trimmed.length > MAX_NAME_LENGTH) {
-      setError(`顯示名稱最多 ${MAX_NAME_LENGTH} 個字元`)
+    if (trimmed.length > MAX_STORE_NAME_LENGTH) {
+      setError(`店家名稱最多 ${MAX_STORE_NAME_LENGTH} 個字元`)
       return
     }
 
     try {
-      const savedName = await updateMyOwnerDisplayName(trimmed)
+      const savedName = await updateMyStoreName(trimmed)
       queryClient.setQueryData(
         ONBOARDING_STORE_CONTEXT_QUERY_KEY,
         (prev: StoreOnboardingContext | undefined) =>
-          prev ? { ...prev, ownerDisplayName: savedName } : prev,
+          prev ? { ...prev, storeName: savedName } : prev,
       )
-      updateDisplayName(trimmed)
-      navigate('/onboarding/line-official', { replace: true })
+      completeStoreNameStep()
+      navigate('/settings/order-fields', { replace: true })
     } catch (err) {
-      setError(err instanceof Error ? err.message : '無法儲存名稱')
+      setError(err instanceof Error ? err.message : '無法儲存店家名稱')
     }
   }
 
   return (
     <>
-      <StepIndicator current={1} className="mb-4" />
-      <OnboardingCard title="設定您的顯示名稱">
+      <StepIndicator current={2} className="mb-4" />
+      <OnboardingCard title="設定店家名稱">
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <label className="flex flex-col gap-2 text-left text-sm font-medium text-[#3a3a3a]">
-            名稱
+            店家名稱
             <input
               type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              maxLength={MAX_NAME_LENGTH}
-              autoComplete="name"
+              value={storeName}
+              onChange={(e) => setStoreName(e.target.value)}
+              maxLength={MAX_STORE_NAME_LENGTH}
+              autoComplete="organization"
               className={cn(
                 'rounded-lg border border-black/15 px-3 py-2.5 text-base font-normal',
                 'outline-none focus:border-brand-primary focus:ring-2 focus:ring-brand-soft',
@@ -96,7 +88,7 @@ export default function OnboardingNamePage() {
               'transition active:scale-[0.99]',
             )}
           >
-            下一步
+            進入後台
           </button>
         </form>
       </OnboardingCard>
