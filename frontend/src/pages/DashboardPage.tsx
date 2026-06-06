@@ -13,16 +13,6 @@ export default function DashboardPage() {
   const ordersQuery = useOrders()
   const [quickFilter, setQuickFilter] = useState<QuickFilter>(null)
 
-  const monthlyOrders = useMemo(() => {
-    const orders = ordersQuery.data ?? []
-    const now = new Date()
-    return orders.filter(o => {
-      if (!o.order_date) return false
-      const d = new Date(o.order_date)
-      return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth()
-    }).length
-  }, [ordersQuery.data])
-
   const inProgressOrders = useMemo(() => {
     const orders = ordersQuery.data ?? []
     return orders.filter(o =>
@@ -44,13 +34,12 @@ export default function DashboardPage() {
         )}
         <StatisticsCards
           stats={data}
-          monthlyOrders={monthlyOrders}
           inProgressOrders={inProgressOrders}
           quickFilter={quickFilter}
           onQuickFilter={setQuickFilter}
         />
         <div className="mt-8">
-          <OrderTable quickFilter={quickFilter} onQuickFilterClear={() => setQuickFilter(null)} />
+          <OrderTable quickFilter={quickFilter} onQuickFilterClear={() => setQuickFilter(null)} pageSize={10} />
         </div>
       </div>
     </>
