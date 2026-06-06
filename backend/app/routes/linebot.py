@@ -12,10 +12,10 @@ from app.schemas.customer import CustomerCreate
 from app.services.message_service import get_chat_room_by_user_id, create_chat_room
 from app.services.user_service import get_user_by_line_uid, create_user
 from app.usecases.linebot_flow import (
+    enter_welcome_stage_and_send_greeting,
     handle_incoming_text_message,
     handle_incoming_image_message,
     handle_incoming_sticker_message,
-    run_bot_flow,
 )
 
 api_router = APIRouter()
@@ -71,5 +71,5 @@ async def handle_follow(event: FollowEvent, store: Store, db: AsyncSession):
         chat_room = await create_chat_room(db, user.id)
         print(f"新聊天室已創建，使用者 {user_line_id} 的聊天室 ID：{chat_room.id}")
 
-    print("開始自動回覆流程")
-    await run_bot_flow(chat_room, "", event, store, db)
+    print("開始歡迎流程")
+    await enter_welcome_stage_and_send_greeting(chat_room, event, store, db)

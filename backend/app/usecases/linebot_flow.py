@@ -5,7 +5,7 @@ from datetime import datetime, timedelta, timezone
 
 from linebot import LineBotApi
 from linebot.exceptions import LineBotApiError
-from linebot.models import MessageEvent, TextSendMessage
+from linebot.models import FollowEvent, MessageEvent, TextSendMessage
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.deps import get_settings
@@ -89,6 +89,20 @@ async def handoff_to_owner_if_order_confirmed(
         await db.commit()
         await db.refresh(chat_room)
         print("ORDER_CONFIRM received a new message; switching to WAITING_OWNER.")
+
+
+async def enter_welcome_stage_and_send_greeting(
+    chat_room: ChatRoom,
+    event: MessageEvent | FollowEvent,
+    store: Store,
+    db: AsyncSession,
+) -> None:
+    """Force room state to WELCOME and send the greeting question."""
+    chat_room.stage = ChatRoomStage.WELCOME
+    chat_room.bot_step = -1
+    await db.commit()
+    await db.refresh(chat_room)
+    await run_welcome_flow(chat_room, "", event, store, db)
 
 
 async def handle_incoming_text_message(
@@ -222,26 +236,39 @@ async def handle_incoming_sticker_message(
 async def run_welcome_flow(
     chat_room: ChatRoom,
     user_text: str,
-    event: MessageEvent,
+    event: MessageEvent | FollowEvent,
     store: Store,
     db: AsyncSession,
 ):
     line_api = line_bot_api_for_store(store)
     if chat_room.bot_step == -1:
+        welcome_text = "您好，歡迎來到奇美花店！"
+        question_text = "若想要訂購客製化花束，請按「是」~"
         send_confirm(
             line_api,
             event.reply_token,
-            "您好，歡迎來到奇美花店，若想要訂購客製化花束，請按「是」~",
+            question_text,
+            preface_text=welcome_text,
             yes_txt="是",
             no_txt="否",
             yes_reply="啟動智慧訂購流程",
             no_reply="直接轉接老闆",
         )
 
-        message = ChatMessage(
+        welcome_message = ChatMessage(
             room_id=chat_room.id,
             direction=ChatMessageDirection.OUTGOING_BY_BOT,
-            text="[自動回覆已傳送] 詢問是否要訂購客製化花束。",
+            text=f"[自動回覆已傳送] {welcome_text}",
+            image_url="",
+            status=ChatMessageStatus.PENDING,
+            processed=False,
+            created_at=datetime.now(timezone(timedelta(hours=8))).replace(tzinfo=None),
+            updated_at=datetime.now(timezone(timedelta(hours=8))).replace(tzinfo=None),
+        )
+        question_message = ChatMessage(
+            room_id=chat_room.id,
+            direction=ChatMessageDirection.OUTGOING_BY_BOT,
+            text=f"[自動回覆已傳送] {question_text}",
             image_url="",
             status=ChatMessageStatus.PENDING,
             processed=False,
@@ -249,7 +276,8 @@ async def run_welcome_flow(
             updated_at=datetime.now(timezone(timedelta(hours=8))).replace(tzinfo=None),
         )
 
-        db.add(message)
+        db.add(welcome_message)
+        db.add(question_message)
         chat_room.bot_step = 0
 
         await db.commit()
@@ -286,7 +314,11 @@ async def run_welcome_flow(
 
 
 async def run_bot_flow(
-    chat_room: ChatRoom, text: str, event: MessageEvent, store: Store, db: AsyncSession
+    chat_room: ChatRoom,
+    text: str,
+    event: MessageEvent | FollowEvent,
+    store: Store,
+    db: AsyncSession,
 ):
     line_api = line_bot_api_for_store(store)
     STEP_MAP = {
@@ -300,6 +332,12 @@ async def run_bot_flow(
         handler = STEP_MAP.get(chat_room.bot_step)
 
         if handler is None:
+            if chat_room.stage == ChatRoomStage.WELCOME:
+                print(
+                    "Invalid bot_step detected in WELCOME; recover by replaying welcome greeting."
+                )
+                await enter_welcome_stage_and_send_greeting(chat_room, event, store, db)
+                return
             print(f"Error: No handler for bot_step {chat_room.bot_step}, reset bot_step to 0")
             chat_room.bot_step = 0
             chat_room.stage = ChatRoomStage.WAITING_OWNER
