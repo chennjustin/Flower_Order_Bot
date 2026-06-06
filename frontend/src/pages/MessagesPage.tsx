@@ -65,7 +65,7 @@ export default function MessagesPage() {
   }
 
   return (
-    <div className="flex h-[calc(100vh-56px)] mt-14 border-b-[1.5px] border-[#e9e9e9]">
+    <div className="box-border flex h-screen pt-14 border-b-[1.5px] border-[#e9e9e9]">
       <ChatList
         rooms={rooms}
         selectedRoomId={selectedRoomId}

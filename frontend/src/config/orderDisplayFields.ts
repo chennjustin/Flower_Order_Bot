@@ -19,7 +19,7 @@ export interface OrderFieldRegistryEntry {
  * Order in this array is the default display sequence.
  */
 export const ORDER_FIELD_REGISTRY: readonly OrderFieldRegistryEntry[] = [
-  { key: 'id', label: '訂單編號', hidePolicy: 'optional', editable: false },
+  { key: 'id', label: '訂單編號', hidePolicy: 'never', editable: false },
   { key: 'order_status', label: '狀態', hidePolicy: 'never', editable: false },
   { key: 'customer_name', label: '顧客姓名', hidePolicy: 'never', editable: true },
   { key: 'customer_phone', label: '顧客電話', hidePolicy: 'never', editable: true },
@@ -37,6 +37,7 @@ export const ORDER_FIELD_REGISTRY: readonly OrderFieldRegistryEntry[] = [
 
 /** Fields that cannot be hidden (eye toggle disabled). */
 export const LOCKED_VISIBLE_KEYS: readonly OrderFieldKey[] = [
+  'id',
   'customer_name',
   'customer_phone',
   'item',
