@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { MessageSquare } from 'lucide-react'
+import { MessageSquare, Search, X } from 'lucide-react'
 import type { ChatRoom } from '@/types/domain'
 import type { ChatRoomStage } from '@/types/enums'
 import {
@@ -30,11 +30,29 @@ export default function ChatList({
   isLoading,
 }: ChatListProps) {
   const [currentTab, setCurrentTab] = useState<(typeof FILTER_TABS)[number]['key']>('ALL')
+  const [searchInput, setSearchInput] = useState('')
+  const [appliedSearch, setAppliedSearch] = useState('')
+
+  function commitSearch() {
+    setAppliedSearch(searchInput.trim())
+  }
+
+  function clearSearch() {
+    setSearchInput('')
+    setAppliedSearch('')
+  }
 
   const filteredRooms = useMemo(() => {
-    if (currentTab === 'ALL') return rooms
-    return rooms.filter(r => r.status === currentTab)
-  }, [rooms, currentTab])
+    let rows =
+      currentTab === 'ALL' ? rooms : rooms.filter(r => r.status === currentTab)
+
+    const q = appliedSearch.toLowerCase()
+    if (q) {
+      rows = rows.filter(r => r.user_name.toLowerCase().includes(q))
+    }
+
+    return rows
+  }, [rooms, currentTab, appliedSearch])
 
   const totalUnread = useMemo(
     () =>
@@ -80,11 +98,48 @@ export default function ChatList({
           ))}
         </div>
 
-        {isLoading && rooms.length === 0 ? (
+        <div className="flex-shrink-0 px-3 py-2">
+          <div className="relative flex h-[46px] w-full items-center rounded-[36px] bg-[#D8EAFF] px-6 py-[11px]">
+            <input
+              type="text"
+              value={searchInput}
+              onChange={e => setSearchInput(e.target.value)}
+              onKeyDown={e => {
+                if (e.key === 'Enter') {
+                  e.preventDefault()
+                  commitSearch()
+                }
+              }}
+              placeholder="搜尋顧客姓名"
+              className="w-full border-0 bg-transparent p-0 pr-8 text-base leading-[140%] text-black/[0.38] outline-none placeholder:text-black/[0.38] font-['Noto_Sans_TC',sans-serif]"
+            />
+            {appliedSearch ? (
+              <button
+                type="button"
+                onClick={clearSearch}
+                aria-label="清除搜尋"
+                className="absolute right-6 top-1/2 -translate-y-1/2 text-black/[0.38] transition-colors hover:text-black/60"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={commitSearch}
+                aria-label="搜尋"
+                className="absolute right-6 top-1/2 -translate-y-1/2 text-black/[0.38] transition-colors hover:text-black/60"
+              >
+                <Search className="h-5 w-5" />
+              </button>
+            )}
+          </div>
+        </div>
+
+{isLoading && rooms.length === 0 ? (
           <div className="px-6 py-10 text-center text-sm text-black/40">載入中...</div>
         ) : filteredRooms.length === 0 ? (
           <div className="px-6 py-10 text-center text-sm text-black/40">
-            目前沒有聊天室
+            {rooms.length > 0 ? '找不到符合的聊天室' : '目前沒有聊天室'}
           </div>
         ) : (
           <ul>

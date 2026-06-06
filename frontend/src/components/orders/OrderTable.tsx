@@ -276,71 +276,73 @@ export default function OrderTable({
 
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <div className="inline-flex h-10 items-center gap-1 rounded-[36px] bg-[#F7F7F7] px-3 py-1.5">
-          {ORDER_FILTER_TABS.map(tab => (
-            <button
-              key={tab.value}
-              type="button"
-              onClick={() => selectTab(tab.value)}
-              className={cn(
-                'flex h-7 items-center whitespace-nowrap rounded-[36px] px-6 py-[11px] text-sm font-bold leading-[112.5%] text-black/60 transition',
-                "font-['Noto_Sans_TC',sans-serif]",
-                isTabHighlighted(tab.value) && 'bg-[#C5C7FF]',
-              )}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
-
-        <div className="flex h-10 items-center gap-3 rounded-[36px] bg-[#F7F7F7] px-4">
-          <button
-            type="button"
-            onClick={() => shiftDate(-1)}
-            className="flex h-7 w-7 items-center justify-center rounded-full bg-[#D9D9D9] text-white transition hover:bg-[#C5C7FF]"
-            aria-label="前一天"
-          >
-            <ChevronLeft className="h-3.5 w-3.5" strokeWidth={3} />
-          </button>
-          <OrderDatePicker
-            value={currentDate}
-            onChange={selectDate}
-            active={dateFilterActive}
-          />
-          <button
-            type="button"
-            onClick={() => shiftDate(1)}
-            className="flex h-7 w-7 items-center justify-center rounded-full bg-[#D9D9D9] text-white transition hover:bg-[#C5C7FF]"
-            aria-label="後一天"
-          >
-            <ChevronRight className="h-3.5 w-3.5" strokeWidth={3} />
-          </button>
-        </div>
-
-        {totalPages > 1 && (
-          <div className="ml-auto flex items-center gap-3">
-            <button
-              type="button"
-              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-              disabled={currentPage === 1}
-              className="flex h-8 w-8 items-center justify-center rounded-full bg-[#D9D9D9] text-white transition hover:enabled:bg-[#C5C7FF] disabled:opacity-40 disabled:cursor-not-allowed"
-              aria-label="上一頁"
-            >
-              <ChevronLeft className="h-4 w-4" strokeWidth={3} />
-            </button>
-            <span className="text-sm font-bold text-black/60 font-['Noto_Sans_TC',sans-serif]">
-              {currentPage} / {totalPages}
-            </span>
-            <button
-              type="button"
-              onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-              disabled={currentPage === totalPages}
-              className="flex h-8 w-8 items-center justify-center rounded-full bg-[#D9D9D9] text-white transition hover:enabled:bg-[#C5C7FF] disabled:opacity-40 disabled:cursor-not-allowed"
-              aria-label="下一頁"
-            >
-              <ChevronRight className="h-4 w-4" strokeWidth={3} />
-            </button>
+            {ORDER_FILTER_TABS.map(tab => (
+              <button
+                key={tab.value}
+                type="button"
+                onClick={() => selectTab(tab.value)}
+                className={cn(
+                  'flex h-7 items-center whitespace-nowrap rounded-[36px] px-6 py-[11px] text-sm font-bold leading-[112.5%] text-black/60 transition',
+                  "font-['Noto_Sans_TC',sans-serif]",
+                  isTabHighlighted(tab.value) && 'bg-[#C5C7FF]',
+                )}
+              >
+                {tab.label}
+              </button>
+            ))}
           </div>
-        )}
+
+          {viewMode === 'list' && (
+            <div className="flex h-10 items-center gap-3 rounded-[36px] bg-[#F7F7F7] px-4">
+              <button
+                type="button"
+                onClick={() => shiftDate(-1)}
+                className="flex h-7 w-7 items-center justify-center rounded-full bg-[#D9D9D9] text-white transition hover:bg-[#C5C7FF]"
+                aria-label="前一天"
+              >
+                <ChevronLeft className="h-3.5 w-3.5" strokeWidth={3} />
+              </button>
+              <OrderDatePicker
+                value={currentDate}
+                onChange={selectDate}
+                active={dateFilterActive}
+              />
+              <button
+                type="button"
+                onClick={() => shiftDate(1)}
+                className="flex h-7 w-7 items-center justify-center rounded-full bg-[#D9D9D9] text-white transition hover:bg-[#C5C7FF]"
+                aria-label="後一天"
+              >
+                <ChevronRight className="h-3.5 w-3.5" strokeWidth={3} />
+              </button>
+            </div>
+          )}
+
+          {totalPages > 1 && (
+            <div className="ml-auto flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="flex h-8 w-8 items-center justify-center rounded-full bg-[#D9D9D9] text-white transition hover:enabled:bg-[#C5C7FF] disabled:opacity-40 disabled:cursor-not-allowed"
+                aria-label="上一頁"
+              >
+                <ChevronLeft className="h-4 w-4" strokeWidth={3} />
+              </button>
+              <span className="text-sm font-bold text-black/60 font-['Noto_Sans_TC',sans-serif]">
+                {currentPage} / {totalPages}
+              </span>
+              <button
+                type="button"
+                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+                className="flex h-8 w-8 items-center justify-center rounded-full bg-[#D9D9D9] text-white transition hover:enabled:bg-[#C5C7FF] disabled:opacity-40 disabled:cursor-not-allowed"
+                aria-label="下一頁"
+              >
+                <ChevronRight className="h-4 w-4" strokeWidth={3} />
+              </button>
+            </div>
+          )}
       </div>
 
       {viewMode === 'calendar' ? (
