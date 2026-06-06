@@ -1,4 +1,5 @@
 import { useRef, useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useBlocker, useSearchParams } from 'react-router-dom'
 import OrderTable from '@/components/orders/OrderTable'
 import OrderDetailDialog from '@/components/orders/OrderDetailDialog'
@@ -75,21 +76,25 @@ export default function OrdersPage() {
       <OrderDetailDialog
         order={selectedOrder}
         open={selectedOrder !== null}
-        onOpenChange={open => { if (!open) setSelectedOrder(null) }}
+        onOpenChange={open => { if (!open) { isDirtyRef.current = false; setSelectedOrder(null) } }}
+        onDirtyChange={dirty => { isDirtyRef.current = dirty }}
       />
 
       <Dialog
         open={showCreate}
-        onOpenChange={open => { if (!open) { isDirtyRef.current = false; setShowCreate(false) } }}
+        onOpenChange={open => { if (!open && !isDirtyRef.current) setShowCreate(false) }}
       >
         <DialogContent
           hideClose
           overlayClassName="z-[1100] bg-black/25 backdrop-blur-lg"
           className="w-auto max-w-none border-0 bg-transparent p-0 shadow-none outline-none"
+          onPointerDownOutside={e => e.preventDefault()}
+          onInteractOutside={e => e.preventDefault()}
         >
           <DialogTitle className="sr-only">新增訂單</DialogTitle>
           <OrderFormCard
             mode="create"
+            onDirtyChange={dirty => { isDirtyRef.current = dirty }}
             onClose={() => { isDirtyRef.current = false; setShowCreate(false) }}
             onSave={async patch => {
               await createOrder.mutateAsync(patch)
@@ -100,8 +105,8 @@ export default function OrdersPage() {
         </DialogContent>
       </Dialog>
 
-      {(showLeaveDialog || blocker.state === 'blocked') && (
-        <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/30">
+      {(showLeaveDialog || blocker.state === 'blocked') && createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/30">
           <div className="w-[280px] rounded-2xl bg-white px-6 py-5 shadow-xl font-['Noto_Sans_TC',sans-serif]">
             <p className="mb-1 text-base font-bold text-black">確定要離開？</p>
             <p className="mb-5 text-sm text-black/50">尚未儲存的變更將會遺失。</p>
@@ -122,7 +127,8 @@ export default function OrdersPage() {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
     </>
   )

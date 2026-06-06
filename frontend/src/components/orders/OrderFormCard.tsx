@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { ChevronDown, Loader2, Pencil, Plus, X, Check } from 'lucide-react'
 import {
   getVisibleOrderFormFields,
@@ -33,6 +33,8 @@ interface OrderFormCardProps {
   onClose?: () => void
   /** Called with the patch when saving (edit mode) or creating (create mode). */
   onSave?: (patch: ReturnType<typeof formStateToOrderPatch>, form: FormState) => Promise<void>
+  /** Called whenever the dirty state changes so parents can track unsaved state. */
+  onDirtyChange?: (dirty: boolean) => void
 }
 
 const labelClass =
@@ -52,6 +54,7 @@ export default function OrderFormCard({
   className,
   onClose,
   onSave,
+  onDirtyChange,
 }: OrderFormCardProps) {
   const { savedConfig } = useOrderDisplayConfig()
   const isCreate = mode === 'create'
@@ -64,6 +67,7 @@ export default function OrderFormCard({
   )
   const [attempted, setAttempted] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [showLeaveConfirm, setShowLeaveConfirm] = useState(false)
 
   const isDirty = useMemo(
     () => isCreate
@@ -71,6 +75,10 @@ export default function OrderFormCard({
       : order ? isOrderFormDirty(form, order) : false,
     [form, order, isCreate],
   )
+
+  useEffect(() => {
+    onDirtyChange?.(isDirty)
+  }, [isDirty, onDirtyChange])
 
   function setField<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm(prev => ({ ...prev, [key]: value }))
@@ -80,6 +88,14 @@ export default function OrderFormCard({
     if (!attempted || !isEditing) return false
     if (!REQUIRED_KEYS.includes(key)) return false
     return !String(form[key] ?? '').trim()
+  }
+
+  function handleCloseClick() {
+    if (isDirty) {
+      setShowLeaveConfirm(true)
+    } else {
+      onClose?.()
+    }
   }
 
   async function handleSave() {
@@ -113,7 +129,7 @@ export default function OrderFormCard({
         {onClose && (
           <button
             type="button"
-            onClick={onClose}
+            onClick={handleCloseClick}
             aria-label="關閉"
             className="absolute right-6 top-1/2 -translate-y-1/2 rounded-sm p-1 text-black/50 transition hover:text-black/80"
           >
@@ -321,6 +337,31 @@ export default function OrderFormCard({
           </button>
         ) : null}
       </footer>
+
+      {showLeaveConfirm && (
+        <div className="absolute inset-0 z-50 flex items-center justify-center rounded-[24px] bg-black/20">
+          <div className="w-[280px] rounded-2xl bg-white px-6 py-5 shadow-xl font-['Noto_Sans_TC',sans-serif]">
+            <p className="mb-1 text-base font-bold text-black">確定要離開？</p>
+            <p className="mb-5 text-sm text-black/50">尚未儲存的變更將會遺失。</p>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setShowLeaveConfirm(false)}
+                className="flex h-10 flex-1 items-center justify-center rounded-xl border border-[#e0e3ed] text-sm font-bold text-black/60 transition hover:bg-[#F5F5F5]"
+              >
+                繼續編輯
+              </button>
+              <button
+                type="button"
+                onClick={() => { setShowLeaveConfirm(false); onClose?.() }}
+                className="flex h-10 flex-1 items-center justify-center rounded-xl bg-red-500 text-sm font-bold text-white transition hover:bg-red-600"
+              >
+                離開
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

@@ -8,12 +8,14 @@ interface OrderDetailDialogProps {
   order: Order | null
   open: boolean
   onOpenChange: (open: boolean) => void
+  onDirtyChange?: (dirty: boolean) => void
 }
 
 export default function OrderDetailDialog({
   order,
   open,
   onOpenChange,
+  onDirtyChange,
 }: OrderDetailDialogProps) {
   const [current, setCurrent] = useState<Order | null>(null)
   const updateOrder = useUpdateOrder()
@@ -21,7 +23,7 @@ export default function OrderDetailDialog({
   const displayed = current ?? order
 
   function handleOpenChange(next: boolean) {
-    if (!next) setCurrent(null)
+    if (!next) { setCurrent(null); onDirtyChange?.(false) }
     onOpenChange(next)
   }
 
@@ -31,6 +33,8 @@ export default function OrderDetailDialog({
         hideClose
         overlayClassName="z-[1100] bg-black/25 backdrop-blur-lg"
         className="w-auto max-w-none border-0 bg-transparent p-0 shadow-none outline-none"
+        onPointerDownOutside={e => e.preventDefault()}
+        onInteractOutside={e => e.preventDefault()}
       >
         <DialogTitle className="sr-only">
           {displayed ? `訂單 ${displayed.id}` : '訂單詳情'}
@@ -39,10 +43,12 @@ export default function OrderDetailDialog({
           <OrderFormCard
             mode="edit"
             order={displayed}
+            onDirtyChange={onDirtyChange}
             onClose={() => handleOpenChange(false)}
             onSave={async patch => {
               const updated = await updateOrder.mutateAsync({ orderId: displayed.id, patch })
               setCurrent(updated)
+              onDirtyChange?.(false)
             }}
           />
         )}
