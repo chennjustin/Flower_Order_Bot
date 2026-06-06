@@ -158,7 +158,7 @@ export default function OrderFormCard({
       <div className="flex max-h-[min(442px,calc(90vh-10rem))] overflow-y-auto px-10 py-4">
         <div className="flex w-full gap-5">
           {/* Label column */}
-          <div className="flex w-[152px] shrink-0 flex-col gap-3">
+          <div className="flex w-[88px] shrink-0 flex-col gap-3 md:w-[152px]">
             {formFields.map(field => (
               <div key={field.key} className="flex h-[30px] items-center py-1">
                 <span className={labelClass}>{field.label}</span>

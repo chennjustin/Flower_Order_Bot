@@ -8,7 +8,6 @@ import DetailPanel, {
 import { useStore } from '@/context/StoreContext'
 import {
   flattenChatRoomPages,
-  getChatRoomsFilteredUnreadRooms,
   useMarkRoomRead,
   useChatRooms,
   type ChatRoomsFilter,
@@ -19,6 +18,8 @@ import { useOrganizeData } from '@/hooks/useOrderDraft'
 import { clearRoomUnread } from '@/utils/chatRoomCache'
 import type { ChatRoom as ChatRoomType } from '@/types/domain'
 import type { ChatRoomStage } from '@/types/enums'
+
+type MobileView = 'list' | 'chat' | 'detail'
 import { useQueryClient } from '@tanstack/react-query'
 
 export default function MessagesPage() {
@@ -41,6 +42,7 @@ export default function MessagesPage() {
   const [detailSubView, setDetailSubView] = useState<DetailPanelSubView>('main')
   const [draftAiChangedFields, setDraftAiChangedFields] = useState<string[]>([])
   const [showLeaveDialog, setShowLeaveDialog] = useState(false)
+  const [mobileView, setMobileView] = useState<MobileView>('list')
   const pendingRoomRef = useRef<ChatRoomType | null>(null)
   const isDirtyRef = useRef(false)
 
@@ -49,6 +51,45 @@ export default function MessagesPage() {
   }, [])
 
   const blocker = useBlocker(() => isDirtyRef.current)
+
+  // Push a history entry when mobile panel changes so the back button navigates panels.
+  const prevMobileView = useRef<MobileView>('list')
+  useEffect(() => {
+    const isMobile = window.innerWidth < 768
+    if (!isMobile) return
+    if (mobileView !== 'list') {
+      // Going deeper: push so back can pop
+      if (prevMobileView.current === 'list' || prevMobileView.current === 'chat') {
+        history.pushState({ mobileView }, '')
+      }
+    }
+    prevMobileView.current = mobileView
+  }, [mobileView])
+
+  useEffect(() => {
+    function onPopState(e: PopStateEvent) {
+      const isMobile = window.innerWidth < 768
+      if (!isMobile) return
+      const prev = (e.state as { mobileView?: MobileView } | null)?.mobileView
+      if (mobileView === 'detail') {
+        e.preventDefault?.()
+        if (isDirtyRef.current) {
+          setShowLeaveDialog(true)
+          // re-push so we don't actually leave
+          history.pushState({ mobileView: 'detail' }, '')
+        } else {
+          handleCloseDetail()
+        }
+      } else if (mobileView === 'chat') {
+        e.preventDefault?.()
+        setMobileView('list')
+      } else if (prev === undefined) {
+        // Already at list, let normal navigation happen
+      }
+    }
+    window.addEventListener('popstate', onPopState)
+    return () => window.removeEventListener('popstate', onPopState)
+  }, [mobileView]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const organizeMutation = useOrganizeData(selectedRoomId)
   const { sseAvailable } = useChatRealtime(currentStoreId, selectedRoomId)
@@ -106,6 +147,7 @@ export default function MessagesPage() {
     setShowDetail(false)
     setDetailSubView('main')
     setDraftAiChangedFields([])
+    setMobileView('chat')
     isDirtyRef.current = false
   }
 
@@ -116,6 +158,7 @@ export default function MessagesPage() {
       setDraftAiChangedFields(result.changed_fields)
       setOpenDraftOnDetail(true)
       setShowDetail(true)
+      setMobileView('detail')
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err)
       alert(`整理資料失敗：${message}`)
@@ -130,65 +173,93 @@ export default function MessagesPage() {
     setRoomFilters(prev => ({ ...prev, q }))
   }
 
+  function handleOpenDetail() {
+    setShowDetail(true)
+    setMobileView('detail')
+  }
+
+  function handleCloseDetail() {
+    setShowDetail(false)
+    setDetailSubView('main')
+    setMobileView('chat')
+  }
+
   return (
-    <div className="box-border flex h-screen pt-14 border-b-[1.5px] border-[#e9e9e9]">
-      <ChatList
-        rooms={rooms}
-        selectedRoomId={selectedRoomId}
-        onSelect={handleSelect}
-        isLoading={roomsQuery.isLoading}
-        isFetchingMore={roomsQuery.isFetchingNextPage}
-        hasMore={roomsQuery.hasNextPage ?? false}
-        onLoadMore={() => {
-          if (roomsQuery.hasNextPage && !roomsQuery.isFetchingNextPage) {
-            void roomsQuery.fetchNextPage()
-          }
-        }}
-        totalUnread={getChatRoomsFilteredUnreadRooms(roomsQuery.data)}
-        currentStage={roomFilters.stage}
-        onStageChange={handleStageChange}
-        searchQuery={roomFilters.q}
-        onSearchChange={handleSearchChange}
-        storeId={currentStoreId}
-      />
-      <div className="relative flex min-w-0 flex-1 flex-col bg-[#f5f5f5]">
+    <div className="box-border flex h-screen overflow-hidden pt-14 border-b-[1.5px] border-[#e9e9e9]">
+      {/* ChatList — always mounted, hidden on mobile when not in 'list' view */}
+      <div className={
+        mobileView === 'list'
+          ? 'flex h-full w-full flex-col md:w-auto md:flex-none'
+          : 'hidden md:flex md:h-full md:flex-none'
+      }>
+        <ChatList
+          rooms={rooms}
+          selectedRoomId={selectedRoomId}
+          onSelect={handleSelect}
+          isLoading={roomsQuery.isLoading}
+          isFetchingMore={roomsQuery.isFetchingNextPage}
+          hasMore={roomsQuery.hasNextPage ?? false}
+          onLoadMore={() => {
+            if (roomsQuery.hasNextPage && !roomsQuery.isFetchingNextPage) {
+              void roomsQuery.fetchNextPage()
+            }
+          }}
+          totalUnread={roomsQuery.data?.pages[0]?.total_unread ?? 0}
+          currentStage={roomFilters.stage}
+          onStageChange={handleStageChange}
+          searchQuery={roomFilters.q}
+          onSearchChange={handleSearchChange}
+          storeId={currentStoreId}
+        />
+      </div>
+
+      {/* ChatRoom — hidden on mobile when not in 'chat' view */}
+      <div className={
+        mobileView === 'chat'
+          ? 'relative flex min-w-0 flex-1 flex-col bg-[#f5f5f5]'
+          : 'hidden md:relative md:flex md:min-w-0 md:flex-1 md:flex-col md:bg-[#f5f5f5]'
+      }>
         {roomsQuery.error ? (
           <div className="flex flex-1 items-center justify-center text-sm text-red-600">
             無法載入聊天室：{(roomsQuery.error as Error).message}
           </div>
         ) : selectedRoom ? (
-          <>
-            <ChatRoom
-              room={selectedRoom}
-              detailPanelOpen={showDetail}
-              onOpenDetail={() => setShowDetail(true)}
-              onOrganizeOrder={handleOrganizeOrder}
-              isOrganizing={organizeMutation.isPending}
-              showOrganizeButton={showOrganizeButton}
-              roomFilters={roomFilters}
-            />
-          </>
+          <ChatRoom
+            room={selectedRoom}
+            detailPanelOpen={showDetail}
+            onBack={() => setMobileView('list')}
+            onOpenDetail={handleOpenDetail}
+            onOrganizeOrder={handleOrganizeOrder}
+            isOrganizing={organizeMutation.isPending}
+            showOrganizeButton={showOrganizeButton}
+            roomFilters={roomFilters}
+          />
         ) : (
           <div className="flex flex-1 items-center justify-center text-sm text-black/40">
             選擇左側聊天室開始檢視訊息
           </div>
         )}
       </div>
+
+      {/* DetailPanel — hidden on mobile when not in 'detail' view */}
       {showDetail && selectedRoom && (
-        <DetailPanel
-          roomId={selectedRoom.room_id}
-          open={showDetail}
-          onClose={() => {
-            setShowDetail(false)
-            setDetailSubView('main')
-          }}
-          openDraftInitially={openDraftOnDetail}
-          onDraftViewOpened={() => setOpenDraftOnDetail(false)}
-          onSubViewChange={setDetailSubView}
-          onDirtyChange={handleDirtyChange}
-          draftAiChangedFields={draftAiChangedFields}
-          onDraftAiHighlightClear={() => setDraftAiChangedFields([])}
-        />
+        <div className={
+          mobileView === 'detail'
+            ? 'flex h-full w-full flex-col md:w-auto md:flex-none'
+            : 'hidden md:flex md:h-full md:flex-none'
+        }>
+          <DetailPanel
+            roomId={selectedRoom.room_id}
+            open={showDetail}
+            onClose={handleCloseDetail}
+            openDraftInitially={openDraftOnDetail}
+            onDraftViewOpened={() => setOpenDraftOnDetail(false)}
+            onSubViewChange={setDetailSubView}
+            onDirtyChange={handleDirtyChange}
+            draftAiChangedFields={draftAiChangedFields}
+            onDraftAiHighlightClear={() => setDraftAiChangedFields([])}
+          />
+        </div>
       )}
 
       {(showLeaveDialog || blocker.state === 'blocked') && (

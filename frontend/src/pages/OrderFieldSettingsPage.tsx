@@ -84,11 +84,13 @@ export default function OrderFieldSettingsPage() {
             </div>
           </section>
 
-          <section className={settingsCardClass}>
-            <div className="flex flex-1 flex-col px-10 pt-8">
-              <PreviewPanel />
-            </div>
-          </section>
+          <div className="hidden lg:block lg:w-full lg:max-w-[370px]">
+            <section className={settingsCardClass}>
+              <div className="flex flex-1 flex-col px-10 pt-8">
+                <PreviewPanel />
+              </div>
+            </section>
+          </div>
         </div>
       </div>
     </div>

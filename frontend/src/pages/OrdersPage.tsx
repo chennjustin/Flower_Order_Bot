@@ -70,7 +70,7 @@ export default function OrdersPage() {
   return (
     <>
       <PageHeader title="訂單管理" />
-      <div className="mx-auto max-w-[1280px] px-2 pt-[160px] pb-8">
+      <div className="mx-auto max-w-[1280px] pt-[136px] pb-8 md:pt-[160px] md:px-2">
         <OrderTable
           showTitle={false}
           pageSize={10}
