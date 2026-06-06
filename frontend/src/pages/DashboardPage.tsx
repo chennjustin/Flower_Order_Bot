@@ -5,12 +5,15 @@ import PageHeader from '@/components/layout/PageHeader'
 import StatisticsCards from '@/components/stats/StatisticsCards'
 import { useStats } from '@/hooks/useStats'
 import { useOrders } from '@/hooks/useOrders'
+import { useStore } from '@/context/StoreContext'
 import { isInProgressOrder, normalizeOrderStatus } from '@/utils/orderStatus'
 
 export type QuickFilter = 'today' | 'in_progress' | null
 
 export default function DashboardPage() {
   const navigate = useNavigate()
+  const { stores, currentStoreId } = useStore()
+  const storeName = stores.find(s => s.id === currentStoreId)?.name ?? '訂單管理平台'
   const { data, isLoading, error } = useStats()
   const ordersQuery = useOrders()
   const [quickFilter, setQuickFilter] = useState<QuickFilter>(null)
@@ -24,7 +27,7 @@ export default function DashboardPage() {
 
   return (
     <>
-      <PageHeader title="訂單管理平台" />
+      <PageHeader title={storeName} />
       <div className="mx-auto max-w-[1280px] px-2 pt-[160px]">
         {error && (
           <div className="mb-4 rounded-md bg-red-50 px-4 py-3 text-sm text-red-600">
