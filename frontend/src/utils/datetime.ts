@@ -4,9 +4,14 @@ function pad2(n: number): string {
   return n.toString().padStart(2, '0')
 }
 
-/** Header date label, e.g. `5 月 8 日 (五)`. */
+/** Header date label — long on desktop, short on mobile (caller picks format). */
 export function formatHeaderDate(date: Date): string {
   return `${date.getMonth() + 1} 月 ${date.getDate()} 日 (${WEEKDAYS_ZH[date.getDay()]})`
+}
+
+/** Short date label for narrow spaces, e.g. `6/6 (六)`. */
+export function formatHeaderDateShort(date: Date): string {
+  return `${date.getMonth() + 1}/${date.getDate()} (${WEEKDAYS_ZH[date.getDay()]})`
 }
 
 /** Cell datetime, e.g. `26/05/08（五）14:30`. Empty input -> empty string. */
