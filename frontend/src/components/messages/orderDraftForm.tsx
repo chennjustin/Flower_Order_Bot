@@ -54,6 +54,7 @@ export const MISSING_KEY_TO_FIELD: Record<string, FieldKey> = {
   send_datetime: 'send_datetime',
   delivery_address: 'delivery_address',
   pay_way: 'pay_way',
+  pay_status: 'pay_status',
   note: 'note',
 }
 
