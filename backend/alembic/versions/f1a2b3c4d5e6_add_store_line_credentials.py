@@ -1,7 +1,7 @@
 """add store LINE channel credentials
 
 Revision ID: f1a2b3c4d5e6
-Revises: e2f1a4b5c6d7
+Revises: a9f3c2d1e4b7
 Create Date: 2026-06-04
 
 store.slug holds LINE webhook destination (channel user id).
@@ -18,16 +18,32 @@ depends_on = None
 
 
 def upgrade() -> None:
-    op.add_column(
-        "store",
-        sa.Column("line_channel_access_token", sa.String(), nullable=True),
-    )
-    op.add_column(
-        "store",
-        sa.Column("line_channel_secret", sa.String(), nullable=True),
-    )
+    bind = op.get_bind()
+    insp = sa.inspect(bind)
+    if "store" not in insp.get_table_names(schema="public"):
+        return
+
+    cols = {c["name"] for c in insp.get_columns("store", schema="public")}
+    if "line_channel_access_token" not in cols:
+        op.add_column(
+            "store",
+            sa.Column("line_channel_access_token", sa.String(), nullable=True),
+        )
+    if "line_channel_secret" not in cols:
+        op.add_column(
+            "store",
+            sa.Column("line_channel_secret", sa.String(), nullable=True),
+        )
 
 
 def downgrade() -> None:
-    op.drop_column("store", "line_channel_secret")
-    op.drop_column("store", "line_channel_access_token")
+    bind = op.get_bind()
+    insp = sa.inspect(bind)
+    if "store" not in insp.get_table_names(schema="public"):
+        return
+
+    cols = {c["name"] for c in insp.get_columns("store", schema="public")}
+    if "line_channel_secret" in cols:
+        op.drop_column("store", "line_channel_secret")
+    if "line_channel_access_token" in cols:
+        op.drop_column("store", "line_channel_access_token")

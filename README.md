@@ -97,8 +97,8 @@ cp backend/.env.example backend/.env
 ### Schema 與遷移
 
 - 多租戶表：`store`、`customer`、`chat_room`、`chat_message`、`order`、`order_draft`、`payment`、`payment_method`、`notification` 等。
-- 破壞性遷移 **`f4e8bb2a9031`** 會 DROP 舊表後重建，**僅適合新庫或願意清空資料時**執行。
-- 套用遷移（**必須用 `backend/venv`**，不要用 conda `(base)` 的 `alembic`，在 macOS 上常會 `malloc: double free` 後 abort）：
+- 破壞性遷移 **`f4e8bb2a9031`** 會 DROP 舊表後重建，**僅適合新庫或願意清空資料時**執行。**切勿**在已有顧客／訂單資料的 Supabase 上重新套用此 revision。
+- **套用遷移**（**必須用 `backend/venv`**，不要用 conda `(base)` 的 `alembic`，在 macOS 上常會 `malloc: double free` 後 abort）：
 
 ```bash
 cd backend
@@ -106,7 +106,10 @@ make migrate
 # 或：./venv/bin/alembic upgrade head
 ```
 
-- Docker 啟動時預設 `**SKIP_ALEMBIC_ON_START=1**`（不自動跑 Alembic），請在 Supabase 上自行確認 revision 或手動執行上述指令。
+`make migrate` 僅**執行** repo 內既有的 Alembic revision，不會從 model 自動產生新 migration。若要產生新 revision：`make migration-new MSG="describe change"`。
+
+- 目前 head revision **`b3c4d5e6f7a8`** 補上 `store.owner_email`、`owner_auth_user_id` 可為 NULL、以及 `uq_store_owner_email`／`uq_store_owner_auth_user_id`（支援 `auth.py` 首次登入綁定）。若 Supabase 已手動具備這些欄位，此 migration 為 idempotent（略過已存在項目）。
+- Docker 啟動時預設 `**SKIP_ALEMBIC_ON_START=1**`（不自動跑 Alembic）。拉取含新 migration 的程式後，請在 Supabase 上手動執行一次 `make migrate`。
 
 ### 多店家 LINE（`store.slug` = webhook `destination`）
 
@@ -120,7 +123,7 @@ make migrate
 
 所有 channel 的 Webhook URL 可相同：`https://<PUBLIC_BASE_URL>/callback`。後端依 `destination` 查 `store.slug` 決定店家與 token。
 
-遷移後請執行 `alembic upgrade head`（revision `f1a2b3c4d5e6` 新增 LINE 欄位）。
+遷移鏈：`f1a2b3c4d5e6` 新增 LINE 欄位；`b3c4d5e6f7a8` 新增店主 auth 欄位（`owner_email`、nullable `owner_auth_user_id`）。
 
 後台 API（聊天室、訂單、付款方式等）僅回傳**登入店主**所綁定 `store` 的資料（`get_current_store`）。
 

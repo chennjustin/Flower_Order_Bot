@@ -279,6 +279,7 @@ def test_store_has_expected_columns():
         "line_channel_secret",
         "timezone",
         "active",
+        "owner_email",
         "owner_auth_user_id",
     ):
         assert c in cols, f"Missing: {c}"
