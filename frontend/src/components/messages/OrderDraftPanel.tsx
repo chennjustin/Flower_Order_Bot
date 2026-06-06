@@ -17,6 +17,7 @@ import {
   FormRow,
   MISSING_KEY_TO_FIELD,
   emptyDraftDisplay,
+  filterResolvedMissingKeys,
   formatReadOnly,
   formStateFromDraft,
   formStateToUpdate,
@@ -92,13 +93,36 @@ export default function OrderDraftPanel({
     }
   }, [draft])
 
+  const missingFieldSet = useMemo(() => {
+    const set = new Set<FieldKey>()
+    for (const raw of missing) {
+      const mapped = MISSING_KEY_TO_FIELD[raw]
+      if (mapped) set.add(mapped)
+    }
+    return set
+  }, [missing])
+
+  /** Include hidden fields when backend reports them missing (avoid silent stuck state). */
   const visibleFields = useMemo<FieldDef[]>(() => {
     const supportedSet = new Set<OrderFieldKey>(DRAFT_SUPPORTED_KEYS)
     return [...savedConfig.fields]
       .sort((a, b) => a.order - b.order)
-      .filter(field => field.visible && supportedSet.has(field.key))
+      .filter(field => {
+        if (!supportedSet.has(field.key)) return false
+        const key = field.key as FieldKey
+        return field.visible || missingFieldSet.has(key)
+      })
       .map(field => ({ key: field.key as FieldKey, ...FIELD_META[field.key as FieldKey] }))
-  }, [savedConfig.fields])
+  }, [savedConfig.fields, missingFieldSet])
+
+  const missingFieldLabels = useMemo(
+    () =>
+      missing.map(raw => {
+        const mapped = MISSING_KEY_TO_FIELD[raw]
+        return mapped ? FIELD_META[mapped].label : raw
+      }),
+    [missing],
+  )
 
   function setField<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm(prev => ({ ...prev, [key]: value }))
@@ -119,7 +143,11 @@ export default function OrderDraftPanel({
       return false
     }
     try {
-      await updateDraft.mutateAsync(formStateToUpdate(form))
+      const updated = await updateDraft.mutateAsync(formStateToUpdate(form))
+      if (updated) {
+        setForm(formStateFromDraft(updated))
+        setMissing(prev => filterResolvedMissingKeys(prev, updated))
+      }
       setIsEditing(false)
       return true
     } catch (err) {
@@ -139,12 +167,12 @@ export default function OrderDraftPanel({
     try {
       const result = await createOrder.mutateAsync()
       if (result.ok) {
-        alert('訂單建立成功！')
         setMissing([])
         onBack()
       } else {
         setMissing(result.missing)
-        alert('請填入缺少的資料')
+        setForm(formStateFromDraft(draft))
+        setIsEditing(true)
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err)
@@ -152,20 +180,13 @@ export default function OrderDraftPanel({
     }
   }
 
-  const missingFieldSet = useMemo(() => {
-    const set = new Set<FieldKey>()
-    for (const raw of missing) {
-      const mapped = MISSING_KEY_TO_FIELD[raw]
-      if (mapped) set.add(mapped)
-    }
-    return set
-  }, [missing])
-
   function isFieldMissing(key: FieldKey): boolean {
     return missingFieldSet.has(key)
   }
 
+  const hasMissingFields = missing.length > 0
   const isPending = updateDraft.isPending || createOrder.isPending
+  const createBlockedByEditing = isEditing && !hasMissingFields
 
   return (
     <aside className="relative flex h-full w-[336px] flex-shrink-0 flex-col border-l border-[#B3B3B3] bg-white">
@@ -220,6 +241,20 @@ export default function OrderDraftPanel({
                 尚無草稿內容，請先點聊天室上方「整理資料」。
               </p>
             )}
+            {hasMissingFields && (
+              <div
+                className={cn(
+                  'rounded-lg border border-red-300 bg-red-50 px-3 py-2.5 text-sm text-red-700',
+                  "font-['Noto_Sans_TC',sans-serif]",
+                )}
+                role="alert"
+              >
+                以下欄位尚未填寫，請補齊後再建立訂單：
+                <span className="mt-1 block font-bold">
+                  {missingFieldLabels.join('、')}
+                </span>
+              </div>
+            )}
             {visibleFields.map(field =>
               field.key === 'send_datetime' && isEditing ? (
                 <DateTimeRow
@@ -252,14 +287,18 @@ export default function OrderDraftPanel({
           <button
             type="button"
             onClick={handleCreateOrder}
-            disabled={isPending || isEditing}
-            aria-disabled={isPending || isEditing}
-            title={isEditing ? '請先完成編輯（點 ✓）後再建立新訂單' : undefined}
+            disabled={isPending || createBlockedByEditing}
+            aria-disabled={isPending || createBlockedByEditing}
+            title={
+              createBlockedByEditing
+                ? '請先完成編輯（點 ✓）後再建立新訂單'
+                : undefined
+            }
             className={cn(
               'flex h-10 w-[200px] items-center justify-center gap-2 rounded-xl px-3 text-base font-bold text-white transition active:scale-95',
               "font-['Noto_Sans_TC',sans-serif]",
               'disabled:cursor-not-allowed disabled:opacity-50 disabled:active:scale-100 disabled:hover:shadow-none',
-              isEditing
+              createBlockedByEditing
                 ? 'bg-[#C5C7FF]'
                 : 'bg-[#6168FC] hover:bg-[#4F51FF] hover:shadow-[2px_2px_4px_rgba(0,0,0,0.25)]',
             )}

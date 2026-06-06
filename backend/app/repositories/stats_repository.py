@@ -20,6 +20,7 @@ async def count_today_orders(
         .where(
             Order.delivery_datetime >= today_start,
             Order.delivery_datetime < today_end,
+            Order.status != OrderStatus.CANCELLED,
             Customer.store_id == store_id,
         )
     )

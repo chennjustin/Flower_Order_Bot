@@ -63,9 +63,19 @@ async def create_user(
 
 
 async def update_user_info(
-                db: AsyncSession,
-                user_id: int,
-                name: Optional[str] = None,
-                phone: Optional[str] = None,
-            ) -> User:
-    return await repo_update_user_info(db, user_id, name=name, phone=phone)
+    db: AsyncSession,
+    user_id: int,
+    *,
+    name: Optional[str] = None,
+    phone: Optional[str] = None,
+    update_name: bool = False,
+    update_phone: bool = False,
+) -> User:
+    return await repo_update_user_info(
+        db,
+        user_id,
+        name=name,
+        phone=phone,
+        update_name=update_name,
+        update_phone=update_phone,
+    )
