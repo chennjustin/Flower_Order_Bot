@@ -27,7 +27,7 @@ def _follow_event(user_id: str = "U123") -> SimpleNamespace:
 
 @pytest.mark.asyncio
 async def test_enter_welcome_stage_forces_welcome_and_sends_greeting(monkeypatch) -> None:
-    store = SimpleNamespace(id=1)
+    store = SimpleNamespace(id=1, name="玫瑰工作室")
     room = SimpleNamespace(stage=ChatRoomStage.WAITING_OWNER, bot_step=3)
     db = FakeDb()
     event = _follow_event()
@@ -54,7 +54,7 @@ async def test_enter_welcome_stage_forces_welcome_and_sends_greeting(monkeypatch
 
 @pytest.mark.asyncio
 async def test_run_welcome_flow_sends_preface_before_confirm(monkeypatch) -> None:
-    store = SimpleNamespace(id=1)
+    store = SimpleNamespace(id=1, name="玫瑰工作室")
     room = SimpleNamespace(id=501, stage=ChatRoomStage.WELCOME, bot_step=-1)
     event = _follow_event()
     db = FakeDb()
@@ -70,7 +70,7 @@ async def test_run_welcome_flow_sends_preface_before_confirm(monkeypatch) -> Non
     await linebot_flow.run_welcome_flow(room, "", event, store, db)
 
     assert called["text"] == "若想要訂購客製化花束，請按「是」~"
-    assert called["kwargs"]["preface_text"] == "您好，歡迎來到奇美花店！"
+    assert called["kwargs"]["preface_text"] == "您好，歡迎來到玫瑰工作室！"
     assert db.add.call_count == 2
     assert room.bot_step == 0
 

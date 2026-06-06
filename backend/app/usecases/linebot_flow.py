@@ -30,6 +30,11 @@ from app.utils.line_inbound_media import fetch_line_message_binary, save_inbound
 from app.utils.line_send_message import send_confirm, send_quick_reply_message
 
 
+def _store_display_name(store: Store) -> str:
+    name = (store.name or "").strip()
+    return name if name else "本店"
+
+
 def _advance_unread_for_incoming(chat_room: ChatRoom, created_at: datetime) -> None:
     chat_room.unread_count = int(chat_room.unread_count or 0) + 1
     chat_room.last_message_ts = created_at
@@ -242,7 +247,7 @@ async def run_welcome_flow(
 ):
     line_api = line_bot_api_for_store(store)
     if chat_room.bot_step == -1:
-        welcome_text = "您好，歡迎來到奇美花店！"
+        welcome_text = f"您好，歡迎來到{_store_display_name(store)}！"
         question_text = "若想要訂購客製化花束，請按「是」~"
         send_confirm(
             line_api,
@@ -252,7 +257,7 @@ async def run_welcome_flow(
             yes_txt="是",
             no_txt="否",
             yes_reply="啟動智慧訂購流程",
-            no_reply="直接轉接老闆",
+            no_reply="為您轉接老闆",
         )
 
         welcome_message = ChatMessage(
