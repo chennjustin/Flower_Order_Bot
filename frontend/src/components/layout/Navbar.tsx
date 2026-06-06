@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import BrandLogo from './BrandLogo'
 import Sidebar from './Sidebar'
 import SidebarMenuIcon from './SidebarMenuIcon'
@@ -17,9 +18,12 @@ export default function Navbar() {
         >
           <SidebarMenuIcon />
         </button>
-        <div className="absolute left-[73px] top-1/2 flex -translate-y-1/2 items-center gap-[13px]">
+        <Link
+          to="/"
+          className="absolute left-[73px] top-1/2 flex -translate-y-1/2 items-center gap-[13px]"
+        >
           <BrandLogo size="nav" />
-        </div>
+        </Link>
       </header>
 
       <Sidebar show={showSidebar} onClose={() => setShowSidebar(false)} />
