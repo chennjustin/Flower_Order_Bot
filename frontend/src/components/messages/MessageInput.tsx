@@ -101,7 +101,7 @@ export default function MessageInput({ roomId, disabled, onSend }: MessageInputP
   }, [showAttachMenu])
 
   return (
-    <div ref={rootRef} className="relative space-y-2 px-6 pb-6">
+    <div ref={rootRef} className="relative space-y-2 px-6 pb-6 pt-3">
       {showAttachMenu ? (
         <div className="flex flex-wrap gap-2 rounded-xl border border-black/[0.08] bg-black/[0.02] p-2 text-xs font-['Noto_Sans_TC',sans-serif]">
           <button
