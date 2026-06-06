@@ -234,11 +234,7 @@ export default function OrderEditPanel({
       </header>
 
       <div className="flex-1 overflow-y-auto px-6 pt-4 pb-6">
-        {aiPreviewHint && isEditing && (
-          <p className="mb-3 text-center text-xs text-[#6168FC] font-['Noto_Sans_TC',sans-serif]">
-            以下為 AI 建議，請確認後按「更新訂單」寫入資料庫
-          </p>
-        )}
+
         <div className="flex flex-col gap-4">
           {visibleFields.map(field =>
             field.key === 'send_datetime' && isEditing ? (

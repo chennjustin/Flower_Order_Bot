@@ -249,8 +249,8 @@ export default function MessageInput({ roomId, disabled, onSend }: MessageInputP
               value={text}
               disabled={busy}
               onChange={e => setText(e.target.value)}
-              onKeyUp={e => {
-                if (e.key === 'Enter') void emitSend()
+              onKeyDown={e => {
+                if (e.key === 'Enter' && !e.nativeEvent.isComposing) void emitSend()
               }}
               placeholder="輸入訊息......"
               className="w-full border-0 bg-transparent p-0 font-['Noto_Sans_TC',sans-serif] text-base leading-[140%] text-black/[0.87] outline-none placeholder:text-black/[0.38]"
