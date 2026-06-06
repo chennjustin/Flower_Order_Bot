@@ -5,6 +5,9 @@ import { useAuth } from '@/hooks/useAuth'
 import { getOnboardingPath } from '@/lib/onboardingPaths'
 import { isSupabaseConfigured } from '@/lib/supabase'
 
+const LOGIN_PAGE_BACKGROUND_CLASS = 'bg-[#D8EAFF]'
+const LOGIN_CARD_CLASS = 'w-full max-w-md rounded-2xl bg-white px-10 py-12 shadow-lg'
+
 export default function LoginPage() {
   const { session, isAuthenticated, isLoading, signInWithGoogle } = useAuth()
   const navigate = useNavigate()
@@ -27,10 +30,12 @@ export default function LoginPage() {
 
   if (!isSupabaseConfigured) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4">
-        <div className="max-w-md rounded-2xl bg-white px-8 py-10 text-center shadow-lg">
-          <h1 className="text-lg font-bold text-gray-800">無法登入</h1>
-          <p className="mt-2 text-sm text-gray-500">
+      <div
+        className={`flex min-h-screen items-center justify-center px-4 ${LOGIN_PAGE_BACKGROUND_CLASS}`}
+      >
+        <div className={`${LOGIN_CARD_CLASS} text-center`}>
+          <h1 className="text-xl font-bold text-gray-800">無法登入</h1>
+          <p className="mt-3 text-base text-gray-500">
             請在 frontend/.env.local 設定 VITE_SUPABASE_URL 與 VITE_SUPABASE_ANON_KEY，然後重啟前端。
           </p>
         </div>
@@ -39,17 +44,17 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-50">
-      <div className="w-full max-w-sm rounded-2xl bg-white px-8 py-10 shadow-lg">
+    <div className={`flex min-h-screen items-center justify-center px-4 ${LOGIN_PAGE_BACKGROUND_CLASS}`}>
+      <div className={LOGIN_CARD_CLASS}>
         <div className="mb-8 text-center">
-          <div className="mb-3 text-4xl">🌸</div>
-          <h1 className="text-xl font-bold text-gray-800">花店訂單系統</h1>
-          <p className="mt-1 text-sm text-gray-500">請使用 Google 帳號登入</p>
+          <div className="mb-3 text-5xl">🌸</div>
+          <h1 className="text-2xl font-bold text-gray-800">花店訂單系統</h1>
+          <p className="mt-2 text-base text-gray-500">請使用 Google 帳號登入</p>
         </div>
 
         <button
           onClick={() => void signInWithGoogle()}
-          className="flex w-full items-center justify-center gap-3 rounded-lg border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-700 shadow-sm transition hover:bg-gray-50 active:scale-[0.98]"
+          className="flex w-full items-center justify-center gap-3 rounded-lg border border-gray-200 bg-white px-4 py-3.5 text-base font-medium text-gray-700 shadow-sm transition hover:bg-gray-50 active:scale-[0.98]"
         >
           <svg width="20" height="20" viewBox="0 0 48 48">
             <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
