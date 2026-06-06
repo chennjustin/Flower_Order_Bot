@@ -4,14 +4,21 @@ from __future__ import annotations
 
 from typing import List
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import get_current_store
 from app.core.database import get_db
+from app.core.time import now_taipei_naive
 from app.models.store import Store
 from app.repositories.store_repository import list_stores
-from app.schemas.store import LineOfficialDisplay, StoreListItem, StoreOnboardingContext
+from app.schemas.store import (
+    LineOfficialDisplay,
+    StoreListItem,
+    StoreOnboardingContext,
+    StoreOwnerDisplayNameResponse,
+    StoreOwnerDisplayNameUpdateRequest,
+)
 from app.utils.line_bot_info import fetch_line_bot_profile
 
 api_router = APIRouter(tags=["Stores"])
@@ -54,8 +61,31 @@ async def get_my_store_onboarding_context(
         id=store.id,
         name=store.name,
         slug=store.slug,
+        owner_display_name=store.owner_display_name,
         line_official=await _resolve_line_official_display(store),
     )
+
+
+@api_router.patch(
+    "/stores/me/owner-display-name",
+    response_model=StoreOwnerDisplayNameResponse,
+)
+async def update_my_owner_display_name(
+    payload: StoreOwnerDisplayNameUpdateRequest,
+    db: AsyncSession = Depends(get_db),
+    store: Store = Depends(get_current_store),
+) -> StoreOwnerDisplayNameResponse:
+    display_name = payload.owner_display_name.strip()
+    if not display_name:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="owner_display_name cannot be empty",
+        )
+    store.owner_display_name = display_name
+    store.updated_at = now_taipei_naive()
+    await db.commit()
+    await db.refresh(store)
+    return StoreOwnerDisplayNameResponse(owner_display_name=store.owner_display_name or "")
 
 
 @api_router.get("/stores", response_model=List[StoreListItem])

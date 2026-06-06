@@ -30,7 +30,7 @@ export interface OnboardingPatchResponse {
  */
 export interface LineOfficialDisplay {
   displayName: string
-  imageUrl: string
+  imageUrl: string | null
   basicId?: string | null
   userId?: string | null
 }

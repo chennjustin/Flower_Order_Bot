@@ -1,7 +1,16 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useQueryClient } from '@tanstack/react-query'
+import {
+  updateMyOwnerDisplayName,
+  type StoreOnboardingContext,
+} from '@/api/stores'
 import OnboardingCard from '@/components/onboarding/OnboardingCard'
 import StepIndicator from '@/components/onboarding/StepIndicator'
+import {
+  ONBOARDING_STORE_CONTEXT_QUERY_KEY,
+  useOnboardingStoreContext,
+} from '@/hooks/useOnboardingStoreContext'
 import { useAuth } from '@/hooks/useAuth'
 import { cn } from '@/lib/utils'
 
@@ -11,16 +20,22 @@ const MAX_NAME_LENGTH = 32
 export default function OnboardingNamePage() {
   const { session, updateDisplayName } = useAuth()
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
+  const { data: onboardingContext } = useOnboardingStoreContext()
   const [name, setName] = useState(DEFAULT_NAME)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
+    if (onboardingContext?.ownerDisplayName) {
+      setName(onboardingContext.ownerDisplayName)
+      return
+    }
     if (session?.displayName) {
       setName(session.displayName)
     }
-  }, [session?.displayName])
+  }, [onboardingContext?.ownerDisplayName, session?.displayName])
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setError(null)
 
@@ -35,6 +50,12 @@ export default function OnboardingNamePage() {
     }
 
     try {
+      const savedName = await updateMyOwnerDisplayName(trimmed)
+      queryClient.setQueryData(
+        ONBOARDING_STORE_CONTEXT_QUERY_KEY,
+        (prev: StoreOnboardingContext | undefined) =>
+          prev ? { ...prev, ownerDisplayName: savedName } : prev,
+      )
       updateDisplayName(trimmed)
       navigate('/onboarding/line-official', { replace: true })
     } catch (err) {

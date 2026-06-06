@@ -15,9 +15,6 @@ import { useAuth } from '@/hooks/useAuth'
 import { useOnboardingStoreContext } from '@/hooks/useOnboardingStoreContext'
 import { cn } from '@/lib/utils'
 
-const DEFAULT_LINE_IMAGE_URL =
-  'https://placehold.co/240x240/e4e7ff/6168fc/png?text=LINE+OA&font=noto-sans'
-
 export default function OnboardingLineOfficialPage() {
   const { session, confirmLineOfficial, rejectWrongAccount } = useAuth()
   const { data: onboardingContext } = useOnboardingStoreContext()
@@ -32,7 +29,7 @@ export default function OnboardingLineOfficialPage() {
   const lineOfficial = onboardingContext?.lineOfficial
   const storeName = onboardingContext?.storeName ?? '—'
   const lineOfficialAccount = lineOfficial?.basicId ?? lineOfficial?.userId ?? '—'
-  const lineOfficialImageUrl = lineOfficial?.imageUrl || DEFAULT_LINE_IMAGE_URL
+  const lineOfficialImageUrl = lineOfficial?.imageUrl
 
   function handleConfirmCorrect() {
     confirmLineOfficial()
@@ -52,13 +49,15 @@ export default function OnboardingLineOfficialPage() {
         description="請比對您手機 LINE 好友列表中的官方帳號，是否與下方顯示一致。"
       >
         <div className="flex flex-col items-center gap-3 rounded-xl bg-brand-soft/40 px-4 py-5">
-          <img
-            src={lineOfficialImageUrl}
-            alt=""
-            width={120}
-            height={120}
-            className="h-[120px] w-[120px] rounded-2xl border border-black/10 object-cover"
-          />
+          {lineOfficialImageUrl ? (
+            <img
+              src={lineOfficialImageUrl}
+              alt=""
+              width={120}
+              height={120}
+              className="h-[120px] w-[120px] rounded-2xl border border-black/10 object-cover"
+            />
+          ) : null}
           <p className="m-0 text-center text-sm font-medium text-black/60">店家名稱：{storeName}</p>
           <p className="m-0 text-center text-lg font-bold text-[#3a3a3a]">
             {lineOfficial?.displayName ?? storeName}

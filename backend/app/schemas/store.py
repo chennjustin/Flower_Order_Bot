@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class StoreListItem(BaseModel):
@@ -22,4 +22,13 @@ class StoreOnboardingContext(BaseModel):
     id: int
     name: str
     slug: str | None = None
+    owner_display_name: str | None = None
     line_official: LineOfficialDisplay
+
+
+class StoreOwnerDisplayNameUpdateRequest(BaseModel):
+    owner_display_name: str = Field(min_length=1, max_length=32)
+
+
+class StoreOwnerDisplayNameResponse(BaseModel):
+    owner_display_name: str
