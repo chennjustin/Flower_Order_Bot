@@ -46,6 +46,7 @@ export default function OrderDraftPanel({
   const [isEditing, setIsEditing] = useState(false)
   const [form, setForm] = useState<FormState>(EMPTY_FORM)
   const [missing, setMissing] = useState<string[]>([])
+  const [showLeaveDialog, setShowLeaveDialog] = useState(false)
 
   const draft = draftQuery.data ?? null
 
@@ -183,6 +184,20 @@ export default function OrderDraftPanel({
     return missingFieldSet.has(key)
   }
 
+  const isDirty = useMemo(() => {
+    if (!isEditing || !draft) return false
+    const baseline = formStateFromDraft(draft)
+    return (Object.keys(form) as (keyof FormState)[]).some(k => form[k] !== baseline[k])
+  }, [form, draft, isEditing])
+
+  function handleBack() {
+    if (isDirty) {
+      setShowLeaveDialog(true)
+    } else {
+      onBack()
+    }
+  }
+
   const hasMissingFields = missing.length > 0
   const isPending = updateDraft.isPending || createOrder.isPending
   const createBlockedByEditing = isEditing && !hasMissingFields
@@ -192,7 +207,7 @@ export default function OrderDraftPanel({
       <header className="flex h-20 flex-shrink-0 items-center gap-2 border-b-[1.5px] border-[#e9e9e9] px-4">
         <button
           type="button"
-          onClick={onBack}
+          onClick={handleBack}
           className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full text-gray-600 transition hover:bg-[#F5F6FF] hover:text-[#6168FC] active:scale-95"
           aria-label="返回訂單詳情"
         >
@@ -294,6 +309,31 @@ export default function OrderDraftPanel({
           <span>建立新訂單</span>
         </button>
       </div>
+
+      {showLeaveDialog && (
+        <div className="absolute inset-0 z-[1100] flex items-center justify-center rounded-[inherit] bg-black/20">
+          <div className="w-[280px] rounded-2xl bg-white px-6 py-5 shadow-xl font-['Noto_Sans_TC',sans-serif]">
+            <p className="mb-1 text-base font-bold text-black">確定要離開？</p>
+            <p className="mb-5 text-sm text-black/50">尚未儲存的變更將會遺失。</p>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setShowLeaveDialog(false)}
+                className="flex h-10 flex-1 items-center justify-center rounded-xl border border-[#e0e3ed] text-sm font-bold text-black/60 transition hover:bg-[#F5F5F5]"
+              >
+                繼續編輯
+              </button>
+              <button
+                type="button"
+                onClick={() => { setShowLeaveDialog(false); onBack() }}
+                className="flex h-10 flex-1 items-center justify-center rounded-xl bg-red-500 text-sm font-bold text-white transition hover:bg-red-600"
+              >
+                離開
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </aside>
   )
 }

@@ -377,10 +377,7 @@ export function FormRow({
   display,
   missing,
 }: FormRowProps) {
-  const labelClasses = cn(
-    'w-[110px] flex-shrink-0 font-bold font-["Noto_Sans_TC",sans-serif] text-base text-black/[0.87]',
-    missing && 'text-red-600',
-  )
+  const labelClasses = 'w-[110px] flex-shrink-0 font-bold font-["Noto_Sans_TC",sans-serif] text-base text-black/[0.87]'
 
   return (
     <div className="flex min-h-8 items-center gap-2">
@@ -388,15 +385,6 @@ export function FormRow({
       <div className="flex-1">
         {isEditing ? (
           renderEditor(field, form, setField, missing)
-        ) : missing ? (
-          <span
-            className={cn(
-              "block w-full rounded-md border-[1.5px] border-red-500 bg-red-50 px-3 py-1.5 font-bold text-red-600",
-              "font-['Noto_Sans_TC',sans-serif] text-base",
-            )}
-          >
-            {display?.[field.key] || '請填寫'}
-          </span>
         ) : field.variant === 'order_status' && field.editable ? (
           <OrderStatusBadge status={normalizeOrderStatus(form.order_status)} />
         ) : (
@@ -483,11 +471,12 @@ function renderEditor(
   setField: <K extends keyof FormState>(key: K, value: FormState[K]) => void,
   missing: boolean,
 ) {
+  const emptyHint = missing ? '此欄位不可為空' : undefined
   const inputClasses = cn(
     'w-full rounded-md border-[1.5px] border-[#e0e3ed] bg-[#fafbff] px-3 py-2 text-[15px] text-black outline-none transition',
     "font-['Noto_Sans_TC',sans-serif]",
     'focus:border-[#6168FC] focus:shadow-[0_0_0_2px_#e4e7ff]',
-    missing && 'border-red-500 bg-red-50 focus:shadow-[0_0_0_2px_rgba(220,53,69,0.25)]',
+    missing && 'border-red-500 bg-red-50 placeholder:text-red-400 focus:shadow-[0_0_0_2px_rgba(220,53,69,0.25)]',
   )
 
   if (field.variant === 'select' && field.key === 'shipment_method') {
@@ -533,6 +522,7 @@ function renderEditor(
         type="number"
         min="0"
         value={form.quantity}
+        placeholder={emptyHint}
         onChange={e => setField('quantity', e.target.value)}
         className={inputClasses}
       />
@@ -546,6 +536,7 @@ function renderEditor(
         min="0"
         step="0.01"
         value={form.total_amount}
+        placeholder={emptyHint}
         onChange={e => setField('total_amount', e.target.value)}
         className={inputClasses}
       />
@@ -557,6 +548,7 @@ function renderEditor(
     <input
       type="text"
       value={form[key] as string}
+      placeholder={emptyHint}
       onChange={e => setField(key, e.target.value as FormState[typeof key])}
       className={inputClasses}
     />
@@ -586,15 +578,10 @@ export function DateTimeRow({
     'focus:border-[#6168FC] focus:shadow-[0_0_0_2px_#e4e7ff]',
     missing && 'border-red-500 bg-red-50 focus:shadow-[0_0_0_2px_rgba(220,53,69,0.25)]',
   )
-  const labelClasses = cn(
-    'w-[110px] flex-shrink-0 font-bold font-["Noto_Sans_TC",sans-serif] text-base text-black/[0.87]',
-    missing && 'text-red-600',
-  )
-
   return (
     <>
       <div className="flex min-h-8 items-center gap-2">
-        <div className={labelClasses}>{label}</div>
+        <div className='w-[110px] flex-shrink-0 font-bold font-["Noto_Sans_TC",sans-serif] text-base text-black/[0.87]'>{label}</div>
         <div className="flex-1">
           <input
             type="date"

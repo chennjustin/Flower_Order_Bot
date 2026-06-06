@@ -50,6 +50,7 @@ export default function OrderEditPanel({
   const [form, setForm] = useState<FormState>(() => formStateFromOrder(order))
   const [pendingMessageIds, setPendingMessageIds] = useState<number[]>([])
   const [aiPreviewHint, setAiPreviewHint] = useState(false)
+  const [showLeaveDialog, setShowLeaveDialog] = useState(false)
 
   const orderStatus = normalizeOrderStatus(order.order_status)
   const isCancelled = orderStatus === 'CANCELLED'
@@ -160,12 +161,28 @@ export default function OrderEditPanel({
   const isSaving = updateOrder.isPending
   const isSuggesting = suggestFromChat.isPending
 
+  const REQUIRED_FIELDS: { key: keyof FormState; label: string }[] = [
+    { key: 'item', label: '品項' },
+    { key: 'customer_name', label: '客戶姓名' },
+    { key: 'customer_phone', label: '客戶電話' },
+    { key: 'quantity', label: '數量' },
+    { key: 'total_amount', label: '總金額' },
+  ]
+
+  function handleBack() {
+    if (isDirty) {
+      setShowLeaveDialog(true)
+    } else {
+      onBack()
+    }
+  }
+
   return (
     <aside className="relative flex h-full w-[336px] flex-shrink-0 flex-col border-l border-[#B3B3B3] bg-white">
       <header className="flex h-20 flex-shrink-0 items-center gap-2 border-b-[1.5px] border-[#e9e9e9] px-4">
         <button
           type="button"
-          onClick={onBack}
+          onClick={handleBack}
           className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full text-gray-600 transition hover:bg-[#F5F6FF] hover:text-[#6168FC] active:scale-95"
           aria-label="返回訂單詳情"
         >
@@ -205,8 +222,8 @@ export default function OrderEditPanel({
                 label={field.label}
                 date={form.send_datetime_date}
                 time={form.send_datetime_time}
-                onDateChange={v => setField('send_datetime_date', v)}
-                onTimeChange={v => setField('send_datetime_time', v)}
+                onDateChange={(v: string) => setField('send_datetime_date', v)}
+                onTimeChange={(v: string) => setField('send_datetime_time', v)}
                 missing={false}
               />
             ) : (
@@ -217,7 +234,7 @@ export default function OrderEditPanel({
                 form={form}
                 setField={setField}
                 display={display}
-                missing={false}
+                missing={isEditing && REQUIRED_FIELDS.some(r => r.key === field.key) && !String(form[field.key as keyof FormState] ?? '').trim()}
               />
             ),
           )}
@@ -260,6 +277,31 @@ export default function OrderEditPanel({
           <span>更新訂單</span>
         </button>
       </div>
+
+      {showLeaveDialog && (
+        <div className="absolute inset-0 z-[1100] flex items-center justify-center rounded-[inherit] bg-black/20">
+          <div className="w-[280px] rounded-2xl bg-white px-6 py-5 shadow-xl font-['Noto_Sans_TC',sans-serif]">
+              <p className="mb-1 text-base font-bold text-black">確定要離開？</p>
+              <p className="mb-5 text-sm text-black/50">尚未儲存的變更將會遺失。</p>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowLeaveDialog(false)}
+                  className="flex h-10 flex-1 items-center justify-center rounded-xl border border-[#e0e3ed] text-sm font-bold text-black/60 transition hover:bg-[#F5F5F5]"
+                >
+                  繼續編輯
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setShowLeaveDialog(false); onBack() }}
+                  className="flex h-10 flex-1 items-center justify-center rounded-xl bg-red-500 text-sm font-bold text-white transition hover:bg-red-600"
+                >
+                  離開
+                </button>
+              </div>
+          </div>
+        </div>
+      )}
     </aside>
   )
 }
