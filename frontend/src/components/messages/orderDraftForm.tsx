@@ -5,6 +5,7 @@ import type {
   OrderPatchUpdate,
 } from '@/types/domain'
 import type { OrderStatus, PaymentStatus, ShipmentMethod } from '@/types/enums'
+import { getRegistryEntry } from '@/config/orderDisplayFields'
 import type { OrderFieldKey } from '@/types/orderDisplay'
 import {
   ORDER_STATUS_OPTIONS,
@@ -117,21 +118,28 @@ export function filterResolvedMissingKeys(
   return missing.filter(key => !isMissingCatalogKeyFilled(key, draft))
 }
 
-export const FIELD_META: Record<FieldKey, Omit<FieldDef, 'key'>> = {
-  id: { label: '訂單編號', editable: false },
-  customer_name: { label: '客戶姓名', editable: true },
-  customer_phone: { label: '客戶電話', editable: true },
-  total_amount: { label: '總金額', editable: true, variant: 'amount' },
-  item: { label: '品項', editable: true },
-  quantity: { label: '數量', editable: true, variant: 'number' },
-  note: { label: '備註', editable: true },
-  shipment_method: { label: '取貨方式', editable: true, variant: 'select' },
-  send_datetime: { label: '送貨日期', editable: true, variant: 'datetime' },
-  delivery_address: { label: '送貨地址', editable: true },
-  order_date: { label: '訂單日期', editable: false },
-  order_status: { label: '狀態', editable: false, variant: 'order_status' },
-  pay_way: { label: '付款方式', editable: true },
-  pay_status: { label: '付款狀態', editable: true, variant: 'select' },
+/** Side-panel control metadata only — labels come from ORDER_FIELD_REGISTRY. */
+const FIELD_UI_META: Partial<
+  Record<FieldKey, Pick<FieldDef, 'editable' | 'variant'>>
+> = {
+  total_amount: { variant: 'amount' },
+  quantity: { variant: 'number' },
+  shipment_method: { variant: 'select' },
+  send_datetime: { variant: 'datetime' },
+  order_status: { variant: 'order_status' },
+  pay_status: { variant: 'select' },
+}
+
+/** Build a form row definition; label is always read from the canonical registry. */
+export function buildFieldDef(key: FieldKey): FieldDef {
+  const { label, editable } = getRegistryEntry(key)
+  const ui = FIELD_UI_META[key]
+  return {
+    key,
+    label,
+    editable: ui?.editable ?? editable,
+    variant: ui?.variant,
+  }
 }
 
 export const DRAFT_SUPPORTED_KEYS: OrderFieldKey[] = [

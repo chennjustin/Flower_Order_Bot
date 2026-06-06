@@ -8,7 +8,7 @@ import {
   DRAFT_SUPPORTED_KEYS,
   DateTimeRow,
   EMPTY_FORM,
-  FIELD_META,
+  buildFieldDef,
   FormRow,
   type FieldDef,
   type FieldKey,
@@ -61,7 +61,7 @@ export default function OrderCreatePanel({
       .sort((a, b) => a.order - b.order)
       .filter(f => f.visible && supportedSet.has(f.key) && f.key !== 'id' && f.key !== 'order_date')
       .map(f => {
-        const base = { key: f.key as FieldKey, ...FIELD_META[f.key as FieldKey] }
+        const base = buildFieldDef(f.key as FieldKey)
         if (f.key === 'order_status') return { ...base, editable: true, variant: 'order_status' as const }
         return base
       })

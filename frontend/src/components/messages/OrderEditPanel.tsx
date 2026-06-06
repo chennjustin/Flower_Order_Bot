@@ -14,9 +14,9 @@ import {
 import { cn } from '@/lib/utils'
 import { toHighlightFieldKeys } from '@/lib/llmChangedFields'
 import {
+  buildFieldDef,
   DRAFT_SUPPORTED_KEYS,
   DateTimeRow,
-  FIELD_META,
   FormRow,
   formatReadOnly,
   formStateFromOrder,
@@ -111,7 +111,7 @@ export default function OrderEditPanel({
       .sort((a, b) => a.order - b.order)
       .filter(field => field.visible && supportedSet.has(field.key))
       .map(field => {
-        const base = { key: field.key as FieldKey, ...FIELD_META[field.key as FieldKey] }
+        const base = buildFieldDef(field.key as FieldKey)
         if (field.key === 'order_status') {
           return { ...base, editable: true, variant: 'order_status' as const }
         }
@@ -186,12 +186,12 @@ export default function OrderEditPanel({
   const isSaving = updateOrder.isPending
   const isSuggesting = suggestFromChat.isPending
 
-  const REQUIRED_FIELDS: { key: keyof FormState; label: string }[] = [
-    { key: 'item', label: '品項' },
-    { key: 'customer_name', label: '客戶姓名' },
-    { key: 'customer_phone', label: '客戶電話' },
-    { key: 'quantity', label: '數量' },
-    { key: 'total_amount', label: '總金額' },
+  const REQUIRED_FIELD_KEYS: (keyof FormState)[] = [
+    'item',
+    'customer_name',
+    'customer_phone',
+    'quantity',
+    'total_amount',
   ]
 
   function handleBack() {
@@ -260,7 +260,7 @@ export default function OrderEditPanel({
                 form={form}
                 setField={setField}
                 display={display}
-                missing={isEditing && REQUIRED_FIELDS.some(r => r.key === field.key) && !String(form[field.key as keyof FormState] ?? '').trim()}
+                missing={isEditing && REQUIRED_FIELD_KEYS.includes(field.key as keyof FormState) && !String(form[field.key as keyof FormState] ?? '').trim()}
                 aiChanged={aiChangedKeys.has(field.key)}
               />
             ),

@@ -7,9 +7,9 @@ import type { OrderFieldKey } from '@/types/orderDisplay'
 import { normalizeOrderStatus, orderStatusLabel } from '@/utils/orderStatus'
 import { cn } from '@/lib/utils'
 import {
+  buildFieldDef,
   DRAFT_SUPPORTED_KEYS,
   DateTimeRow,
-  FIELD_META,
   FormRow,
   formatReadOnly,
   formStateFromOrder,
@@ -85,7 +85,7 @@ export default function OrderDetailPanel({
       .sort((a, b) => a.order - b.order)
       .filter(f => f.visible && supportedSet.has(f.key))
       .map(f => {
-        const base = { key: f.key as FieldKey, ...FIELD_META[f.key as FieldKey] }
+        const base = buildFieldDef(f.key as FieldKey)
         if (f.key === 'order_status') return { ...base, editable: true, variant: 'order_status' as const }
         return base
       })

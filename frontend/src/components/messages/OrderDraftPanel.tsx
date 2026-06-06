@@ -5,15 +5,16 @@ import {
   useOrderDraft,
   useUpdateOrderDraft,
 } from '@/hooks/useOrderDraft'
+import { getRegistryEntry } from '@/config/orderDisplayFields'
 import { useOrderDisplayConfig } from '@/context/OrderDisplayConfigContext'
 import type { OrderFieldKey } from '@/types/orderDisplay'
 import { cn } from '@/lib/utils'
 import { toHighlightFieldKeys } from '@/lib/llmChangedFields'
 import {
+  buildFieldDef,
   DRAFT_SUPPORTED_KEYS,
   DateTimeRow,
   EMPTY_FORM,
-  FIELD_META,
   FormRow,
   MISSING_KEY_TO_FIELD,
   emptyDraftDisplay,
@@ -126,14 +127,14 @@ export default function OrderDraftPanel({
         const key = field.key as FieldKey
         return field.visible || missingFieldSet.has(key)
       })
-      .map(field => ({ key: field.key as FieldKey, ...FIELD_META[field.key as FieldKey] }))
+      .map(field => buildFieldDef(field.key as FieldKey))
   }, [savedConfig.fields, missingFieldSet])
 
   const missingFieldLabels = useMemo(
     () =>
       missing.map(raw => {
         const mapped = MISSING_KEY_TO_FIELD[raw]
-        return mapped ? FIELD_META[mapped].label : raw
+        return mapped ? getRegistryEntry(mapped).label : raw
       }),
     [missing],
   )
