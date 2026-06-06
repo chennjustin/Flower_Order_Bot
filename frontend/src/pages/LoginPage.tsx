@@ -87,8 +87,7 @@ export default function LoginPage() {
     <div className={`flex min-h-screen items-center justify-center px-4 ${LOGIN_PAGE_BACKGROUND_CLASS}`}>
       <div className={LOGIN_CARD_CLASS}>
         <div className="mb-8 text-center">
-          <div className="mb-3 text-5xl">🌸</div>
-          <h1 className="text-2xl font-bold text-gray-800">花店訂單系統</h1>
+          <h1 className="mb-3 font-['Montserrat_Alternates',sans-serif] text-4xl font-medium tracking-[0.1em] text-[#6168FC]">Flourish</h1>
           <p className="mt-2 text-base text-gray-500">請使用 Google 帳號登入</p>
         </div>
 

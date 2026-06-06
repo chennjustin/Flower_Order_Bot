@@ -19,7 +19,7 @@ export default function OnboardingLayout() {
       style={BACKGROUND_STYLE}
     >
       <header className="mb-8 text-center">
-        <p className="m-0 text-3xl font-bold tracking-wide text-black">{storeName}</p>
+        <p className="m-0 text-3xl font-bold tracking-wide text-black">Hi, {storeName}</p>
         <p className="m-0 mt-2 text-base text-black">帳號設定</p>
       </header>
 
