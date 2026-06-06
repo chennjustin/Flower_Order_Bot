@@ -12,7 +12,6 @@ from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.time import to_taipei_aware, to_taipei_naive
-from app.domain.order_fields import ORDER_CSV_EXPORT_KEYS, get_field_label
 from app.enums.chat import ChatMessageDirection, ChatMessageStatus, ChatRoomStage
 from app.enums.order import OrderStatus
 from app.enums.payment import PaymentStatus
@@ -162,7 +161,19 @@ async def export_orders_csv(db: AsyncSession, filters: OrderListFilters) -> str:
     items = await _build_orders_out_batch(db, orders)
     buffer = io.StringIO()
     writer = csv.writer(buffer)
-    writer.writerow([get_field_label(key) for key in ORDER_CSV_EXPORT_KEYS])
+    writer.writerow(
+        [
+            "訂單編號",
+            "顧客姓名",
+            "顧客電話",
+            "狀態",
+            "品項",
+            "數量",
+            "總金額",
+            "取貨時間",
+            "備註",
+        ]
+    )
     for row in items:
         writer.writerow(
             [

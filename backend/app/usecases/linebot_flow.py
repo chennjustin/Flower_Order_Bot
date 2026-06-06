@@ -30,6 +30,36 @@ from app.utils.line_inbound_media import fetch_line_message_binary, save_inbound
 from app.utils.line_send_message import send_confirm, send_quick_reply_message
 
 
+async def _publish_room_stage(chat_room: ChatRoom, store_id: int) -> None:
+    from app.services.chat_event_bus import publish_chat_room_stage
+
+    stage = (
+        chat_room.stage.value
+        if hasattr(chat_room.stage, "value")
+        else str(chat_room.stage)
+    )
+    await publish_chat_room_stage(chat_room.id, stage, store_id=store_id)
+
+
+async def _publish_bot_outgoing(
+    db: AsyncSession,
+    chat_room: ChatRoom,
+    message: ChatMessage,
+    store_id: int,
+) -> None:
+    from app.repositories.chat_repository import touch_chat_room_on_new_message
+    from app.services.chat_event_bus import publish_chat_message
+
+    await db.refresh(message)
+    await touch_chat_room_on_new_message(
+        db,
+        chat_room,
+        message_at=message.created_at,
+        incoming=False,
+    )
+    await publish_chat_message(db, chat_room.id, message, store_id=store_id)
+
+
 async def resolve_line_user_and_room(
     db: AsyncSession, user_line_id: str, store: Store
 ) -> tuple[User, ChatRoom]:
@@ -66,6 +96,7 @@ async def resolve_line_user_and_room(
             chat_room.bot_step = -1
             await db.commit()
             await db.refresh(chat_room)
+            await _publish_room_stage(chat_room, store.id)
             print("上次傳訊息是很久以前，已重設成 welcome")
 
     if await get_order_draft_by_room(db, chat_room.id) is None:
@@ -75,13 +106,14 @@ async def resolve_line_user_and_room(
 
 
 async def handoff_to_owner_if_order_confirmed(
-    chat_room: ChatRoom, db: AsyncSession
+    chat_room: ChatRoom, db: AsyncSession, *, store_id: int
 ) -> None:
     if chat_room.stage == ChatRoomStage.ORDER_CONFIRM:
         chat_room.stage = ChatRoomStage.WAITING_OWNER
         chat_room.bot_step = -1
         await db.commit()
         await db.refresh(chat_room)
+        await _publish_room_stage(chat_room, store_id)
         print("ORDER_CONFIRM received a new message; switching to WAITING_OWNER.")
 
 
@@ -111,9 +143,16 @@ async def handle_incoming_text_message(
     await db.commit()
     await db.refresh(message)
 
+    from app.repositories.chat_repository import touch_chat_room_on_new_message
     from app.services.chat_event_bus import publish_chat_message
 
-    await publish_chat_message(db, chat_room.id, message)
+    await touch_chat_room_on_new_message(
+        db,
+        chat_room,
+        message_at=message.created_at,
+        incoming=True,
+    )
+    await publish_chat_message(db, chat_room.id, message, store_id=store.id)
 
     print(f"User {user_line_id} 發送訊息：{user_message}")
 
@@ -122,6 +161,7 @@ async def handle_incoming_text_message(
         chat_room.bot_step = -1
         await db.commit()
         await db.refresh(chat_room)
+        await _publish_room_stage(chat_room, store.id)
         print("回到 welcome")
         return
 
@@ -136,7 +176,7 @@ async def handle_incoming_text_message(
         await run_bot_flow(chat_room, user_message, event, store, db)
         return
 
-    await handoff_to_owner_if_order_confirmed(chat_room, db)
+    await handoff_to_owner_if_order_confirmed(chat_room, db, store_id=store.id)
 
 
 async def handle_incoming_image_message(
@@ -171,11 +211,18 @@ async def handle_incoming_image_message(
     await db.commit()
     await db.refresh(message)
 
+    from app.repositories.chat_repository import touch_chat_room_on_new_message
     from app.services.chat_event_bus import publish_chat_message
 
-    await publish_chat_message(db, chat_room.id, message)
+    await touch_chat_room_on_new_message(
+        db,
+        chat_room,
+        message_at=message.created_at,
+        incoming=True,
+    )
+    await publish_chat_message(db, chat_room.id, message, store_id=store.id)
 
-    await handoff_to_owner_if_order_confirmed(chat_room, db)
+    await handoff_to_owner_if_order_confirmed(chat_room, db, store_id=store.id)
 
 
 async def handle_incoming_sticker_message(
@@ -203,11 +250,18 @@ async def handle_incoming_sticker_message(
     await db.commit()
     await db.refresh(message)
 
+    from app.repositories.chat_repository import touch_chat_room_on_new_message
     from app.services.chat_event_bus import publish_chat_message
 
-    await publish_chat_message(db, chat_room.id, message)
+    await touch_chat_room_on_new_message(
+        db,
+        chat_room,
+        message_at=message.created_at,
+        incoming=True,
+    )
+    await publish_chat_message(db, chat_room.id, message, store_id=store.id)
 
-    await handoff_to_owner_if_order_confirmed(chat_room, db)
+    await handoff_to_owner_if_order_confirmed(chat_room, db, store_id=store.id)
 
 
 async def run_welcome_flow(
@@ -245,9 +299,11 @@ async def run_welcome_flow(
 
         await db.commit()
         await db.refresh(chat_room)
+        await _publish_bot_outgoing(db, chat_room, message, store.id)
         print("已詢問使用者是否要客製化花束")
         return
 
+    stage_before = chat_room.stage
     if user_text == "啟動智慧訂購流程":
         chat_room.stage = ChatRoomStage.BOT_ACTIVE
         chat_room.bot_step = 1
@@ -271,9 +327,12 @@ async def run_welcome_flow(
         )
         db.add(message)
         await db.commit()
+        await _publish_bot_outgoing(db, chat_room, message, store.id)
 
     await db.commit()
     await db.refresh(chat_room)
+    if chat_room.stage != stage_before:
+        await _publish_room_stage(chat_room, store.id)
 
 
 async def run_bot_flow(
@@ -288,6 +347,7 @@ async def run_bot_flow(
     }
 
     while True:
+        stage_before = chat_room.stage
         handler = STEP_MAP.get(chat_room.bot_step)
 
         if handler is None:
@@ -295,6 +355,9 @@ async def run_bot_flow(
             chat_room.bot_step = 0
             chat_room.stage = ChatRoomStage.WAITING_OWNER
             await db.commit()
+            await db.refresh(chat_room)
+            if chat_room.stage != stage_before:
+                await _publish_room_stage(chat_room, store.id)
             return
 
         next_step, manual_override, next_question = await handler(
@@ -310,6 +373,9 @@ async def run_bot_flow(
                 chat_room.stage = ChatRoomStage.WAITING_OWNER
 
         await db.commit()
+        await db.refresh(chat_room)
+        if chat_room.stage != stage_before:
+            await _publish_room_stage(chat_room, store.id)
 
         if not next_question:
             break
@@ -337,6 +403,7 @@ async def ask_budget(user_text, event, db, chat_room, line_api: LineBotApi):
             )
             db.add(message)
             await db.commit()
+            await _publish_bot_outgoing(db, chat_room, message, chat_room.store_id)
 
             return 1, False, False
         else:
@@ -367,6 +434,7 @@ async def ask_color(user_text, event, db, chat_room, line_api: LineBotApi):
         )
         db.add(message)
         await db.commit()
+        await _publish_bot_outgoing(db, chat_room, message, chat_room.store_id)
 
         return 4, False, False
 
@@ -391,6 +459,7 @@ async def ask_type(user_text, event, db, chat_room, line_api: LineBotApi):
         )
         db.add(message)
         await db.commit()
+        await _publish_bot_outgoing(db, chat_room, message, chat_room.store_id)
 
         return 4, False, False
 
@@ -413,4 +482,5 @@ async def last(user_text, event, db, chat_room, line_api: LineBotApi):
     )
     db.add(message)
     await db.commit()
+    await _publish_bot_outgoing(db, chat_room, message, chat_room.store_id)
     return -1, False, False

@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { sendMessage } from '@/api/messages'
 import { useStoreQueryGate } from '@/hooks/useStoreQuery'
-import { chatRoomsQueryKey, roomMessagesQueryKey } from '@/lib/storeQueryKeys'
+import { roomMessagesQueryKey } from '@/lib/storeQueryKeys'
 import type { ChatMessage, ChatMessageBody } from '@/types/domain'
 import {
   createOptimisticOutgoingMessage,
@@ -24,13 +24,13 @@ export function useRoomMessages(roomId: number | null) {
     queryKey:
       storeId != null && roomId != null
         ? roomMessagesQueryKey(storeId, roomId)
-        : ['chatRooms', 'pending', 'messages'],
+        : ['roomMessages', 'pending'],
     queryFn: () => fetchRoomMessagesIncremental(qc, storeId as number, roomId as number),
     enabled,
     staleTime: 5 * 60_000,
     gcTime: 30 * 60_000,
     refetchInterval: false,
-    refetchOnWindowFocus: true,
+    refetchOnWindowFocus: false,
   })
 }
 
@@ -49,13 +49,10 @@ export function useSendMessage(roomId: number | null) {
       if (roomId == null || storeId == null) return
 
       const messagesKey = roomMessagesQueryKey(storeId, roomId)
-      const roomsKey = chatRoomsQueryKey(storeId)
 
       await qc.cancelQueries({ queryKey: messagesKey })
-      await qc.cancelQueries({ queryKey: roomsKey })
 
       const previousMessages = qc.getQueryData<ChatMessage[]>(messagesKey)
-      const previousRooms = qc.getQueryData(roomsKey)
 
       const optimistic = createOptimisticOutgoingMessage(body)
       qc.setQueryData<ChatMessage[]>(messagesKey, msgs => [...(msgs ?? []), optimistic])
@@ -64,7 +61,7 @@ export function useSendMessage(roomId: number | null) {
         timestamp: optimistic.created_at,
       })
 
-      return { previousMessages, previousRooms }
+      return { previousMessages }
     },
     onSuccess: (sent, _body, context) => {
       if (roomId == null || storeId == null) return
@@ -82,14 +79,17 @@ export function useSendMessage(roomId: number | null) {
       if (roomId == null || storeId == null) return
 
       const messagesKey = roomMessagesQueryKey(storeId, roomId)
-      const roomsKey = chatRoomsQueryKey(storeId)
 
       if (context?.previousMessages !== undefined) {
         qc.setQueryData(messagesKey, context.previousMessages)
       }
-      if (context?.previousRooms !== undefined) {
-        qc.setQueryData(roomsKey, context.previousRooms)
-      }
+      void qc.invalidateQueries({
+        queryKey: ['chatRooms', storeId],
+        predicate: query =>
+          query.queryKey.length === 4 &&
+          query.queryKey[0] === 'chatRooms' &&
+          typeof query.queryKey[2] === 'string',
+      })
     },
   })
 }

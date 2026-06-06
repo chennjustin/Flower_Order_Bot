@@ -231,3 +231,21 @@ async def touch_chat_room_updated_at(db: AsyncSession, room: ChatRoom) -> ChatRo
     await db.commit()
     await db.refresh(room)
     return room
+
+
+async def touch_chat_room_on_new_message(
+    db: AsyncSession,
+    room: ChatRoom,
+    *,
+    message_at: datetime,
+    incoming: bool,
+) -> ChatRoom:
+    """Keep list sort keys in sync when Redis pushes a new message."""
+    room.last_message_ts = message_at
+    room.updated_at = datetime.now(timezone(timedelta(hours=8))).replace(tzinfo=None)
+    if incoming:
+        room.unread_count = (room.unread_count or 0) + 1
+    db.add(room)
+    await db.commit()
+    await db.refresh(room)
+    return room

@@ -37,6 +37,8 @@ async def test_openapi_contains_frozen_core_paths():
         "/orderdraft/{room_id}",
         "/organize_data/{room_id}",
         "/chat_rooms",
+        "/chat_rooms/stream",
+        "/chat_rooms/{room_id}/stream",
         "/chat_rooms/{room_id}/messages",
         "/chat_rooms/{room_id}/switch_mode",
         "/stats",

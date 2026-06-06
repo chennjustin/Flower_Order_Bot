@@ -1,12 +1,13 @@
+import json
 from datetime import datetime
-from typing import List, Optional
+from typing import AsyncIterator, List, Optional
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
-from app.core.auth import get_chat_room_for_store, get_current_store
+from app.core.auth import get_chat_room_for_store, get_current_store, get_current_store_sse
 from app.core.deps import get_settings
 from app.core.redis_client import is_redis_enabled
 from app.models.store import Store
@@ -33,6 +34,62 @@ _MAX_CHAT_IMAGE_BYTES = 5 * 1024 * 1024
 _ALLOWED_IMAGE_CT = frozenset({"image/jpeg", "image/png", "image/gif", "image/webp"})
 
 api_router = APIRouter(prefix="/chat_rooms", tags=["Chat"])
+
+_SSE_HEADERS = {
+    "Cache-Control": "no-cache",
+    "Connection": "keep-alive",
+    "X-Accel-Buffering": "no",
+}
+
+
+async def _redis_sse_generator(
+    event_source: AsyncIterator[str],
+    *,
+    store_id: int | None = None,
+) -> AsyncIterator[str]:
+    if not is_redis_enabled():
+        yield "event: error\ndata: redis_disabled\n\n"
+        return
+    async for raw in event_source:
+        if not raw:
+            yield ": heartbeat\n\n"
+            continue
+        if store_id is not None:
+            try:
+                payload = json.loads(raw)
+            except json.JSONDecodeError:
+                continue
+            if payload.get("store_id") != store_id:
+                continue
+        yield f"data: {raw}\n\n"
+
+
+@api_router.get("/stream")
+async def stream_all_chat_rooms(
+    store: Store = Depends(get_current_store_sse),
+):
+    """SSE bridge: Redis pub/sub → browser (store-scoped list updates)."""
+    return StreamingResponse(
+        _redis_sse_generator(subscribe_rooms_events(), store_id=store.id),
+        media_type="text/event-stream",
+        headers=_SSE_HEADERS,
+    )
+
+
+@api_router.get("/{room_id}/stream")
+async def stream_chat_room(
+    room_id: int,
+    store: Store = Depends(get_current_store_sse),
+    db: AsyncSession = Depends(get_db),
+):
+    """SSE bridge: Redis pub/sub → browser (single room messages)."""
+    await get_chat_room_for_store(db, room_id, store)
+    return StreamingResponse(
+        _redis_sse_generator(subscribe_room_events(room_id)),
+        media_type="text/event-stream",
+        headers=_SSE_HEADERS,
+    )
+
 
 @api_router.get("", response_model=ChatRoomListOut)
 async def list_chat_rooms(

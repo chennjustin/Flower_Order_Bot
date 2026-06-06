@@ -23,7 +23,7 @@ export function useOrderDraft(roomId: number | null, enabled: boolean) {
     queryKey:
       storeId != null && roomId != null
         ? orderDraftQueryKey(storeId, roomId)
-        : ['chatRooms', 'pending', 'orderDraft'],
+        : ['orderDraft', 'pending'],
     queryFn: () => fetchOrderDraft(roomId as number),
     enabled: draftEnabled,
   })

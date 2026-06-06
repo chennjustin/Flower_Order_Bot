@@ -6,7 +6,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
-from app.core.deps import get_current_user
+from app.core.deps import get_current_user, get_current_user_sse
 from app.models.chat import ChatRoom
 from app.models.order import Order
 from app.models.payment import PaymentMethod
@@ -20,10 +20,7 @@ async def _store_by_auth_uuid(db: AsyncSession, auth_uuid: str) -> Store | None:
     return result.scalar_one_or_none()
 
 
-async def get_current_store(
-    user: dict = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
-) -> Store:
+async def _resolve_store_for_user(db: AsyncSession, user: dict) -> Store:
     """將登入的 Google 帳號解析為其專屬 Store（1:1）。
 
     流程：
@@ -66,6 +63,20 @@ async def get_current_store(
         status_code=status.HTTP_403_FORBIDDEN,
         detail="Account not linked to a store. Contact your administrator.",
     )
+
+
+async def get_current_store(
+    user: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> Store:
+    return await _resolve_store_for_user(db, user)
+
+
+async def get_current_store_sse(
+    user: dict = Depends(get_current_user_sse),
+    db: AsyncSession = Depends(get_db),
+) -> Store:
+    return await _resolve_store_for_user(db, user)
 
 
 async def get_chat_room_for_store(

@@ -31,6 +31,7 @@ from app.repositories.chat_repository import (
     list_chat_rooms_paginated,
     sum_store_unread_count,
     switch_chat_room_mode as repo_switch_chat_room_mode,
+    touch_chat_room_on_new_message,
     touch_chat_room_updated_at,
 )
 
@@ -180,7 +181,12 @@ async def get_chat_messages(db: AsyncSession, room_id: int, after: Optional[date
     ]
 
 async def switch_chat_room_mode(db: AsyncSession, room_id: int, mode: str) -> None:
+    room = await get_chat_room_by_room_id(db, room_id)
     await repo_switch_chat_room_mode(db, room_id, mode)
+    if room is not None:
+        from app.services.chat_event_bus import publish_chat_room_stage
+
+        await publish_chat_room_stage(room_id, mode, store_id=room.store_id)
 
 async def create_chat_message_entry(
     db: AsyncSession,
@@ -228,7 +234,12 @@ async def create_staff_message(
         message_status=message_status,
     )
 
-    await touch_chat_room_updated_at(db, room)
+    await touch_chat_room_on_new_message(
+        db,
+        room,
+        message_at=message.created_at,
+        incoming=False,
+    )
 
     out = ChatMessageOut(
         id=message.id,
@@ -241,5 +252,5 @@ async def create_staff_message(
 
     from app.services.chat_event_bus import publish_chat_message_out
 
-    await publish_chat_message_out(room_id, out)
+    await publish_chat_message_out(room_id, out, store_id=room.store_id)
     return out

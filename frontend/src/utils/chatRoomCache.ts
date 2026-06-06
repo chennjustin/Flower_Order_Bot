@@ -3,7 +3,7 @@ import type { InfiniteData, QueryClient } from '@tanstack/react-query'
 import { fetchRoomMessages } from '@/api/messages'
 import { roomMessagesQueryKey } from '@/lib/storeQueryKeys'
 import type { ChatMessage, ChatMessageBody, ChatRoom, ChatRoomListResponse } from '@/types/domain'
-import { ChatMessageDirection, ChatMessageStatus } from '@/types/enums'
+import { ChatMessageDirection, ChatMessageStatus, type ChatRoomStage } from '@/types/enums'
 
 export { roomMessagesQueryKey } from '@/lib/storeQueryKeys'
 
@@ -46,42 +46,54 @@ export function sortChatRoomsByLastMessage(rooms: ChatRoom[]): ChatRoom[] {
   })
 }
 
-/** Room list infinite queries use string stage at index 2; message/draft keys use numeric room_id. */
+/** Infinite list keys: ['chatRooms', storeId, stage, q] */
 function isChatRoomListQueryKey(queryKey: readonly unknown[]): boolean {
-  return typeof queryKey[2] === 'string'
+  return (
+    queryKey.length === 4 &&
+    queryKey[0] === 'chatRooms' &&
+    typeof queryKey[2] === 'string' &&
+    typeof queryKey[3] === 'string'
+  )
 }
 
-function patchInfiniteChatRooms(
+function bubbleRoomInInfinitePages(
   data: ChatRoomsInfinite | undefined,
   roomId: number,
-  patch: { text: string; timestamp: string },
+  updater: (room: ChatRoom) => ChatRoom,
   options?: { bumpUnread?: boolean; selectedRoomId?: number | null },
-): ChatRoomsInfinite | undefined {
-  if (!data?.pages) return data
-  return {
-    ...data,
-    pages: data.pages.map((page, pageIndex) => ({
-      ...page,
-      items: sortChatRoomsByLastMessage(
-        page.items.map(room => {
-          if (room.room_id !== roomId) return room
-          const bumpUnread =
-            options?.bumpUnread === true &&
-            options.selectedRoomId != null &&
-            roomId !== options.selectedRoomId
-          return {
-            ...room,
-            unread_count: bumpUnread ? room.unread_count + 1 : room.unread_count,
-            last_message: { text: patch.text, timestamp: patch.timestamp },
-          }
-        }),
-      ),
-      total_unread:
-        pageIndex === 0 && options?.bumpUnread && options.selectedRoomId !== roomId
-          ? page.total_unread + 1
-          : page.total_unread,
-    })),
+): { data: ChatRoomsInfinite; found: boolean } {
+  if (!data?.pages) {
+    return { data: data as ChatRoomsInfinite, found: false }
   }
+
+  let updatedRoom: ChatRoom | null = null
+  const pages = data.pages.map(page => ({
+    ...page,
+    items: (page.items ?? []).filter(room => {
+      if (room.room_id !== roomId) return true
+      updatedRoom = updater(room)
+      return false
+    }),
+  }))
+
+  if (!updatedRoom) {
+    return { data, found: false }
+  }
+
+  const bumpUnread =
+    options?.bumpUnread === true &&
+    options.selectedRoomId != null &&
+    roomId !== options.selectedRoomId
+
+  if (pages[0]) {
+    pages[0] = {
+      ...pages[0],
+      items: sortChatRoomsByLastMessage([updatedRoom, ...(pages[0].items ?? [])]),
+      total_unread: bumpUnread ? pages[0].total_unread + 1 : pages[0].total_unread,
+    }
+  }
+
+  return { data: { ...data, pages }, found: true }
 }
 
 export function patchChatRoomLastMessage(
@@ -91,13 +103,38 @@ export function patchChatRoomLastMessage(
   patch: { text: string; timestamp: string },
   options?: { bumpUnread?: boolean; selectedRoomId?: number | null },
 ): void {
+  let anyFound = false
+
   qc.setQueriesData<ChatRoomsInfinite>(
     {
       queryKey: ['chatRooms', storeId],
       predicate: query => isChatRoomListQueryKey(query.queryKey),
     },
-    data => patchInfiniteChatRooms(data, roomId, patch, options),
+    data => {
+      const { data: next, found } = bubbleRoomInInfinitePages(
+        data,
+        roomId,
+        room => {
+          const bumpUnread =
+            options?.bumpUnread === true &&
+            options.selectedRoomId != null &&
+            roomId !== options.selectedRoomId
+          return {
+            ...room,
+            unread_count: bumpUnread ? room.unread_count + 1 : room.unread_count,
+            last_message: { text: patch.text, timestamp: patch.timestamp },
+          }
+        },
+        options,
+      )
+      if (found) anyFound = true
+      return next
+    },
   )
+
+  if (!anyFound) {
+    void qc.invalidateQueries({ queryKey: ['chatRooms', storeId] })
+  }
 }
 
 export function mergeRoomMessages(
@@ -149,17 +186,19 @@ export async function fetchRoomMessagesIncremental(
   const cached = qc.getQueryData<ChatMessage[]>(key)
   if (!cached || cached.length === 0) {
     const full = await fetchRoomMessages(roomId)
-    qc.setQueryData(key, full)
-    return full
+    qc.setQueryData<ChatMessage[]>(key, current => mergeRoomMessages(current, full))
+    return qc.getQueryData<ChatMessage[]>(key) ?? full
   }
 
   const realMessages = cached.filter(m => m.id > 0)
   const last = realMessages[realMessages.length - 1]
   const delta = await fetchRoomMessages(roomId, last?.created_at)
-  if (delta.length === 0) return cached
+  if (delta.length === 0) {
+    return qc.getQueryData<ChatMessage[]>(key) ?? cached
+  }
 
-  const merged = mergeRoomMessages(cached, delta)
-  qc.setQueryData(key, merged)
+  qc.setQueryData<ChatMessage[]>(key, current => mergeRoomMessages(current, delta))
+  const merged = qc.getQueryData<ChatMessage[]>(key) ?? mergeRoomMessages(cached, delta)
 
   const lastMsg = delta[delta.length - 1]
   patchChatRoomLastMessage(qc, storeId, roomId, {
@@ -169,13 +208,38 @@ export async function fetchRoomMessagesIncremental(
   return merged
 }
 
+export function applyStreamStageToCache(
+  qc: QueryClient,
+  storeId: number,
+  roomId: number,
+  stage: ChatRoomStage,
+): void {
+  qc.setQueriesData<ChatRoomsInfinite>(
+    {
+      queryKey: ['chatRooms', storeId],
+      predicate: query => isChatRoomListQueryKey(query.queryKey),
+    },
+    data => {
+      if (!data?.pages) return data
+      return {
+        ...data,
+        pages: data.pages.map(page => ({
+          ...page,
+          items: (page.items ?? []).map(room =>
+            room.room_id === roomId ? { ...room, status: stage } : room,
+          ),
+        })),
+      }
+    },
+  )
+}
+
 export function applyStreamMessageToCache(
   qc: QueryClient,
   storeId: number,
   roomId: number,
   message: ChatMessage,
   selectedRoomId: number | null,
-  options?: { updateMessages?: boolean },
 ): void {
   patchChatRoomLastMessage(
     qc,
@@ -191,12 +255,12 @@ export function applyStreamMessageToCache(
     },
   )
 
-  if (options?.updateMessages === false) return
-
   const key = roomMessagesQueryKey(storeId, roomId)
-  const hasCache =
+  const shouldUpdateMessages =
     qc.getQueryData<ChatMessage[]>(key) !== undefined || roomId === selectedRoomId
-  if (!hasCache) return
+  if (!shouldUpdateMessages) return
+
+  void qc.cancelQueries({ queryKey: key })
 
   qc.setQueryData<ChatMessage[]>(key, msgs => {
     const base = msgs ?? []

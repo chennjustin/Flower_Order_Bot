@@ -71,7 +71,7 @@ export function useSwitchChatRoomMode(roomId: number | null, filters: ChatRoomsF
     if (roomId == null || !pages) return pages
     return pages.map(page => ({
       ...page,
-      items: page.items.map(room =>
+      items: (page.items ?? []).map(room =>
         room.room_id === roomId ? { ...room, status: stage } : room,
       ),
     }))
