@@ -1,5 +1,10 @@
 # 資料庫使用 backend/.env 的 Supabase（DATABASE_URL / DATABASE_ALEM_URL），不含本機 Postgres 容器。
 services:
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
   backend:
     build:
       context: ./backend
@@ -9,12 +14,15 @@ services:
       PYTHONDONTWRITEBYTECODE: "1"
       PYTHONUNBUFFERED: "1"
       SKIP_ALEMBIC_ON_START: "1"
-      # LINE 使用者傳圖後下載存档；給前端／LINE ImageSendMessage 用的公開基底網址（ngrok 請改成 https）
+      # LINE 使用者傳圖後下載存档；給 frontend／LINE ImageSendMessage 用的公開基底網址（ngrok 請改成 https）
       PUBLIC_BASE_URL: http://localhost:8000
+      REDIS_URL: redis://redis:6379/0
     ports:
       - "8000:8000"
     volumes:
       - ./backend:/app
+    depends_on:
+      - redis
     command:
       - sh
       - -c

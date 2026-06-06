@@ -172,7 +172,7 @@ async def create_staff_message(
 
     await touch_chat_room_updated_at(db, room)
 
-    return ChatMessageOut(
+    out = ChatMessageOut(
         id=message.id,
         direction=message.direction,
         user_avatar_url=None,
@@ -180,3 +180,8 @@ async def create_staff_message(
         status=message.status,
         created_at=message.created_at,
     )
+
+    from app.services.chat_event_bus import publish_chat_message_out
+
+    await publish_chat_message_out(room_id, out)
+    return out

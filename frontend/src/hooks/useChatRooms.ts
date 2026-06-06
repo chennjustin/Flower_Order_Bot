@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+
 import { fetchChatRooms, switchChatRoomMode } from '@/api/messages'
 import { useStoreQueryGate } from '@/hooks/useStoreQuery'
 import { chatRoomsQueryKey } from '@/lib/storeQueryKeys'
@@ -14,8 +15,7 @@ export function useChatRooms() {
     queryKey: storeId != null ? chatRoomsQueryKey(storeId) : ['chatRooms', 'pending'],
     queryFn: fetchChatRooms,
     enabled,
-    refetchInterval: enabled ? 5000 : false,
-    refetchIntervalInBackground: false,
+    refetchOnWindowFocus: true,
   })
 }
 
@@ -24,7 +24,6 @@ export function useSwitchChatRoomMode(roomId: number | null) {
   const { storeId } = useStoreQueryGate()
   const listKey = storeId != null ? chatRoomsQueryKey(storeId) : null
 
-  /** Patch one room's stage inside the shared chatRooms cache. */
   function patchRoomStage(rooms: ChatRoom[] | undefined, stage: ChatRoomStage) {
     if (roomId == null || !rooms) return rooms
     return rooms.map(room =>

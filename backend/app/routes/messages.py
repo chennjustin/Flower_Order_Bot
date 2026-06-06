@@ -1,14 +1,14 @@
-# backend/app/routes/chat.py
-
 from datetime import datetime
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.core.auth import get_chat_room_for_store, get_current_store
 from app.core.deps import get_settings
+from app.core.redis_client import is_redis_enabled
 from app.models.store import Store
 from app.schemas.chat import (
     ChatMessageCreate,
@@ -17,6 +17,7 @@ from app.schemas.chat import (
     StaffChatImageUploadOut,
     SwitchModeBody,
 )
+from app.services.chat_event_bus import subscribe_room_events, subscribe_rooms_events
 from app.services.message_service import (
     create_staff_message,
     get_chat_messages,

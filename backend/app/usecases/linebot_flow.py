@@ -111,6 +111,10 @@ async def handle_incoming_text_message(
     await db.commit()
     await db.refresh(message)
 
+    from app.services.chat_event_bus import publish_chat_message
+
+    await publish_chat_message(db, chat_room.id, message)
+
     print(f"User {user_line_id} 發送訊息：{user_message}")
 
     if user_message == "Again":
@@ -165,6 +169,11 @@ async def handle_incoming_image_message(
     )
     db.add(message)
     await db.commit()
+    await db.refresh(message)
+
+    from app.services.chat_event_bus import publish_chat_message
+
+    await publish_chat_message(db, chat_room.id, message)
 
     await handoff_to_owner_if_order_confirmed(chat_room, db)
 
@@ -192,6 +201,11 @@ async def handle_incoming_sticker_message(
     )
     db.add(message)
     await db.commit()
+    await db.refresh(message)
+
+    from app.services.chat_event_bus import publish_chat_message
+
+    await publish_chat_message(db, chat_room.id, message)
 
     await handoff_to_owner_if_order_confirmed(chat_room, db)
 
