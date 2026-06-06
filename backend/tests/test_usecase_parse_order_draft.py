@@ -1,52 +1,57 @@
-import json
 from datetime import datetime
 
 from app.schemas.order import OrderDraftOut, OrderDraftUpdate
-from app.enums.payment import PaymentStatus
 from app.usecases.organize_order_draft import (
     _collect_missing_fields,
-    _filter_update_by_required_fields,
-    _parse_order_draft_json,
+    _filter_update_by_visible_fields,
 )
+from app.usecases.llm_order_delta import merge_delta_into_catalog, parse_delta_json
 
 
-def test_parse_order_draft_json_minimal_fields():
-    payload = {
-        "customer_name": "A",
-        "customer_phone": "0912",
-        "pay_way": "CASH",
-        "pay_status": "PAID",
-        "total_amount": 1000,
-        "item": "rose",
-        "quantity": 1,
-        "note": "",
-        "shipment_method": "DELIVERY",
-        "send_datetime": None,
-        "delivery_address": "addr",
-    }
-    upd = _parse_order_draft_json(json.dumps(payload))
-    assert upd.customer_name is None
-    assert upd.customer_phone is None
-    assert upd.pay_status == PaymentStatus.PAID
-    assert upd.delivery_address == "addr"
+def test_parse_delta_json_ignores_customer_name_but_updates_phone():
+    delta = parse_delta_json('{"customer_name": "A", "customer_phone": "0999888777", "item": "rose"}')
+    merged = merge_delta_into_catalog(
+        {
+            "customer_name": "王小明",
+            "customer_phone": "0911222333",
+            "item": "old",
+            "total_amount": 800,
+            "quantity": None,
+            "note": None,
+            "shipment_method": None,
+            "send_datetime": None,
+            "delivery_address": None,
+            "pay_way": None,
+            "pay_status": None,
+        },
+        delta,
+        flow="draft",
+    )
+    assert merged["customer_name"] == "王小明"
+    assert merged["customer_phone"] == "0999888777"
+    assert merged["item"] == "rose"
 
 
-def test_parse_order_draft_json_ignores_legacy_receiver_fields():
-    payload = {
-        "customer_name": "A",
-        "customer_phone": "0912",
-        "receiver_name": "LegacyReceiver",
-        "receiver_phone": "0999",
-        "item": "rose",
-        "send_datetime": None,
-        "total_amount": 800,
-    }
-
-    upd = _parse_order_draft_json(json.dumps(payload))
-    assert upd.customer_name is None
-    assert upd.customer_phone is None
-    assert "receiver_name" not in upd.model_dump()
-    assert "receiver_phone" not in upd.model_dump()
+def test_parse_delta_json_allows_phone_when_empty_baseline():
+    delta = parse_delta_json('{"customer_phone": "0912345678"}')
+    merged = merge_delta_into_catalog(
+        {
+            "customer_name": "王小明",
+            "customer_phone": "",
+            "item": "rose",
+            "total_amount": 800,
+            "quantity": None,
+            "note": None,
+            "shipment_method": None,
+            "send_datetime": None,
+            "delivery_address": None,
+            "pay_way": None,
+            "pay_status": None,
+        },
+        delta,
+        flow="draft",
+    )
+    assert merged["customer_phone"] == "0912345678"
 
 
 def test_collect_missing_fields_respects_optional_required_settings():
@@ -83,7 +88,31 @@ def test_collect_missing_fields_respects_optional_required_settings():
     assert "數量" in missing_with_optional
 
 
-def test_filter_update_by_required_fields_removes_hidden_optional_fields():
+def test_filter_update_preserves_untouched_fields_on_partial_delta():
+    """Delta-only LLM output must not clear optional fields that were not sent."""
+    update = OrderDraftUpdate(total_amount=2500, note="粉白色系")
+    filtered = _filter_update_by_visible_fields(
+        update,
+        visible_fields={"item", "total_amount", "send_datetime", "note"},
+    )
+    assert filtered.total_amount == 2500
+    assert filtered.note == "粉白色系"
+    assert "quantity" not in filtered.model_fields_set
+    assert "shipment_method" not in filtered.model_fields_set
+    assert "delivery_address" not in filtered.model_fields_set
+
+
+def test_filter_update_keeps_visible_optional_fields_without_organize_required():
+    """Optional fields enabled in the UI must persist even when not organize-required."""
+    update = OrderDraftUpdate(note="黃色點綴")
+    filtered = _filter_update_by_visible_fields(
+        update,
+        visible_fields={"item", "total_amount", "send_datetime", "note"},
+    )
+    assert filtered.note == "黃色點綴"
+
+
+def test_filter_update_drops_fields_not_visible_to_store():
     update = OrderDraftUpdate(
         customer_name="王小明",
         customer_phone="0911222333",
@@ -93,11 +122,11 @@ def test_filter_update_by_required_fields_removes_hidden_optional_fields():
         quantity=2,
         note="不要卡片",
         delivery_address="台北市信義區",
-        pay_status=PaymentStatus.PAID,
+        pay_status=None,
     )
-    filtered = _filter_update_by_required_fields(
+    filtered = _filter_update_by_visible_fields(
         update,
-        required_fields={
+        visible_fields={
             "customer_name",
             "customer_phone",
             "item",
@@ -105,8 +134,7 @@ def test_filter_update_by_required_fields_removes_hidden_optional_fields():
             "total_amount",
         },
     )
-    assert filtered.quantity is None
-    assert filtered.note is None
-    assert filtered.delivery_address is None
-    assert filtered.pay_status is None
-
+    assert "quantity" not in filtered.model_fields_set
+    assert "note" not in filtered.model_fields_set
+    assert "delivery_address" not in filtered.model_fields_set
+    assert "pay_status" not in filtered.model_fields_set

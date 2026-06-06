@@ -128,8 +128,17 @@ class OrderPatchUpdate(BaseModel):
     mark_processed_message_ids: Optional[list[int]] = None
 
 
+class OrganizeOrderDraftOut(BaseModel):
+    """PATCH /organize_data/{room_id} — LLM draft organize with delta metadata."""
+
+    draft: OrderDraftOut
+    changed_fields: list[str] = []
+    source_message_ids: list[int] = []
+
+
 class OrderSuggestFromChatOut(BaseModel):
     """POST /orders/{order_id}/suggest-from-chat — LLM preview, no DB write."""
 
     suggested: OrderPatchUpdate
+    changed_fields: list[str] = []
     source_message_ids: list[int] = []
