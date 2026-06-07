@@ -322,6 +322,11 @@ async def create_order_by_room(db: AsyncSession, room_id: int) -> list[str]:
     room.stage = ChatRoomStage.ORDER_CONFIRM
     await db.commit()
     await db.refresh(room)
+    from app.services.chat_event_bus import publish_chat_room_stage
+
+    await publish_chat_room_stage(
+        room.id, ChatRoomStage.ORDER_CONFIRM.value, store_id=room.store_id
+    )
 
     line_uid = await get_line_uid_by_chatroom_id(db, room.id)
     msg = "訂單已經由後台送出囉～\n\n"
@@ -332,19 +337,30 @@ async def create_order_by_room(db: AsyncSession, room_id: int) -> list[str]:
             LINE_push_message(line_api, line_uid, ChatMessagePayload(text=msg))
     else:
         print("❗ 無法取得 LINE UID，無法推播訂單已送出提醒。")
-    db.add(
-        ChatMessage(
-            room_id=room.id,
-            direction=ChatMessageDirection.OUTGOING_BY_BOT,
-            text="[自動回覆已傳送]" + msg,
-            image_url="",
-            status=ChatMessageStatus.PENDING,
-            processed=True,
-            created_at=now_taipei_naive(),
-            updated_at=now_taipei_naive(),
-        )
+    message = ChatMessage(
+        room_id=room.id,
+        direction=ChatMessageDirection.OUTGOING_BY_BOT,
+        text="[自動回覆已傳送]" + msg,
+        image_url="",
+        status=ChatMessageStatus.PENDING,
+        processed=True,
+        created_at=now_taipei_naive(),
+        updated_at=now_taipei_naive(),
     )
+    db.add(message)
     await db.commit()
+    await db.refresh(message)
+
+    from app.repositories.chat_repository import touch_chat_room_on_new_message
+    from app.services.chat_event_bus import publish_chat_message
+
+    await touch_chat_room_on_new_message(
+        db,
+        room,
+        message_at=message.created_at,
+        incoming=False,
+    )
+    await publish_chat_message(db, room.id, message, store_id=room.store_id)
     await _sync_order_to_calendar(db, order)
     return []
 

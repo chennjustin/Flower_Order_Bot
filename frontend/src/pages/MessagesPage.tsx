@@ -95,7 +95,8 @@ export default function MessagesPage() {
 
   const organizeMutation = useOrganizeData(selectedRoomId)
   const roomOrdersQuery = useRoomOrders(selectedRoomId, selectedRoomId != null)
-  const hasExistingOrders = (roomOrdersQuery.data?.filter(o => o.order_status !== 'CANCELLED').length ?? 0) > 0
+  const hasExistingOrders =
+    (roomOrdersQuery.data?.filter(o => o.order_status !== 'CANCELLED').length ?? 0) > 0
   const { sseAvailable } = useChatRealtime(currentStoreId, selectedRoomId)
   useVisibleRoomDeltaSync(currentStoreId, selectedRoomId, !sseAvailable)
   /** Organize draft is hidden while editing a formal order (use in-panel AI instead). */

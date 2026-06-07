@@ -7,13 +7,20 @@ import {
   updateOrderDraft,
 } from '@/api/orders'
 import { useStoreQueryGate } from '@/hooks/useStoreQuery'
-import { orderDraftQueryKey, ordersQueryKey, statsQueryKey } from '@/lib/storeQueryKeys'
+import {
+  orderDraftQueryKey,
+  ordersQueryKey,
+  roomMessagesQueryKey,
+  statsQueryKey,
+} from '@/lib/storeQueryKeys'
 import type {
   CreateOrderResult,
   OrderDraft,
   OrderDraftUpdate,
   OrganizeOrderDraftOut,
 } from '@/types/domain'
+import { ChatRoomStage } from '@/types/enums'
+import { applyStreamStageToCache } from '@/utils/chatRoomCache'
 
 export function useOrderDraft(roomId: number | null, enabled: boolean) {
   const { storeId, enabled: storeReady } = useStoreQueryGate()
@@ -75,7 +82,10 @@ export function useCreateOrder(roomId: number | null) {
       return createOrderFromDraft(roomId)
     },
     onSuccess: result => {
-      if (result.ok && storeId != null) {
+      if (result.ok && storeId != null && roomId != null) {
+        applyStreamStageToCache(qc, storeId, roomId, ChatRoomStage.ORDER_CONFIRM)
+        qc.invalidateQueries({ queryKey: ['chatRooms', storeId] })
+        qc.invalidateQueries({ queryKey: roomMessagesQueryKey(storeId, roomId) })
         qc.invalidateQueries({ queryKey: ordersQueryKey(storeId) })
         qc.invalidateQueries({ queryKey: statsQueryKey(storeId) })
       }
