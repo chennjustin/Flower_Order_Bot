@@ -8,7 +8,6 @@ from linebot.exceptions import LineBotApiError
 from linebot.models import FollowEvent, MessageEvent, TextSendMessage
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.deps import get_settings
 from app.core.line_client import line_bot_api_for_store
 from app.enums.chat import ChatMessageDirection, ChatMessageStatus, ChatRoomStage
 from app.models.chat import ChatMessage, ChatRoom
@@ -206,10 +205,9 @@ async def handle_incoming_image_message(
     line_api = line_bot_api_for_store(store)
     _, chat_room = await resolve_line_user_and_room(db, user_line_id, store)
     mid = event.message.id
-    settings = get_settings()
     try:
         raw, ct = await asyncio.to_thread(fetch_line_message_binary, line_api, mid)
-        public_url = save_inbound_line_image(settings.public_base_url, raw, ct)
+        public_url = save_inbound_line_image(store.id, raw, ct)
     except Exception as e:
         print(f"[LINE] 無法下載使用者圖片 message_id={mid}: {e}")
         raise

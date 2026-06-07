@@ -9,6 +9,13 @@ from app.services.order_field_values import (
 )
 
 
+def test_is_catalog_value_empty_for_customer_phone() -> None:
+    assert is_catalog_value_empty("customer_phone", None) is True
+    assert is_catalog_value_empty("customer_phone", "") is True
+    assert is_catalog_value_empty("customer_phone", "   ") is True
+    assert is_catalog_value_empty("customer_phone", "0911222333") is False
+
+
 def test_is_catalog_value_empty_for_numeric_fields() -> None:
     assert is_catalog_value_empty("total_amount", None) is True
     assert is_catalog_value_empty("total_amount", -1) is True

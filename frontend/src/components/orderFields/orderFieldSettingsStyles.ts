@@ -2,7 +2,7 @@ import { cn } from '@/lib/utils'
 
 /** Shared card shell for column-settings panels (Figma edit-columns). */
 export const settingsCardClass = cn(
-  'flex w-full max-w-[370px] min-h-[619px] flex-col',
+  'flex w-full min-h-[619px] flex-col md:max-w-[370px]',
   'rounded-[24px] border border-[#B3B3B3] bg-white',
   'shadow-[0_4px_4px_rgba(0,0,0,0.25)]',
 )
@@ -58,13 +58,10 @@ export function fieldIconClass(visible: boolean) {
 /** Drag handle (ChevronsUpDown) — bolder stroke in settings list. */
 export const dragHandleClass = 'text-black/60'
 
-/** Eye icon in edit mode: locked = grayscale; visible toggleable = black bold. */
-export function eyeIconClass(locked: boolean, visible: boolean, isEditMode: boolean) {
+/** Eye icon in edit mode: visible = black bold; hidden optional fields = muted. */
+export function eyeIconClass(_locked: boolean, visible: boolean, isEditMode: boolean) {
   if (!isEditMode) {
     return fieldIconClass(visible)
-  }
-  if (locked) {
-    return 'text-black/30 grayscale'
   }
   if (visible) {
     return 'text-black'
@@ -72,11 +69,8 @@ export function eyeIconClass(locked: boolean, visible: boolean, isEditMode: bool
   return 'text-black/38'
 }
 
-export const eyeIconStroke = (locked: boolean, visible: boolean, isEditMode: boolean) => {
+export const eyeIconStroke = (_locked: boolean, visible: boolean, isEditMode: boolean) => {
   if (!isEditMode) {
-    return 2
-  }
-  if (locked) {
     return 2
   }
   if (visible) {

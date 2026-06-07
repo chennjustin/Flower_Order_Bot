@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Paperclip, Send } from 'lucide-react'
+import { Paperclip, Send, X } from 'lucide-react'
 import type { ChatMessageBody } from '@/types/domain'
 import { uploadStaffChatImage } from '@/api/messages'
 import {
@@ -23,11 +23,21 @@ export default function MessageInput({ roomId, disabled, onSend }: MessageInputP
   const [showAttachMenu, setShowAttachMenu] = useState(false)
   const [text, setText] = useState('')
   const [imageUrl, setImageUrl] = useState('')
-  const [pkg, setPkg] = useState('')
-  const [stk, setStk] = useState('')
   const [uploading, setUploading] = useState(false)
 
   const busy = disabled || uploading
+
+  function clearImage() {
+    setImageUrl('')
+    setMode('text')
+  }
+
+  /** Dismiss attach UI and return to plain text input (tap-outside / Escape). */
+  function returnToTextMode() {
+    setShowAttachMenu(false)
+    setImageUrl('')
+    setMode('text')
+  }
 
   async function emitSend() {
     if (busy) return
@@ -37,21 +47,16 @@ export default function MessageInput({ roomId, disabled, onSend }: MessageInputP
       const t = text.trim()
       if (!t) return
       body = { text: t }
+      setText('')
     } else if (mode === 'image') {
       const u = imageUrl.trim()
       if (!u) return
       body = { image_url: u }
+      clearImage()
     } else {
-      const p = pkg.trim()
-      const s = stk.trim()
-      if (!p || !s) return
-      body = { sticker_package_id: p, sticker_id: s }
+      return
     }
 
-    setText('')
-    setImageUrl('')
-    setPkg('')
-    setStk('')
     await onSend(body)
   }
 
@@ -63,6 +68,7 @@ export default function MessageInput({ roomId, disabled, onSend }: MessageInputP
     try {
       const { image_url } = await uploadStaffChatImage(roomId, file)
       setImageUrl(image_url)
+      setMode('image')
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err)
       alert(`上傳失敗：${msg}`)
@@ -76,41 +82,60 @@ export default function MessageInput({ roomId, disabled, onSend }: MessageInputP
     await onSend({ sticker_package_id: packageId, sticker_id: stickerId })
   }
 
-  useEffect(() => {
-    if (!showAttachMenu) return
+  function openImagePicker() {
+    setShowAttachMenu(false)
+    fileRef.current?.click()
+  }
 
-    function onDocumentPointerDown(event: MouseEvent) {
-      const target = event.target as Node | null
-      if (rootRef.current && target && !rootRef.current.contains(target)) {
-        setShowAttachMenu(false)
+  useEffect(() => {
+    const attachUiOpen = showAttachMenu || mode !== 'text'
+    if (!attachUiOpen) return
+
+    function onDocumentPointerDown(event: PointerEvent) {
+      const target = event.target
+      if (!(target instanceof Node)) return
+      if (rootRef.current?.contains(target)) return
+      // Keep header stage popover clickable while attach UI is open.
+      if (target instanceof Element) {
+        if (target.closest('[data-chat-header]')) return
+        if (target.closest('[data-radix-popover-content], [data-radix-popper-content-wrapper]')) {
+          return
+        }
       }
+      returnToTextMode()
     }
 
     function onDocumentKeyDown(event: KeyboardEvent) {
       if (event.key === 'Escape') {
-        setShowAttachMenu(false)
+        returnToTextMode()
       }
     }
 
-    document.addEventListener('mousedown', onDocumentPointerDown)
+    document.addEventListener('pointerdown', onDocumentPointerDown)
     document.addEventListener('keydown', onDocumentKeyDown)
     return () => {
-      document.removeEventListener('mousedown', onDocumentPointerDown)
+      document.removeEventListener('pointerdown', onDocumentPointerDown)
       document.removeEventListener('keydown', onDocumentKeyDown)
     }
-  }, [showAttachMenu])
+  }, [showAttachMenu, mode])
 
   return (
-    <div ref={rootRef} className="relative space-y-2 px-6 pb-6">
+    <div ref={rootRef} className="relative space-y-2 px-6 pb-6 pt-3">
+      <input
+        ref={fileRef}
+        type="file"
+        accept="image/jpeg,image/png,image/gif,image/webp"
+        className="hidden"
+        disabled={busy}
+        onChange={e => void onPickLocalImage(e)}
+      />
+
       {showAttachMenu ? (
         <div className="flex flex-wrap gap-2 rounded-xl border border-black/[0.08] bg-black/[0.02] p-2 text-xs font-['Noto_Sans_TC',sans-serif]">
           <button
             type="button"
             disabled={busy}
-            onClick={() => {
-              setMode('image')
-              setShowAttachMenu(false)
-            }}
+            onClick={openImagePicker}
             className="rounded-full bg-[#77B5FF]/10 px-2 py-1 text-[#528DD2] transition hover:bg-[#77B5FF]/20"
           >
             上傳圖片
@@ -130,8 +155,7 @@ export default function MessageInput({ roomId, disabled, onSend }: MessageInputP
             type="button"
             disabled={busy}
             onClick={() => {
-              setMode('text')
-              setShowAttachMenu(false)
+              returnToTextMode()
               setTimeout(() => inputRef.current?.focus(), 0)
             }}
             className="rounded-full bg-black/[0.06] px-2 py-1 text-black/[0.65] transition hover:bg-black/[0.1]"
@@ -141,42 +165,10 @@ export default function MessageInput({ roomId, disabled, onSend }: MessageInputP
         </div>
       ) : null}
 
-      {mode === 'image' ? (
-        <div className="space-y-2">
-          <input
-            ref={fileRef}
-            type="file"
-            accept="image/jpeg,image/png,image/gif,image/webp"
-            className="hidden"
-            disabled={busy}
-            onChange={e => void onPickLocalImage(e)}
-          />
-          <div className="flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              disabled={busy}
-              onClick={() => fileRef.current?.click()}
-              className="rounded-xl border border-[#77B5FF] bg-[#77B5FF]/10 px-3 py-2 text-sm font-['Noto_Sans_TC',sans-serif] text-[#528DD2] transition hover:bg-[#77B5FF]/20"
-            >
-              {uploading ? '上傳中…' : '選擇本機圖片'}
-            </button>
-            <span className="text-xs text-black/[0.45]">或貼上公開 HTTPS 連結（給 LINE 下載）</span>
-          </div>
-          <input
-            type="url"
-            value={imageUrl}
-            disabled={busy}
-            onChange={e => setImageUrl(e.target.value)}
-            placeholder="https://…（選檔後會自動填入後端網址）"
-            className="w-full rounded-xl border border-[#77B5FF]/40 bg-white px-3 py-2 font-['Noto_Sans_TC',sans-serif] text-sm outline-none focus:border-[#77B5FF]"
-          />
-        </div>
-      ) : null}
-
       {mode === 'sticker' ? (
         <div className="space-y-2">
           <p className="text-xs text-black/[0.45] font-['Noto_Sans_TC',sans-serif]">
-            LINE 預設貼圖（官方 sticker list 套餐 11537）— 點一下即送出：
+            點一下貼圖即可送出：
           </p>
           <div className="flex max-h-[116px] flex-wrap gap-2 overflow-y-auto rounded-xl border border-black/[0.06] bg-black/[0.02] p-2">
             {LINE_PRESET_STICKERS.map(s => (
@@ -199,37 +191,14 @@ export default function MessageInput({ roomId, disabled, onSend }: MessageInputP
               </button>
             ))}
           </div>
-          <p className="text-[11px] text-black/[0.38] font-['Noto_Sans_TC',sans-serif]">
-            其它貼圖可手動輸入 packageId／stickerId：
-          </p>
-          <div className="flex gap-2">
-            <input
-              type="text"
-              inputMode="numeric"
-              value={pkg}
-              disabled={busy}
-              onChange={e => setPkg(e.target.value)}
-              placeholder="packageId"
-              className="min-w-0 flex-1 rounded-xl border border-[#77B5FF]/40 bg-white px-3 py-2 font-mono text-sm outline-none focus:border-[#77B5FF]"
-            />
-            <input
-              type="text"
-              inputMode="numeric"
-              value={stk}
-              disabled={busy}
-              onChange={e => setStk(e.target.value)}
-              placeholder="stickerId"
-              className="min-w-0 flex-1 rounded-xl border border-[#77B5FF]/40 bg-white px-3 py-2 font-mono text-sm outline-none focus:border-[#77B5FF]"
-            />
-          </div>
         </div>
       ) : null}
 
       <div
-        className="flex h-[42px] w-full cursor-text items-center justify-between rounded-3xl border-2 border-[#77B5FF] bg-white px-4 py-[9px] shadow-[2px_2px_4px_rgba(0,0,0,0.25)] transition focus-within:shadow-[0_0_0_3px_rgba(119,181,255,0.25)]"
+        className="flex min-h-[42px] w-full cursor-text items-center justify-between rounded-3xl border-2 border-[#77B5FF] bg-white px-4 py-[9px] shadow-[2px_2px_4px_rgba(0,0,0,0.25)] transition focus-within:shadow-[0_0_0_3px_rgba(119,181,255,0.25)]"
         onClick={() => mode === 'text' && inputRef.current?.focus()}
       >
-        <div className="flex flex-1 items-center gap-3">
+        <div className="flex min-w-0 flex-1 items-center gap-3">
           <button
             type="button"
             disabled={busy}
@@ -249,19 +218,48 @@ export default function MessageInput({ roomId, disabled, onSend }: MessageInputP
               value={text}
               disabled={busy}
               onChange={e => setText(e.target.value)}
-              onKeyUp={e => {
-                if (e.key === 'Enter') void emitSend()
+              onKeyDown={e => {
+                if (e.key === 'Enter' && !e.nativeEvent.isComposing) void emitSend()
               }}
               placeholder="輸入訊息......"
               className="w-full border-0 bg-transparent p-0 font-['Noto_Sans_TC',sans-serif] text-base leading-[140%] text-black/[0.87] outline-none placeholder:text-black/[0.38]"
             />
+          ) : mode === 'image' ? (
+            uploading ? (
+              <span className="font-['Noto_Sans_TC',sans-serif] text-sm text-black/[0.38]">
+                圖片上傳中…
+              </span>
+            ) : imageUrl ? (
+              <div className="flex min-w-0 flex-1 items-center gap-2">
+                <img
+                  src={imageUrl}
+                  alt=""
+                  className="h-9 w-9 flex-shrink-0 rounded-lg object-cover"
+                />
+                <span className="truncate font-['Noto_Sans_TC',sans-serif] text-sm text-black/[0.55]">
+                  已選擇圖片，按送出傳給顧客
+                </span>
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={e => {
+                    e.stopPropagation()
+                    clearImage()
+                  }}
+                  className="flex h-6 w-6 flex-shrink-0 items-center justify-center text-black/[0.38] transition hover:text-black/[0.65]"
+                  aria-label="移除圖片"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            ) : (
+              <span className="font-['Noto_Sans_TC',sans-serif] text-sm text-black/[0.38]">
+                請從附件選單選擇圖片
+              </span>
+            )
           ) : (
             <span className="font-['Noto_Sans_TC',sans-serif] text-sm text-black/[0.38]">
-              {mode === 'image'
-                ? uploading
-                  ? '圖片上傳中…'
-                  : '選檔或貼網址後按送出'
-                : '點上方預設貼圖送出，或輸入 ID 後按送出'}
+              點上方貼圖即可送出
             </span>
           )}
         </div>
@@ -270,9 +268,9 @@ export default function MessageInput({ roomId, disabled, onSend }: MessageInputP
           onClick={() => void emitSend()}
           disabled={
             busy ||
+            mode === 'sticker' ||
             (mode === 'text' && text.trim().length === 0) ||
-            (mode === 'image' && imageUrl.trim().length === 0) ||
-            (mode === 'sticker' && (pkg.trim().length === 0 || stk.trim().length === 0))
+            (mode === 'image' && imageUrl.trim().length === 0)
           }
           className="flex h-6 w-6 flex-shrink-0 items-center justify-center text-[#528DD2] transition hover:text-[#6168FC] active:scale-90 disabled:opacity-40"
           aria-label="送出"

@@ -1,17 +1,18 @@
 import type { OrderStatus } from '@/types/enums'
 
-/** Store-facing labels for the three actionable order states. */
+/** Store-facing labels for the four actionable order states. */
 export const ORDER_STATUS_OPTIONS: ReadonlyArray<{
   value: OrderStatus
   label: string
 }> = [
   { value: 'CONFIRMED', label: '尚未製作' },
   { value: 'COMPLETED', label: '製作完成' },
+  { value: 'FULFILLED', label: '交付完成' },
   { value: 'CANCELLED', label: '取消' },
 ] as const
 
 /** Filter bucket for the order table tabs (not the same as raw enum). */
-export type OrderFilterTab = '' | 'in_progress' | 'completed' | 'today'
+export type OrderFilterTab = '' | 'in_progress' | 'completed' | 'fulfilled' | 'today'
 
 export const ORDER_FILTER_TABS: ReadonlyArray<{
   value: OrderFilterTab
@@ -21,15 +22,17 @@ export const ORDER_FILTER_TABS: ReadonlyArray<{
   { value: 'today', label: '今日訂單' },
   { value: 'in_progress', label: '尚未製作' },
   { value: 'completed', label: '製作完成' },
+  { value: 'fulfilled', label: '交付完成' },
 ]
 
-/** Normalize backend status into one of the three display buckets. */
+/** Normalize backend status into one of the four display buckets. */
 export function normalizeOrderStatus(
   status: string | null | undefined,
 ): OrderStatus {
   switch (status) {
     case 'CONFIRMED':
     case 'COMPLETED':
+    case 'FULFILLED':
     case 'CANCELLED':
       return status
     case 'PENDING':
@@ -45,6 +48,8 @@ export function orderStatusLabel(status: OrderStatus): string {
       return '尚未製作'
     case 'COMPLETED':
       return '製作完成'
+    case 'FULFILLED':
+      return '交付完成'
     case 'CANCELLED':
       return '取消'
     case 'PENDING':
@@ -59,6 +64,8 @@ export function orderStatusBadgeClasses(status: OrderStatus): string {
       return 'bg-[#C5C7FF] text-[#6168FC]'
     case 'COMPLETED':
       return 'bg-[#D8EAFF] text-[#528DD2]'
+    case 'FULFILLED':
+      return 'bg-[#D4EDDA] text-[#2D6A4F]'
     case 'CANCELLED':
       return 'bg-[#EBCDCC] text-[#81386A]'
   }

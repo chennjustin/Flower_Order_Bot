@@ -1,7 +1,13 @@
 from __future__ import annotations
 
 import uuid
-from pathlib import Path
+
+from app.utils.supabase_storage import upload_public_object
+
+# LINE ImageSendMessage accepts JPEG/PNG; keep GIF/WebP uploads but store with a sane extension.
+_ALLOWED_UPLOAD_CT = frozenset(
+    {"image/jpeg", "image/png", "image/gif", "image/webp"}
+)
 
 
 def _suffix_from_content_type(content_type: str | None) -> str:
@@ -15,23 +21,24 @@ def _suffix_from_content_type(content_type: str | None) -> str:
     return ".jpg"
 
 
+def _normalize_content_type(content_type: str | None) -> str:
+    ct = (content_type or "image/jpeg").split(";")[0].strip().lower()
+    if ct in _ALLOWED_UPLOAD_CT:
+        return ct
+    return "image/jpeg"
+
+
 def save_chat_image(
-    public_base_url: str,
+    store_id: int,
     raw: bytes,
     content_type: str | None,
     subdir: str,
 ) -> str:
     """
-    Store chat image bytes under backend/uploads/<subdir> and return absolute URL.
-    This keeps one URL-generation policy for both customer and staff image flows.
+    Upload chat image bytes to Supabase Storage and return a public HTTPS URL.
+    Shared by staff outbound and inbound LINE customer image flows.
     """
-    backend_root = Path(__file__).resolve().parent.parent.parent
-    upload_dir = backend_root / "uploads" / subdir
-    upload_dir.mkdir(parents=True, exist_ok=True)
-
-    name = f"{uuid.uuid4().hex}{_suffix_from_content_type(content_type)}"
-    path = upload_dir / name
-    path.write_bytes(raw)
-
-    base = public_base_url.rstrip("/")
-    return f"{base}/uploads/{subdir}/{name}"
+    ct = _normalize_content_type(content_type)
+    name = f"{uuid.uuid4().hex}{_suffix_from_content_type(ct)}"
+    object_path = f"store_{store_id}/{subdir}/{name}"
+    return upload_public_object(object_path, raw, ct)

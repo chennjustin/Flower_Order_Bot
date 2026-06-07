@@ -1,6 +1,8 @@
+import { useState } from 'react'
 import type { ChatMessage } from '@/types/domain'
 import { lineStickerPreviewUrl } from '@/lib/lineStickerPreview'
 import { ChatMessageStatus } from '@/types/enums'
+import ImageLightbox from './ImageLightbox'
 
 interface MessageBubbleProps {
   message: ChatMessage
@@ -15,11 +17,23 @@ function formatTime(iso: string): string {
 
 /** LINE 官方 CDN 預覽（部分動態貼圖可能無法顯示）。 */
 export default function MessageBubble({ message, showAvatar }: MessageBubbleProps) {
+  const [lightboxOpen, setLightboxOpen] = useState(false)
   const text = message.message.text ?? ''
   const img = message.message.image_url?.trim()
   const stickerId = message.message.sticker_id?.trim()
   const isFailed = message.status === ChatMessageStatus.FAILED
   const time = formatTime(message.created_at)
+
+  function openLightbox() {
+    if (img) setLightboxOpen(true)
+  }
+
+  function onImageKeyDown(e: React.KeyboardEvent<HTMLImageElement>) {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault()
+      openLightbox()
+    }
+  }
 
   const bubbleInner = (
     <>
@@ -37,7 +51,12 @@ export default function MessageBubble({ message, showAvatar }: MessageBubbleProp
         <img
           src={img}
           alt=""
-          className="max-h-52 max-w-full rounded-2xl object-contain"
+          role="button"
+          tabIndex={0}
+          aria-label="View full image"
+          className="max-h-52 max-w-full cursor-zoom-in rounded-2xl object-contain transition hover:opacity-90"
+          onClick={openLightbox}
+          onKeyDown={onImageKeyDown}
           onError={e => {
             ;(e.currentTarget as HTMLImageElement).style.visibility = 'hidden'
           }}
@@ -47,8 +66,13 @@ export default function MessageBubble({ message, showAvatar }: MessageBubbleProp
     </>
   )
 
+  const lightbox = img ? (
+    <ImageLightbox open={lightboxOpen} imageUrl={img} onOpenChange={setLightboxOpen} />
+  ) : null
+
   if (message.direction === 'INCOMING') {
     return (
+      <>
       <div className="mb-3 flex items-end gap-3">
         <div className="flex w-8 flex-shrink-0 items-end justify-center self-end pb-1">
           {showAvatar &&
@@ -79,10 +103,13 @@ export default function MessageBubble({ message, showAvatar }: MessageBubbleProp
           <span className="mb-0.5 text-xs text-black/[0.38] font-['Noto_Sans_TC',sans-serif]">{time}</span>
         </div>
       </div>
+      {lightbox}
+      </>
     )
   }
 
   return (
+    <>
     <div className="mb-3 flex justify-end">
       <div className="flex max-w-[70%] flex-row-reverse items-end gap-0.5">
         <div className="space-y-1 text-left">
@@ -100,5 +127,7 @@ export default function MessageBubble({ message, showAvatar }: MessageBubbleProp
         </span>
       </div>
     </div>
+    {lightbox}
+    </>
   )
 }

@@ -244,7 +244,7 @@ export default function OrderDraftPanel({
   const createBlockedByEditing = isEditing && !hasMissingFields
 
   return (
-    <aside className="relative flex h-full w-[336px] flex-shrink-0 flex-col border-l border-[#B3B3B3] bg-white">
+    <aside className="relative flex h-full w-full flex-shrink-0 flex-col border-l border-[#B3B3B3] bg-white md:w-[336px]">
       <header className="flex h-20 flex-shrink-0 items-center gap-2 border-b-[1.5px] border-[#e9e9e9] px-4">
         <button
           type="button"
@@ -287,16 +287,6 @@ export default function OrderDraftPanel({
                 )}
               >
                 尚無草稿內容，請先點聊天室上方「整理資料」。
-              </p>
-            )}
-            {aiChangedKeys.size > 0 && (
-              <p
-                className={cn(
-                  'rounded-lg bg-[#FFFDE7] px-3 py-2 text-center text-xs text-black/70',
-                  "font-['Noto_Sans_TC',sans-serif]",
-                )}
-              >
-                螢光標示為 AI 本次整理的變更欄位
               </p>
             )}
             {hasMissingFields && (

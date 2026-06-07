@@ -52,7 +52,7 @@ export default function OrderEditPanel({
   const [isEditing, setIsEditing] = useState(false)
   const [form, setForm] = useState<FormState>(() => formStateFromOrder(order))
   const [pendingMessageIds, setPendingMessageIds] = useState<number[]>([])
-  const [aiPreviewHint, setAiPreviewHint] = useState(false)
+  const [, setAiPreviewHint] = useState(false)
   const [aiChangedKeys, setAiChangedKeys] = useState<Set<FieldKey>>(() => new Set())
   const [showLeaveDialog, setShowLeaveDialog] = useState(false)
 
@@ -203,7 +203,7 @@ export default function OrderEditPanel({
   }
 
   return (
-    <aside className="relative flex h-full w-[336px] flex-shrink-0 flex-col border-l border-[#B3B3B3] bg-white">
+    <aside className="relative flex h-full w-full flex-shrink-0 flex-col border-l border-[#B3B3B3] bg-white md:w-[336px]">
       <header className="flex h-20 flex-shrink-0 items-center gap-2 border-b-[1.5px] border-[#e9e9e9] px-4">
         <button
           type="button"
@@ -234,11 +234,7 @@ export default function OrderEditPanel({
       </header>
 
       <div className="flex-1 overflow-y-auto px-6 pt-4 pb-6">
-        {aiPreviewHint && isEditing && (
-          <p className="mb-3 text-center text-xs text-[#6168FC] font-['Noto_Sans_TC',sans-serif]">
-            以下為 AI 建議，請確認後按「更新訂單」寫入資料庫
-          </p>
-        )}
+
         <div className="flex flex-col gap-4">
           {visibleFields.map(field =>
             field.key === 'send_datetime' && isEditing ? (

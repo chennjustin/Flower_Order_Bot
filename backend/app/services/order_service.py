@@ -160,8 +160,8 @@ def build_order_list_filters(
         store_id=store_id,
         status=status or None,
         pickup_date=pickup_date,
-        pickup_from=pickup_from,
-        pickup_to=pickup_to,
+        pickup_from=to_taipei_naive(pickup_from) if pickup_from else None,
+        pickup_to=to_taipei_naive(pickup_to) if pickup_to else None,
         q=q,
         include_cancelled=include_cancelled,
     )
@@ -175,7 +175,7 @@ async def get_orders_page(
     page_size: int = 20,
 ) -> OrderListOut:
     page = max(1, page)
-    page_size = max(1, min(page_size, 200))
+    page_size = max(1, min(page_size, 500))
     total = await count_orders_filtered(db, filters)
     orders = await list_orders_filtered(
         db,
@@ -577,7 +577,7 @@ async def get_order_draft_out_by_room(db: AsyncSession, room_id: int) -> Optiona
     return OrderDraftOut(
         id=order_draft.id,
         customer_name=customer.name if customer else "未知",
-        customer_phone=customer.phone if customer else "未知",
+        customer_phone=(customer.phone or "") if customer else "",
         order_date=to_taipei_aware(order_draft.created_at),
         pay_way=order_draft.pay_way,
         pay_status=order_draft.pay_status or PaymentStatus.PENDING,

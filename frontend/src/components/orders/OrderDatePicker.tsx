@@ -14,7 +14,7 @@ import {
 } from 'date-fns'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { cn } from '@/lib/utils'
-import { formatHeaderDate } from '@/utils/datetime'
+import { formatHeaderDate, formatHeaderDateShort } from '@/utils/datetime'
 
 const WEEKDAYS = ['日', '一', '二', '三', '四', '五', '六'] as const
 
@@ -56,7 +56,8 @@ export default function OrderDatePicker({ value, onChange, active, className }: 
             className,
           )}
         >
-          {formatHeaderDate(value)}
+          <span className="md:hidden">{formatHeaderDateShort(value)}</span>
+          <span className="hidden md:inline">{formatHeaderDate(value)}</span>
         </button>
       </PopoverTrigger>
       <PopoverContent align="center" className="w-[280px]">

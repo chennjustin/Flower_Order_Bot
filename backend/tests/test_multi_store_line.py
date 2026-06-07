@@ -74,9 +74,12 @@ async def test_resolve_store_unknown_destination_404(monkeypatch):
             line_channel_access_token=None,
             line_channel_secret=None,
             database_url="sqlite+aiosqlite:///",
+            redis_url=None,
             public_base_url="http://localhost:8000",
             supabase_url=None,
             supabase_anon_key=None,
+            supabase_service_role_key=None,
+            supabase_storage_bucket="chat-images",
             supabase_jwt_secret=None,
         ),
     )

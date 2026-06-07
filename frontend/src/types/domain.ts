@@ -66,7 +66,7 @@ export interface OrderListResponse {
 export interface OrderListParams {
   page?: number
   page_size?: number
-  status?: 'in_progress' | 'completed' | ''
+  status?: 'in_progress' | 'completed' | 'fulfilled' | ''
   pickup_date?: string
   pickup_from?: string
   pickup_to?: string

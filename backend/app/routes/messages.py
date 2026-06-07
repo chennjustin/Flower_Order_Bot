@@ -8,7 +8,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.core.auth import get_chat_room_for_store, get_current_store, get_current_store_sse
-from app.core.deps import get_settings
 from app.core.redis_client import is_redis_enabled
 from app.models.store import Store
 from app.enums.chat import ChatRoomStage
@@ -140,7 +139,7 @@ async def upload_staff_chat_image(
     db: AsyncSession = Depends(get_db),
     file: UploadFile = File(...),
 ):
-    """本機選圖上傳：存檔後回傳絕對 URL（須設定可被 LINE 存取的 PUBLIC_BASE_URL，例如 ngrok HTTPS）。"""
+    """Upload staff image to Supabase Storage; returns public HTTPS URL for LINE push."""
     room = await get_chat_room_for_store(db, room_id, store)
 
     ct = (file.content_type or "").split(";")[0].strip().lower()
@@ -159,8 +158,13 @@ async def upload_staff_chat_image(
     if len(raw) == 0:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Empty file")
 
-    settings = get_settings()
-    url = save_staff_chat_image(settings.public_base_url, raw, ct)
+    try:
+        url = save_staff_chat_image(store.id, raw, ct)
+    except RuntimeError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(exc),
+        ) from exc
     return StaffChatImageUploadOut(image_url=url)
 
 

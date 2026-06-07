@@ -67,7 +67,7 @@ function monthPickupRange(date: Date): Pick<OrderListParams, 'pickup_from' | 'pi
 function buildListQueryParams(args: {
   currentPage: number
   pageSize: number
-  effectiveStatusTab: '' | 'in_progress' | 'completed'
+  effectiveStatusTab: '' | 'in_progress' | 'completed' | 'fulfilled'
   activeTab: OrderFilterTab
   dateFilterActive: boolean
   currentDate: Date
@@ -84,6 +84,8 @@ function buildListQueryParams(args: {
     params.status = 'in_progress'
   } else if (args.effectiveStatusTab === 'completed') {
     params.status = 'completed'
+  } else if (args.effectiveStatusTab === 'fulfilled') {
+    params.status = 'fulfilled'
   }
 
   if (args.activeTab === '' && args.effectiveStatusTab === '') {
@@ -116,12 +118,14 @@ export default function OrderTable({
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
   const [currentPage, setCurrentPage] = useState(1)
 
-  const effectiveStatusTab: '' | 'in_progress' | 'completed' =
+  const effectiveStatusTab: '' | 'in_progress' | 'completed' | 'fulfilled' =
     quickFilter === 'in_progress' || activeTab === 'in_progress'
       ? 'in_progress'
       : activeTab === 'completed'
         ? 'completed'
-        : ''
+        : activeTab === 'fulfilled'
+          ? 'fulfilled'
+          : ''
 
   const listParams = useMemo(
     () =>
@@ -247,7 +251,7 @@ export default function OrderTable({
       await downloadOrdersCsv(exportParams)
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err)
-      alert(`下載 CSV 失敗：${message}`)
+      alert(`下載所有訂單 失敗：${message}`)
     }
   }
 
@@ -275,14 +279,17 @@ export default function OrderTable({
   }
 
   return (
-    <section className="min-w-0 w-full rounded-lg bg-white px-8 py-6 mt-6 mb-8 border-b-[1.5px] border-[#e9e9e9]">
-      <div className="mb-4 flex flex-wrap items-center gap-4">
+    <section className="min-w-0 w-full bg-white px-4 py-4 mt-6 mb-8 border-b-[1.5px] border-[#e9e9e9] md:rounded-lg md:px-8 md:py-6">
+
+      {/* ── Row 1: title (desktop) + view toggle + date picker ── */}
+      <div className="mb-3 flex flex-wrap items-center gap-3">
         {showTitle && (
-          <span className="text-[22px] font-bold tracking-wider whitespace-nowrap text-[#6168FC]">
+          <span className="hidden text-[22px] font-bold tracking-wider whitespace-nowrap text-[#6168FC] md:inline">
             訂單總覽
           </span>
         )}
 
+        {/* View toggle */}
         <div className="flex items-center gap-[9px] rounded-[32px] bg-[#F5F5F5] px-4 py-2">
           <button
             type="button"
@@ -310,7 +317,35 @@ export default function OrderTable({
           </button>
         </div>
 
-        <div className="ml-auto flex flex-wrap items-center gap-4">
+        {/* Date picker — always visible in row 1, pushed to end on mobile */}
+        {viewMode === 'list' && (
+          <div className="ml-auto flex h-10 items-center gap-3 rounded-[36px] bg-[#F7F7F7] px-4 md:ml-0">
+            <button
+              type="button"
+              onClick={() => shiftDate(-1)}
+              className="flex h-7 w-7 items-center justify-center rounded-full bg-[#D9D9D9] text-white transition hover:bg-[#C5C7FF]"
+              aria-label="前一天"
+            >
+              <ChevronLeft className="h-3.5 w-3.5" strokeWidth={3} />
+            </button>
+            <OrderDatePicker
+              value={currentDate}
+              onChange={selectDate}
+              active={dateFilterActive}
+            />
+            <button
+              type="button"
+              onClick={() => shiftDate(1)}
+              className="flex h-7 w-7 items-center justify-center rounded-full bg-[#D9D9D9] text-white transition hover:bg-[#C5C7FF]"
+              aria-label="後一天"
+            >
+              <ChevronRight className="h-3.5 w-3.5" strokeWidth={3} />
+            </button>
+          </div>
+        )}
+
+        {/* Desktop: search + action buttons in same row */}
+        <div className="hidden md:ml-auto md:flex md:flex-wrap md:items-center md:gap-4">
           <div className="relative flex h-[46px] w-[360px] min-w-[200px] items-center rounded-[36px] bg-[#D8EAFF] px-6 py-[11px]">
             <input
               type="text"
@@ -341,83 +376,108 @@ export default function OrderTable({
           >
             <Download className="h-5 w-5" strokeWidth={2.5} />
             <span className="text-base font-bold leading-[112.5%] font-['Noto_Sans_TC',sans-serif]">
-              下載 CSV
+              下載所有訂單
             </span>
           </button>
         </div>
       </div>
 
-      <div className="mb-4 flex flex-wrap items-center gap-2">
-        <div className="inline-flex h-10 items-center gap-1 rounded-[36px] bg-[#F7F7F7] px-3 py-1.5">
-            {ORDER_FILTER_TABS.map(tab => (
-              <button
-                key={tab.value}
-                type="button"
-                onClick={() => selectTab(tab.value)}
-                className={cn(
-                  'flex h-7 items-center whitespace-nowrap rounded-[36px] px-6 py-[11px] text-sm font-bold leading-[112.5%] text-black/60 transition',
-                  "font-['Noto_Sans_TC',sans-serif]",
-                  isTabHighlighted(tab.value) && 'bg-[#C5C7FF]',
-                )}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </div>
-
-          {viewMode === 'list' && (
-            <div className="flex h-10 items-center gap-3 rounded-[36px] bg-[#F7F7F7] px-4">
-              <button
-                type="button"
-                onClick={() => shiftDate(-1)}
-                className="flex h-7 w-7 items-center justify-center rounded-full bg-[#D9D9D9] text-white transition hover:bg-[#C5C7FF]"
-                aria-label="前一天"
-              >
-                <ChevronLeft className="h-3.5 w-3.5" strokeWidth={3} />
-              </button>
-              <OrderDatePicker
-                value={currentDate}
-                onChange={selectDate}
-                active={dateFilterActive}
-              />
-              <button
-                type="button"
-                onClick={() => shiftDate(1)}
-                className="flex h-7 w-7 items-center justify-center rounded-full bg-[#D9D9D9] text-white transition hover:bg-[#C5C7FF]"
-                aria-label="後一天"
-              >
-                <ChevronRight className="h-3.5 w-3.5" strokeWidth={3} />
-              </button>
-            </div>
-          )}
-
-          {viewMode === 'list' && totalPages > 1 && (
-            <div className="ml-auto flex items-center gap-3">
-              <button
-                type="button"
-                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                disabled={currentPage === 1}
-                className="flex h-8 w-8 items-center justify-center rounded-full bg-[#D9D9D9] text-white transition hover:enabled:bg-[#C5C7FF] disabled:opacity-40 disabled:cursor-not-allowed"
-                aria-label="上一頁"
-              >
-                <ChevronLeft className="h-4 w-4" strokeWidth={3} />
-              </button>
-              <span className="text-sm font-bold text-black/60 font-['Noto_Sans_TC',sans-serif]">
-                {currentPage} / {totalPages}
-              </span>
-              <button
-                type="button"
-                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                disabled={currentPage === totalPages}
-                className="flex h-8 w-8 items-center justify-center rounded-full bg-[#D9D9D9] text-white transition hover:enabled:bg-[#C5C7FF] disabled:opacity-40 disabled:cursor-not-allowed"
-                aria-label="下一頁"
-              >
-                <ChevronRight className="h-4 w-4" strokeWidth={3} />
-              </button>
-            </div>
-          )}
+      {/* ── Row 2 (mobile only): search bar full width ── */}
+      <div className="mb-3 md:hidden">
+        <div className="relative flex h-[42px] w-full items-center rounded-[36px] bg-[#D8EAFF] px-5">
+          <input
+            type="text"
+            value={searchText}
+            onChange={e => setSearchText(e.target.value)}
+            placeholder="搜尋訂單（姓名、編號等）"
+            className="w-full border-0 bg-transparent p-0 text-sm leading-[140%] text-black/[0.38] outline-none placeholder:text-black/[0.38] font-['Noto_Sans_TC',sans-serif]"
+          />
+          <Search className="absolute right-5 top-1/2 h-4 w-4 -translate-y-1/2 text-black/[0.38]" />
+        </div>
       </div>
 
+      {/* ── Row 3 (mobile only): action buttons ── */}
+      {onCreateOrder && (
+        <div className="mb-3 flex gap-3 md:hidden">
+          <button
+            type="button"
+            onClick={onCreateOrder}
+            className="flex h-10 flex-1 items-center justify-center gap-2 whitespace-nowrap rounded-xl bg-[#6168FC] px-3 text-white shadow-[2px_2px_2px_rgba(0,0,0,0.25)] transition hover:bg-[#4F51FF]"
+          >
+            <Plus className="h-4 w-4 shrink-0" strokeWidth={2.5} />
+            <span className="text-sm font-bold font-['Noto_Sans_TC',sans-serif]">新增訂單</span>
+          </button>
+          <button
+            type="button"
+            onClick={handleDownloadCsv}
+            className="flex h-10 flex-1 items-center justify-center gap-2 whitespace-nowrap rounded-xl bg-[#77B5FF] px-3 text-white shadow-[2px_2px_2px_rgba(0,0,0,0.25)] transition hover:opacity-90"
+          >
+            <Download className="h-4 w-4 shrink-0" strokeWidth={2.5} />
+            <span className="text-sm font-bold font-['Noto_Sans_TC',sans-serif]">下載所有訂單</span>
+          </button>
+        </div>
+      )}
+      {/* mobile: download only (no create button) */}
+      {!onCreateOrder && (
+        <div className="mb-3 flex gap-3 md:hidden">
+          <button
+            type="button"
+            onClick={handleDownloadCsv}
+            className="flex h-10 flex-1 items-center justify-center gap-2 whitespace-nowrap rounded-xl bg-[#77B5FF] px-3 text-white shadow-[2px_2px_2px_rgba(0,0,0,0.25)] transition hover:opacity-90"
+          >
+            <Download className="h-4 w-4 shrink-0" strokeWidth={2.5} />
+            <span className="text-sm font-bold font-['Noto_Sans_TC',sans-serif]">下載所有訂單</span>
+          </button>
+        </div>
+      )}
+
+      {/* ── Row 4: filter tabs + pagination ── */}
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        <div className="inline-flex h-10 items-center gap-1 overflow-x-auto rounded-[36px] bg-[#F7F7F7] px-3 py-1.5">
+          {ORDER_FILTER_TABS.map(tab => (
+            <button
+              key={tab.value}
+              type="button"
+              onClick={() => selectTab(tab.value)}
+              className={cn(
+                'flex h-7 items-center whitespace-nowrap rounded-[36px] px-4 py-[11px] text-sm font-bold leading-[112.5%] text-black/60 transition',
+                "font-['Noto_Sans_TC',sans-serif]",
+                isTabHighlighted(tab.value) && 'bg-[#C5C7FF]',
+              )}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {viewMode === 'list' && totalPages > 1 && (
+          <div className="ml-auto flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+              className="flex h-8 w-8 items-center justify-center rounded-full bg-[#D9D9D9] text-white transition hover:enabled:bg-[#C5C7FF] disabled:opacity-40 disabled:cursor-not-allowed"
+              aria-label="上一頁"
+            >
+              <ChevronLeft className="h-4 w-4" strokeWidth={3} />
+            </button>
+            <span className="text-sm font-bold text-black/60 font-['Noto_Sans_TC',sans-serif]">
+              {currentPage} / {totalPages}
+            </span>
+            <button
+              type="button"
+              onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+              disabled={currentPage === totalPages}
+              className="flex h-8 w-8 items-center justify-center rounded-full bg-[#D9D9D9] text-white transition hover:enabled:bg-[#C5C7FF] disabled:opacity-40 disabled:cursor-not-allowed"
+              aria-label="下一頁"
+            >
+              <ChevronRight className="h-4 w-4" strokeWidth={3} />
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* ── Table / Calendar ── */}
       {viewMode === 'calendar' ? (
         ordersQuery.error ? (
           <div className="py-10 text-center text-base text-red-600">
@@ -640,7 +700,7 @@ function OrderStatusToggle({
           <ChevronDown className="h-3 w-3 opacity-60" aria-hidden />
         </button>
       </PopoverTrigger>
-      <PopoverContent align="start" className="w-36 p-2" onClick={e => e.stopPropagation()}>
+      <PopoverContent align="start" className="w-40 p-2" onClick={e => e.stopPropagation()}>
         <ul className="flex flex-col gap-1">
           {ORDER_STATUS_OPTIONS.map(option => (
             <li key={option.value}>

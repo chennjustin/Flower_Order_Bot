@@ -55,10 +55,7 @@ function EyeToggle({ locked, visible, isEditMode, label, onToggle }: EyeTogglePr
   if (!isEditMode || locked) {
     return (
       <span
-        className={cn(
-          'ml-auto flex h-5 w-5 flex-shrink-0 items-center justify-center',
-          locked && isEditMode && 'grayscale',
-        )}
+        className="ml-auto flex h-5 w-5 flex-shrink-0 items-center justify-center"
         aria-hidden
       >
         {visible ? (

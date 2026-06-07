@@ -92,7 +92,7 @@ export default function ChatList({
   }
 
   return (
-    <div className="flex h-full w-[360px] flex-col border-r border-[#B3B3B3] bg-white">
+    <div className="flex h-full w-full flex-col border-r border-[#B3B3B3] bg-white md:w-[360px]">
       <div className="flex h-20 items-center border-b-[1.5px] border-[#e9e9e9]">
         <div className="ml-6 flex h-9 items-center gap-3">
           <span className="flex h-6 w-6 items-center justify-center text-[#6168FC]">
@@ -126,7 +126,7 @@ export default function ChatList({
         </div>
 
         <div className="flex-shrink-0 px-3 py-2">
-          <div className="relative flex h-[46px] w-full items-center rounded-[36px] bg-[#D8EAFF] px-6 py-[11px]">
+          <div className="relative flex h-9 w-full items-center rounded-[36px] border border-[#E0E0E0] bg-white px-4 transition focus-within:border-[#77B5FF] focus-within:shadow-[0_0_0_3px_rgba(119,181,255,0.2)]">
             <input
               type="text"
               value={searchInput}
@@ -138,25 +138,25 @@ export default function ChatList({
                 }
               }}
               placeholder="搜尋顧客姓名"
-              className="w-full border-0 bg-transparent p-0 pr-8 text-base leading-[140%] text-black/[0.38] outline-none placeholder:text-black/[0.38] font-['Noto_Sans_TC',sans-serif]"
+              className="w-full border-0 bg-transparent p-0 pr-6 text-sm leading-[140%] text-black/60 outline-none placeholder:text-black/[0.38] font-['Noto_Sans_TC',sans-serif]"
             />
             {searchInput ? (
               <button
                 type="button"
                 onClick={clearSearch}
                 aria-label="清除搜尋"
-                className="absolute right-6 top-1/2 -translate-y-1/2 text-black/[0.38] transition-colors hover:text-black/60"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-black/[0.38] transition-colors hover:text-black/60"
               >
-                <X className="h-5 w-5" />
+                <X className="h-4 w-4" />
               </button>
             ) : (
               <button
                 type="button"
                 onClick={commitSearch}
                 aria-label="搜尋"
-                className="absolute right-6 top-1/2 -translate-y-1/2 text-black/[0.38] transition-colors hover:text-black/60"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-black/[0.38] transition-colors hover:text-black/60"
               >
-                <Search className="h-5 w-5" />
+                <Search className="h-4 w-4" />
               </button>
             )}
           </div>
@@ -219,12 +219,12 @@ function ChatRoomCard({ room, active, onSelect, onPrefetch }: ChatRoomCardProps)
       onFocus={onPrefetch}
       className={cn(
         'flex h-[100px] w-full items-center px-[17px] text-left transition-colors',
-        active ? 'bg-[#D8EAFF]' : 'bg-transparent hover:bg-black/[0.03]',
+        active ? 'md:bg-[#D8EAFF]' : 'bg-transparent hover:bg-black/[0.03]',
       )}
     >
       <div className="flex w-full items-center gap-4">
         <Avatar src={room.user_avatar_url} alt={room.user_name} size={56} />
-        <div className="flex h-[74px] flex-1 flex-col justify-between gap-2 overflow-hidden">
+        <div className="flex flex-1 flex-col justify-between gap-2 overflow-hidden">
           <div className="flex flex-col gap-1">
             <div className="flex items-center justify-between">
               <span className="truncate text-base font-bold text-black font-['Noto_Sans_TC',sans-serif]">

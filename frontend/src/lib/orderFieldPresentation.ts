@@ -40,7 +40,7 @@ export interface OrderTableColumnDef {
 /** Optional list column widths keyed by catalog field. */
 const FIELD_COLUMN_WIDTHS: Partial<Record<OrderFieldKey, string>> = {
   id: '136px',
-  order_status: '120px',
+  order_status: '140px',
   send_datetime: '200px',
   order_date: '200px',
   customer_name: '96px',
