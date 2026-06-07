@@ -31,6 +31,7 @@ ORDER_STATUS_LABELS: dict[OrderStatus, str] = {
     OrderStatus.CONFIRMED: "已確認",
     OrderStatus.CANCELLED: "已取消",
     OrderStatus.COMPLETED: "已完成",
+    OrderStatus.FULFILLED: "交付完成",
 }
 
 PAYMENT_STATUS_LABELS: dict[PaymentStatus, str] = {

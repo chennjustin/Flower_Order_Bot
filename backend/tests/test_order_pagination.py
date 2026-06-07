@@ -21,6 +21,16 @@ def test_apply_order_list_filters_in_progress_status() -> None:
     assert "store_id" in sql
 
 
+def test_apply_order_list_filters_fulfilled_status() -> None:
+    stmt = _apply_order_list_filters(
+        select(Order),
+        OrderListFilters(store_id=1, status="fulfilled"),
+    )
+    sql = str(stmt)
+    assert "store_id" in sql
+    assert "status" in sql
+
+
 def test_apply_order_list_filters_include_cancelled() -> None:
     stmt = _apply_order_list_filters(
         select(Order),

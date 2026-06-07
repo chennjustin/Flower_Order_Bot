@@ -42,7 +42,7 @@ async def get_orders(
     db: AsyncSession = Depends(get_db),
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=500),
-    status: Optional[str] = Query(None, pattern="^(in_progress|completed)$"),
+    status: Optional[str] = Query(None, pattern="^(in_progress|completed|fulfilled)$"),
     pickup_date: Optional[date] = None,
     pickup_from: Optional[datetime] = None,
     pickup_to: Optional[datetime] = None,
@@ -65,7 +65,7 @@ async def get_orders(
 async def export_orders(
     store: Store = Depends(get_current_store),
     db: AsyncSession = Depends(get_db),
-    status: Optional[str] = Query(None, pattern="^(in_progress|completed)$"),
+    status: Optional[str] = Query(None, pattern="^(in_progress|completed|fulfilled)$"),
     pickup_date: Optional[date] = None,
     pickup_from: Optional[datetime] = None,
     pickup_to: Optional[datetime] = None,

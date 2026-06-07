@@ -93,6 +93,8 @@ def _apply_order_list_filters(stmt, filters: OrderListFilters):
         )
     elif filters.status == "completed":
         stmt = stmt.where(Order.status == OrderStatus.COMPLETED)
+    elif filters.status == "fulfilled":
+        stmt = stmt.where(Order.status == OrderStatus.FULFILLED)
     if filters.pickup_date is not None:
         day_start = datetime.combine(filters.pickup_date, datetime.min.time())
         day_end = day_start + timedelta(days=1)

@@ -67,7 +67,7 @@ function monthPickupRange(date: Date): Pick<OrderListParams, 'pickup_from' | 'pi
 function buildListQueryParams(args: {
   currentPage: number
   pageSize: number
-  effectiveStatusTab: '' | 'in_progress' | 'completed'
+  effectiveStatusTab: '' | 'in_progress' | 'completed' | 'fulfilled'
   activeTab: OrderFilterTab
   dateFilterActive: boolean
   currentDate: Date
@@ -84,6 +84,8 @@ function buildListQueryParams(args: {
     params.status = 'in_progress'
   } else if (args.effectiveStatusTab === 'completed') {
     params.status = 'completed'
+  } else if (args.effectiveStatusTab === 'fulfilled') {
+    params.status = 'fulfilled'
   }
 
   if (args.activeTab === '' && args.effectiveStatusTab === '') {
@@ -116,12 +118,14 @@ export default function OrderTable({
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
   const [currentPage, setCurrentPage] = useState(1)
 
-  const effectiveStatusTab: '' | 'in_progress' | 'completed' =
+  const effectiveStatusTab: '' | 'in_progress' | 'completed' | 'fulfilled' =
     quickFilter === 'in_progress' || activeTab === 'in_progress'
       ? 'in_progress'
       : activeTab === 'completed'
         ? 'completed'
-        : ''
+        : activeTab === 'fulfilled'
+          ? 'fulfilled'
+          : ''
 
   const listParams = useMemo(
     () =>
@@ -696,7 +700,7 @@ function OrderStatusToggle({
           <ChevronDown className="h-3 w-3 opacity-60" aria-hidden />
         </button>
       </PopoverTrigger>
-      <PopoverContent align="start" className="w-36 p-2" onClick={e => e.stopPropagation()}>
+      <PopoverContent align="start" className="w-40 p-2" onClick={e => e.stopPropagation()}>
         <ul className="flex flex-col gap-1">
           {ORDER_STATUS_OPTIONS.map(option => (
             <li key={option.value}>
