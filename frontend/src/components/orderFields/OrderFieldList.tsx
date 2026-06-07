@@ -55,7 +55,11 @@ function EyeToggle({ locked, visible, isEditMode, label, onToggle }: EyeTogglePr
   if (!isEditMode || locked) {
     return (
       <span
-        className="ml-auto flex h-5 w-5 flex-shrink-0 items-center justify-center"
+        className={cn(
+          'ml-auto flex h-5 w-5 flex-shrink-0 items-center justify-center',
+          locked && isEditMode && 'cursor-not-allowed',
+        )}
+        title={locked && isEditMode ? '此欄位為必要欄位，無法隱藏' : undefined}
         aria-hidden
       >
         {visible ? (
