@@ -362,6 +362,9 @@ async def run_welcome_flow(
 
         await db.commit()
         await db.refresh(chat_room)
+        if include_preface:
+            await _publish_bot_outgoing(db, chat_room, welcome_message, store.id)
+        await _publish_bot_outgoing(db, chat_room, question_message, store.id)
         print("已詢問使用者是否要客製化花束")
         return
 

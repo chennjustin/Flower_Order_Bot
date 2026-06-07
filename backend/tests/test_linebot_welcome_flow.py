@@ -66,6 +66,8 @@ async def test_run_welcome_flow_sends_preface_before_confirm(monkeypatch) -> Non
 
     monkeypatch.setattr(linebot_flow, "line_bot_api_for_store", lambda _store: object())
     monkeypatch.setattr(linebot_flow, "send_confirm", fake_send_confirm)
+    publish = AsyncMock()
+    monkeypatch.setattr(linebot_flow, "_publish_bot_outgoing", publish)
 
     await linebot_flow.run_welcome_flow(room, "", event, store, db, include_preface=True)
 
@@ -73,6 +75,11 @@ async def test_run_welcome_flow_sends_preface_before_confirm(monkeypatch) -> Non
     assert called["kwargs"]["preface_text"] == "您好，歡迎來到玫瑰工作室！"
     assert db.add.call_count == 2
     assert room.bot_step == 0
+    assert publish.await_count == 2
+    assert publish.await_args_list[0].args[1] is room
+    assert publish.await_args_list[0].args[3] == store.id
+    assert publish.await_args_list[1].args[1] is room
+    assert publish.await_args_list[1].args[3] == store.id
 
 
 @pytest.mark.asyncio
@@ -89,6 +96,8 @@ async def test_run_welcome_flow_without_preface_only_sends_order_question(monkey
 
     monkeypatch.setattr(linebot_flow, "line_bot_api_for_store", lambda _store: object())
     monkeypatch.setattr(linebot_flow, "send_confirm", fake_send_confirm)
+    publish = AsyncMock()
+    monkeypatch.setattr(linebot_flow, "_publish_bot_outgoing", publish)
 
     await linebot_flow.run_welcome_flow(room, "", event, store, db)
 
@@ -96,6 +105,9 @@ async def test_run_welcome_flow_without_preface_only_sends_order_question(monkey
     assert called["kwargs"]["preface_text"] is None
     assert db.add.call_count == 1
     assert room.bot_step == 0
+    publish.assert_awaited_once()
+    assert publish.await_args.args[1] is room
+    assert publish.await_args.args[3] == store.id
 
 
 @pytest.mark.asyncio
