@@ -39,15 +39,15 @@ export interface OrderTableColumnDef {
 
 /** Optional list column widths keyed by catalog field. */
 const FIELD_COLUMN_WIDTHS: Partial<Record<OrderFieldKey, string>> = {
-  id: '136px',
-  order_status: '140px',
+  id: '96px',
+  order_status: '136px',
   send_datetime: '200px',
   order_date: '200px',
   customer_name: '96px',
-  customer_phone: '112px',
+  customer_phone: '136px',
   item: '96px',
   quantity: '96px',
-  note: '128px',
+  note: '136px',
   shipment_method: '128px',
   delivery_address: '200px',
   total_amount: '96px',
@@ -55,7 +55,7 @@ const FIELD_COLUMN_WIDTHS: Partial<Record<OrderFieldKey, string>> = {
   pay_status: '112px',
 }
 
-const EXPORT_COLUMN: OrderTableColumnDef = { key: 'export', label: '列印' }
+const EXPORT_COLUMN: OrderTableColumnDef = { key: 'export', label: '列印', width: '96px' }
 const CANCEL_COLUMN: OrderTableColumnDef = {
   key: 'cancel',
   label: '取消訂單',
@@ -91,6 +91,13 @@ export function buildOrderTableColumns(config: OrderDisplayConfig): OrderTableCo
     label: item.label,
     width: item.width,
   }))
+  // Last data column fills remaining space so the table always spans full width.
+  if (dataColumns.length > 0) {
+    dataColumns[dataColumns.length - 1] = {
+      ...dataColumns[dataColumns.length - 1],
+      width: undefined,
+    }
+  }
   return [EXPORT_COLUMN, ...dataColumns, CANCEL_COLUMN]
 }
 
