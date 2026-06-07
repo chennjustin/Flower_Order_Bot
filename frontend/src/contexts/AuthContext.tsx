@@ -6,7 +6,6 @@ import {
   useState,
   type ReactNode,
 } from 'react'
-import type { Session, User } from '@supabase/supabase-js'
 import { authApi } from '@/api/auth'
 import { fetchMyStore } from '@/api/stores'
 import {
@@ -18,6 +17,10 @@ import {
 } from '@/lib/authStorage'
 import { supabase } from '@/lib/supabase'
 import type { StaffSession } from '@/types/auth'
+
+type SupabaseSession = Awaited<ReturnType<typeof supabase.auth.getSession>>['data']['session']
+type Session = NonNullable<SupabaseSession>
+type User = Session['user']
 import type { LineOfficialDisplay } from '@/types/authApi'
 
 const DEFAULT_STORE_KEY = 'demo-store'
@@ -85,7 +88,7 @@ async function bridgeStaffSession(supabaseSession: Session | null): Promise<Staf
     }
     setStaffSession(session)
     return session
-  } catch {
+  } catch (err) {
     // 後端尚未就緒時 fallback 到 localStorage
     const existing = getStaffSession()
     if (existing) return existing
@@ -121,19 +124,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
       }
     }
 
-    supabase.auth.getSession().then(({ data: { session: supabaseSession } }) => {
-      if (!mounted) return
-      void applySupabaseSession(supabaseSession).then(() => {
-        if (mounted) setIsLoading(false)
-      })
-    })
-
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, supabaseSession) => {
       if (!mounted) return
       void applySupabaseSession(supabaseSession).then(() => {
-        if (mounted && event === 'INITIAL_SESSION') setIsLoading(false)
+        if (mounted && (event === 'INITIAL_SESSION' || event === 'SIGNED_IN')) {
+          setIsLoading(false)
+        }
       })
     })
 
