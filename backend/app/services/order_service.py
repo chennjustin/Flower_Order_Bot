@@ -60,7 +60,7 @@ from app.services.google_calendar_service import (
     is_connected,
     sync_order_event,
 )
-from app.utils.line_send_message import LINE_push_message
+from app.utils.line_send_message import LINE_push_message, send_order_confirmation_flex
 
 logger = logging.getLogger(__name__)
 
@@ -329,12 +329,60 @@ async def create_order_by_room(db: AsyncSession, room_id: int) -> list[str]:
     )
 
     line_uid = await get_line_uid_by_chatroom_id(db, room.id)
-    msg = "訂單已經由後台送出囉～\n\n"
+    msg = "感謝您的訂購！以下是您的訂單資訊，請確認："
     if line_uid:
         store = await get_store_by_id(db, room.store_id)
         if store:
             line_api = line_bot_api_for_store(store)
             LINE_push_message(line_api, line_uid, ChatMessagePayload(text=msg))
+            # Build visible field list from store config
+            field_config = await get_effective_order_field_config(db, room.store_id)
+            FIELD_LABELS: dict[str, str] = {
+                "id": "訂單編號",
+                "customer_name": "姓名",
+                "customer_phone": "電話",
+                "item": "品項",
+                "quantity": "數量",
+                "total_amount": "金額",
+                "shipment_method": "取貨方式",
+                "send_datetime": "取貨時間",
+                "delivery_address": "外送地址",
+                "note": "備註",
+                "pay_way": "付款方式",
+                "pay_status": "付款狀態",
+                "order_status": "訂單狀態",
+                "order_date": "建立時間",
+            }
+            SHIPMENT_LABELS = {"STORE_PICKUP": "店取", "DELIVERY": "外送"}
+            PAY_STATUS_LABELS = {"PAID": "已付款", "FAILED": "付款失敗", "REFUNDED": "已退款", "PENDING": "待付款"}
+
+            def _fmt_datetime(val: datetime | None) -> str:
+                if not val:
+                    return "—"
+                return val.strftime("%Y/%m/%d %H:%M")
+
+            field_values: dict[str, str] = {
+                "id": str(order.id),
+                "customer_name": order.customer_name or "—",
+                "customer_phone": order.customer_phone or "—",
+                "item": order.item_type or "—",
+                "quantity": str(order.quantity) if order.quantity is not None else "—",
+                "total_amount": f"NT {order.total_amount:,}" if order.total_amount is not None else "—",
+                "shipment_method": SHIPMENT_LABELS.get(order.shipment_method.value if order.shipment_method else "", "—"),
+                "send_datetime": _fmt_datetime(order.delivery_datetime),
+                "delivery_address": order.delivery_address or "—",
+                "note": order.notes or "—",
+                "pay_way": order.pay_way or "—",
+                "pay_status": PAY_STATUS_LABELS.get(order.pay_status.value if order.pay_status else "", "待付款"),
+                "order_status": "已確認",
+                "order_date": _fmt_datetime(order.created_at),
+            }
+            fields = [
+                (FIELD_LABELS[key], field_values[key])
+                for key in field_config.visible_fields
+                if key in FIELD_LABELS and key in field_values
+            ]
+            send_order_confirmation_flex(line_api, line_uid, store.name, fields)
     else:
         print("❗ 無法取得 LINE UID，無法推播訂單已送出提醒。")
     message = ChatMessage(

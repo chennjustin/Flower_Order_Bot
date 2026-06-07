@@ -301,7 +301,7 @@ export default function MessagesPage() {
                   setShowOrganizeConfirm(false)
                   void doOrganizeOrder()
                 }}
-                className="flex h-10 flex-1 items-center justify-center rounded-xl bg-[#6168FC] text-sm font-bold text-white transition hover:bg-[#4E55E0]"
+                className="flex h-14 flex-1 items-center justify-center rounded-xl bg-[#6168FC] text-sm font-bold text-white transition hover:bg-[#4E55E0]"
               >
                 確認整理
               </button>
