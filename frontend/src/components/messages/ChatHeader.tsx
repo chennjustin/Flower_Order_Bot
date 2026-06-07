@@ -169,7 +169,7 @@ export default function ChatHeader({
             ) : (
               <>
                 <Archive className="h-4 w-4 md:h-5 md:w-5" />
-                <span>整理資料</span>
+                <span>整理草稿</span>
               </>
             )}
           </button>

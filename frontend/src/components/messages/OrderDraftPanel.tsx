@@ -159,7 +159,7 @@ export default function OrderDraftPanel({
 
   async function startEditing() {
     if (!draft) {
-      alert('尚無草稿，請先點聊天室上方「整理資料」產生草稿。')
+      alert('尚無草稿，請先點聊天室上方「整理草稿」產生草稿。')
       return
     }
     setForm(formStateFromDraft(draft))
@@ -168,7 +168,7 @@ export default function OrderDraftPanel({
 
   async function confirmEditing(): Promise<boolean> {
     if (!draft) {
-      alert('尚無草稿，請先點聊天室上方「整理資料」產生草稿。')
+      alert('尚無草稿，請先點聊天室上方「整理草稿」產生草稿。')
       return false
     }
     try {
@@ -286,7 +286,7 @@ export default function OrderDraftPanel({
                   "font-['Noto_Sans_TC',sans-serif]",
                 )}
               >
-                尚無草稿內容，請先點聊天室上方「整理資料」。
+                尚無草稿內容，請先點聊天室上方「整理草稿」。
               </p>
             )}
             {hasMissingFields && (
