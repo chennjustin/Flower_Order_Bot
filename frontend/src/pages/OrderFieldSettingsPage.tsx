@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams, useBlocker } from 'react-router-dom'
-import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Check, X } from 'lucide-react'
 import OrderFieldList from '@/components/orderFields/OrderFieldList'
 import PreviewPanel from '@/components/orderFields/PreviewPanel'
