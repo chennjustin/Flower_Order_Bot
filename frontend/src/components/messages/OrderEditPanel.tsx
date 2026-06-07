@@ -190,7 +190,6 @@ export default function OrderEditPanel({
     'item',
     'customer_name',
     'customer_phone',
-    'quantity',
     'total_amount',
   ]
 

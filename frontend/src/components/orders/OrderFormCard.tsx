@@ -47,7 +47,7 @@ const inputClass =
 const missingInputClass =
   "border-red-400 bg-red-50 placeholder:text-red-400 focus:border-red-400 focus:shadow-[0_0_0_2px_rgba(220,53,69,0.15)]"
 
-const REQUIRED_KEYS: (keyof FormState)[] = ['item', 'customer_name', 'customer_phone', 'quantity', 'total_amount']
+const REQUIRED_KEYS: (keyof FormState)[] = ['item', 'customer_name', 'customer_phone', 'total_amount']
 
 export default function OrderFormCard({
   mode,
@@ -110,8 +110,14 @@ export default function OrderFormCard({
 
   async function handleSave() {
     setAttempted(true)
-    if (REQUIRED_KEYS.some(k => !String(form[k] ?? '').trim())) return
-    if (isSendDatetimeMissing(form)) return
+    console.log('[OrderFormCard] handleSave form=', form)
+    const missingRequired = REQUIRED_KEYS.filter(k => !String(form[k] ?? '').trim())
+    console.log('[OrderFormCard] missingRequired=', missingRequired)
+    if (missingRequired.length > 0) return
+    const hasSendDatetimeField = formFields.some(f => f.key === 'send_datetime')
+    const sendDatetimeMissing = hasSendDatetimeField && isSendDatetimeMissing(form)
+    console.log('[OrderFormCard] hasSendDatetimeField=', hasSendDatetimeField, 'sendDatetimeMissing=', sendDatetimeMissing)
+    if (sendDatetimeMissing) return
     setSaving(true)
     try {
       const patch = isEdit && order

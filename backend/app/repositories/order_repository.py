@@ -82,8 +82,11 @@ async def list_all_orders(
 
 
 def _apply_order_list_filters(stmt, filters: OrderListFilters):
-    stmt = stmt.join(ChatRoom, Order.room_id == ChatRoom.id).where(
-        ChatRoom.store_id == filters.store_id
+    stmt = stmt.outerjoin(ChatRoom, Order.room_id == ChatRoom.id).where(
+        or_(
+            ChatRoom.store_id == filters.store_id,
+            Order.store_id == filters.store_id,
+        )
     )
     if not filters.include_cancelled:
         stmt = stmt.where(Order.status != OrderStatus.CANCELLED)
@@ -129,7 +132,7 @@ def _apply_order_list_filters(stmt, filters: OrderListFilters):
 
 
 async def count_orders_filtered(db: AsyncSession, filters: OrderListFilters) -> int:
-    stmt = select(func.count()).select_from(Order)
+    stmt = select(func.count()).select_from(Order).distinct()
     stmt = _apply_order_list_filters(stmt, filters)
     result = await db.execute(stmt)
     return int(result.scalar() or 0)
@@ -142,7 +145,7 @@ async def list_orders_filtered(
     limit: Optional[int] = None,
     offset: int = 0,
 ) -> list[Order]:
-    stmt = select(Order)
+    stmt = select(Order).distinct()
     stmt = _apply_order_list_filters(stmt, filters)
     stmt = stmt.order_by(Order.id.desc())
     if limit is not None:

@@ -18,12 +18,18 @@ export const ORDERS_QUERY_KEY = ['orders'] as const
 
 export function useOrdersPage(params: OrderListParams, enabled = true) {
   const { storeId, enabled: storeReady } = useStoreQueryGate()
+  const queryKey = storeId != null
+    ? ordersPageQueryKey(storeId, params)
+    : ['orders', 'pending', 'page', params]
   return useQuery<OrderListResponse>({
-    queryKey:
-      storeId != null
-        ? ordersPageQueryKey(storeId, params)
-        : ['orders', 'pending', 'page', params],
-    queryFn: () => fetchOrdersPage(params),
+    queryKey,
+    queryFn: () => {
+      console.log('[useOrdersPage] fetching params=', JSON.stringify(params))
+      return fetchOrdersPage(params).then(res => {
+        console.log('[useOrdersPage] total=', res.total, 'ids=', res.items.map(o => o.id))
+        return res
+      })
+    },
     enabled: storeReady && enabled,
     placeholderData: previous => previous,
   })
@@ -48,12 +54,20 @@ export function useCreateOrderDirect() {
   const qc = useQueryClient()
   const { storeId } = useStoreQueryGate()
   return useMutation({
-    mutationFn: (patch: OrderPatchUpdate) => createOrderDirect(patch),
-    onSuccess: () => {
+    mutationFn: (patch: OrderPatchUpdate) => {
+      console.log('[createOrder] calling API, storeId=', storeId, 'patch=', patch)
+      return createOrderDirect(patch)
+    },
+    onSuccess: (data) => {
+      console.log('[createOrder] success, data=', data, 'storeId=', storeId)
       if (storeId != null) {
+        console.log('[createOrder] invalidating', ['orders', storeId])
         qc.invalidateQueries({ queryKey: ['orders', storeId] })
         qc.invalidateQueries({ queryKey: statsQueryKey(storeId) })
       }
+    },
+    onError: (err) => {
+      console.error('[createOrder] error=', err)
     },
   })
 }
