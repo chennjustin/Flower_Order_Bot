@@ -23,7 +23,7 @@
 - `item`: product name only (e.g. "花束"), no extra specs.
 - `note`: colors, flowers, style, budget, card text, other requirements.
 - `shipment_method`: only `STORE_PICKUP` or `DELIVERY`.
-- `pay_way`: payment method text (e.g. "現金", "轉帳", "信用卡", "LINEPAY").
+- `pay_way`: payment method text (e.g. "現金", "轉帳", "信用卡", "LINEPAY"). If the customer says "匯款" or "匯" (bank remittance), normalize the output to "轉帳".
 - `pay_status`: only `PENDING` / `PAID` / `FAILED` / `REFUNDED`.
 - `quantity`, `total_amount`: numbers (no quotes). Use `-1` for unknown budget when first mentioned.
 
