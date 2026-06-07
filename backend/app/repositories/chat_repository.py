@@ -197,10 +197,17 @@ async def list_chat_messages(
 
 
 async def switch_chat_room_mode(db: AsyncSession, room_id: int, mode: str) -> None:
+    values = {
+        "stage": mode,
+        "updated_at": datetime.now(timezone(timedelta(hours=8))).replace(tzinfo=None),
+    }
+    if mode == ChatRoomStage.WELCOME or mode == ChatRoomStage.WELCOME.value:
+        values["bot_step"] = -1
+
     stmt = (
         update(ChatRoom)
         .where(ChatRoom.id == room_id)
-        .values(stage=mode, updated_at=datetime.now(timezone(timedelta(hours=8))).replace(tzinfo=None))
+        .values(**values)
     )
     await db.execute(stmt)
     await db.commit()

@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
-import { updateMyStoreName, type StoreOnboardingContext } from '@/api/stores'
+import { completeStoreOnboarding, updateMyStoreName, type StoreOnboardingContext } from '@/api/stores'
 import OnboardingCard from '@/components/onboarding/OnboardingCard'
 import StepIndicator from '@/components/onboarding/StepIndicator'
 import {
@@ -48,8 +48,9 @@ export default function OnboardingNamePage() {
         (prev: StoreOnboardingContext | undefined) =>
           prev ? { ...prev, storeName: savedName } : prev,
       )
+      await completeStoreOnboarding()
       completeStoreNameStep()
-      navigate('/settings/order-fields', { replace: true })
+      navigate('/settings/order-fields?from=onboarding', { replace: true })
     } catch (err) {
       setError(err instanceof Error ? err.message : '無法儲存店家名稱')
     }
