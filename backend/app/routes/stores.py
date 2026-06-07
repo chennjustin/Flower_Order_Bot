@@ -49,7 +49,20 @@ async def _resolve_line_official_display(store: Store) -> LineOfficialDisplay:
 @api_router.get("/stores/me", response_model=StoreListItem)
 async def get_my_store(store: Store = Depends(get_current_store)) -> StoreListItem:
     """Return the store bound to the logged-in owner (OAuth 1:1)."""
-    return StoreListItem(id=store.id, name=store.name, slug=store.slug)
+    return StoreListItem(id=store.id, name=store.name, slug=store.slug, onboarding_done=store.onboarding_done)
+
+
+@api_router.patch("/stores/me/onboarding-done", response_model=StoreListItem)
+async def complete_onboarding(
+    db: AsyncSession = Depends(get_db),
+    store: Store = Depends(get_current_store),
+) -> StoreListItem:
+    """Mark onboarding as completed for the logged-in owner."""
+    store.onboarding_done = True
+    store.updated_at = now_taipei_naive()
+    await db.commit()
+    await db.refresh(store)
+    return StoreListItem(id=store.id, name=store.name, slug=store.slug, onboarding_done=store.onboarding_done)
 
 
 @api_router.get("/stores/me/onboarding-context", response_model=StoreOnboardingContext)

@@ -5,6 +5,7 @@ export interface StoreListItem {
   id: number
   name: string
   slug: string | null
+  onboarding_done: boolean
 }
 
 interface StoreOnboardingContextApiResponse {
@@ -64,4 +65,10 @@ export async function updateMyStoreName(name: string): Promise<string> {
   const payload: UpdateStoreNameApiRequest = { name }
   const { data } = await api.patch<UpdateStoreNameApiResponse>('/stores/me/name', payload)
   return data.name
+}
+
+/** Mark onboarding as completed for the logged-in owner. */
+export async function completeStoreOnboarding(): Promise<StoreListItem> {
+  const { data } = await api.patch<StoreListItem>('/stores/me/onboarding-done')
+  return data
 }

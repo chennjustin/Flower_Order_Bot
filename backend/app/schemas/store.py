@@ -9,6 +9,7 @@ class StoreListItem(BaseModel):
     id: int
     name: str
     slug: str | None = None
+    onboarding_done: bool = False
 
 
 class LineOfficialDisplay(BaseModel):

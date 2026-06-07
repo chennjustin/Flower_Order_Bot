@@ -6,8 +6,8 @@ import {
   useState,
   type ReactNode,
 } from 'react'
-import type { Session, User } from '@supabase/supabase-js'
 import { authApi } from '@/api/auth'
+import { fetchMyStore } from '@/api/stores'
 import {
   clearSession as clearStaffSession,
   getSession as getStaffSession,
@@ -17,6 +17,10 @@ import {
 } from '@/lib/authStorage'
 import { supabase } from '@/lib/supabase'
 import type { StaffSession } from '@/types/auth'
+
+type SupabaseSession = Awaited<ReturnType<typeof supabase.auth.getSession>>['data']['session']
+type Session = NonNullable<SupabaseSession>
+type User = Session['user']
 import type { LineOfficialDisplay } from '@/types/authApi'
 
 const DEFAULT_STORE_KEY = 'demo-store'
@@ -60,18 +64,36 @@ function createStaffSessionFromUser(user: User): StaffSession {
 }
 
 /** Load or create StaffSession when Supabase auth is present. */
-function bridgeStaffSession(supabaseSession: Session | null): StaffSession | null {
+async function bridgeStaffSession(supabaseSession: Session | null): Promise<StaffSession | null> {
   if (!supabaseSession?.access_token) {
     return null
   }
 
-  const existing = getStaffSession()
-  if (existing) {
-    return existing
-  }
+  try {
+    const store = await fetchMyStore()
+    const existing = getStaffSession()
+    const displayName =
+      (supabaseSession.user.user_metadata?.full_name as string | undefined) ??
+      supabaseSession.user.email ??
+      '管理員'
+    const avatarUrl = supabaseSession.user.user_metadata?.avatar_url as string | undefined
 
-  // TODO: replace with GET /auth/me when backend Google OAuth is ready.
-  return createStaffSessionFromUser(supabaseSession.user)
+    const session: StaffSession = {
+      staffId: existing?.staffId ?? nextMockStaffId(),
+      storeKey: String(store.id),
+      displayName: existing?.displayName ?? displayName,
+      avatarUrl: existing?.avatarUrl ?? avatarUrl,
+      onboardingStep: store.onboarding_done ? 'DONE' : 'LINE_OA',
+      role: 'OWNER',
+    }
+    setStaffSession(session)
+    return session
+  } catch (err) {
+    // 後端尚未就緒時 fallback 到 localStorage
+    const existing = getStaffSession()
+    if (existing) return existing
+    return createStaffSessionFromUser(supabaseSession.user)
+  }
 }
 
 interface AuthProviderProps {
@@ -87,32 +109,30 @@ export function AuthProvider({ children }: AuthProviderProps) {
   useEffect(() => {
     let mounted = true
 
-    function applySupabaseSession(supabaseSession: Session | null) {
+    async function applySupabaseSession(supabaseSession: Session | null) {
       const authed = Boolean(supabaseSession?.access_token)
       setIsAuthenticated(authed)
-      setSession(authed ? bridgeStaffSession(supabaseSession) : null)
       setAvatarUrl(
         authed ? (supabaseSession?.user.user_metadata?.avatar_url as string | undefined) ?? null : null
       )
-      if (!authed) {
+      if (authed) {
+        const staffSession = await bridgeStaffSession(supabaseSession)
+        if (mounted) setSession(staffSession)
+      } else {
         clearStaffSession()
+        if (mounted) setSession(null)
       }
     }
-
-    supabase.auth.getSession().then(({ data: { session: supabaseSession } }) => {
-      if (!mounted) return
-      applySupabaseSession(supabaseSession)
-      setIsLoading(false)
-    })
 
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, supabaseSession) => {
       if (!mounted) return
-      applySupabaseSession(supabaseSession)
-      if (event === 'INITIAL_SESSION') {
-        setIsLoading(false)
-      }
+      void applySupabaseSession(supabaseSession).then(() => {
+        if (mounted && (event === 'INITIAL_SESSION' || event === 'SIGNED_IN')) {
+          setIsLoading(false)
+        }
+      })
     })
 
     return () => {
