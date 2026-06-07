@@ -67,11 +67,34 @@ async def test_run_welcome_flow_sends_preface_before_confirm(monkeypatch) -> Non
     monkeypatch.setattr(linebot_flow, "line_bot_api_for_store", lambda _store: object())
     monkeypatch.setattr(linebot_flow, "send_confirm", fake_send_confirm)
 
-    await linebot_flow.run_welcome_flow(room, "", event, store, db)
+    await linebot_flow.run_welcome_flow(room, "", event, store, db, include_preface=True)
 
     assert called["text"] == "若想要訂購客製化花束，請按「是」~"
     assert called["kwargs"]["preface_text"] == "您好，歡迎來到玫瑰工作室！"
     assert db.add.call_count == 2
+    assert room.bot_step == 0
+
+
+@pytest.mark.asyncio
+async def test_run_welcome_flow_without_preface_only_sends_order_question(monkeypatch) -> None:
+    store = SimpleNamespace(id=1, name="玫瑰工作室")
+    room = SimpleNamespace(id=502, stage=ChatRoomStage.WELCOME, bot_step=-1)
+    event = _follow_event()
+    db = FakeDb()
+    called = {}
+
+    def fake_send_confirm(_line_api, _reply_token, text, **kwargs):
+        called["text"] = text
+        called["kwargs"] = kwargs
+
+    monkeypatch.setattr(linebot_flow, "line_bot_api_for_store", lambda _store: object())
+    monkeypatch.setattr(linebot_flow, "send_confirm", fake_send_confirm)
+
+    await linebot_flow.run_welcome_flow(room, "", event, store, db)
+
+    assert called["text"] == "若想要訂購客製化花束，請按「是」~"
+    assert called["kwargs"]["preface_text"] is None
+    assert db.add.call_count == 1
     assert room.bot_step == 0
 
 

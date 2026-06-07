@@ -29,6 +29,11 @@ from app.utils.line_inbound_media import fetch_line_message_binary, save_inbound
 from app.utils.line_send_message import send_confirm, send_quick_reply_message
 
 
+BUDGET_OPTIONS = ["500以下", "500-1000", "1000以上"]
+COLOR_OPTIONS = ["紅", "白", "粉", "其他"]
+FLOWER_TYPE_OPTIONS = ["玫瑰花", "滿天星", "向日葵", "其他"]
+
+
 
 async def _publish_room_stage(chat_room: ChatRoom, store_id: int) -> None:
     from app.services.chat_event_bus import publish_chat_room_stage
@@ -58,6 +63,29 @@ async def _publish_bot_outgoing(
         incoming=False,
     )
     await publish_chat_message(db, chat_room.id, message, store_id=store_id)
+
+
+async def _send_invalid_answer_handoff(
+    db: AsyncSession,
+    chat_room: ChatRoom,
+    line_api: LineBotApi,
+    reply_token: str,
+) -> None:
+    text = "好的！已轉交給客服人員，請稍候。"
+    line_api.reply_message(reply_token, TextSendMessage(text))
+    message = ChatMessage(
+        room_id=chat_room.id,
+        direction=ChatMessageDirection.OUTGOING_BY_BOT,
+        text=f"[自動回覆已傳送] {text}",
+        image_url="",
+        status=ChatMessageStatus.PENDING,
+        processed=False,
+        created_at=datetime.now(timezone(timedelta(hours=8))).replace(tzinfo=None),
+        updated_at=datetime.now(timezone(timedelta(hours=8))).replace(tzinfo=None),
+    )
+    db.add(message)
+    await db.commit()
+    await _publish_bot_outgoing(db, chat_room, message, chat_room.store_id)
 
 
 def _store_display_name(store: Store) -> str:
@@ -133,7 +161,7 @@ async def enter_welcome_stage_and_send_greeting(
     chat_room.bot_step = -1
     await db.commit()
     await db.refresh(chat_room)
-    await run_welcome_flow(chat_room, "", event, store, db)
+    await run_welcome_flow(chat_room, "", event, store, db, include_preface=True)
 
 
 async def handle_incoming_text_message(
@@ -288,6 +316,8 @@ async def run_welcome_flow(
     event: MessageEvent | FollowEvent,
     store: Store,
     db: AsyncSession,
+    *,
+    include_preface: bool = False,
 ):
     line_api = line_bot_api_for_store(store)
     if chat_room.bot_step == -1:
@@ -297,7 +327,7 @@ async def run_welcome_flow(
             line_api,
             event.reply_token,
             question_text,
-            preface_text=welcome_text,
+            preface_text=welcome_text if include_preface else None,
             yes_txt="是",
             no_txt="否",
             yes_reply="啟動智慧訂購流程",
@@ -325,7 +355,8 @@ async def run_welcome_flow(
             updated_at=datetime.now(timezone(timedelta(hours=8))).replace(tzinfo=None),
         )
 
-        db.add(welcome_message)
+        if include_preface:
+            db.add(welcome_message)
         db.add(question_message)
         chat_room.bot_step = 0
 
@@ -381,6 +412,7 @@ async def run_bot_flow(
         4: last,
     }
 
+    current_text = text
     while True:
         stage_before = chat_room.stage
         handler = STEP_MAP.get(chat_room.bot_step)
@@ -392,8 +424,8 @@ async def run_bot_flow(
                 )
                 await enter_welcome_stage_and_send_greeting(chat_room, event, store, db)
                 return
-            print(f"Error: No handler for bot_step {chat_room.bot_step}, reset bot_step to 0")
-            chat_room.bot_step = 0
+            print(f"Error: No handler for bot_step {chat_room.bot_step}, hand off to owner")
+            chat_room.bot_step = -1
             chat_room.stage = ChatRoomStage.WAITING_OWNER
             await db.commit()
             await db.refresh(chat_room)
@@ -402,7 +434,7 @@ async def run_bot_flow(
             return
 
         next_step, manual_override, next_question = await handler(
-            text, event, db, chat_room, line_api
+            current_text, event, db, chat_room, line_api
         )
 
         if manual_override:
@@ -420,6 +452,7 @@ async def run_bot_flow(
 
         if not next_question:
             break
+        current_text = ""
 
 
 async def ask_budget(user_text, event, db, chat_room, line_api: LineBotApi):
@@ -429,7 +462,7 @@ async def ask_budget(user_text, event, db, chat_room, line_api: LineBotApi):
                 line_api,
                 event.reply_token,
                 "好的～請問預算大概多少呢？",
-                ["500以下", "500-1000", "1000以上"],
+                BUDGET_OPTIONS,
             )
 
             message = ChatMessage(
@@ -447,21 +480,29 @@ async def ask_budget(user_text, event, db, chat_room, line_api: LineBotApi):
             await _publish_bot_outgoing(db, chat_room, message, chat_room.store_id)
 
             return 1, False, False
-        else:
-            budget = user_text.strip()
-            if budget == "500以下":
-                return 2, False, True
-            else:
-                return 3, False, True
+        budget = user_text.strip()
+        if budget not in BUDGET_OPTIONS:
+            await _send_invalid_answer_handoff(db, chat_room, line_api, event.reply_token)
+            return -1, True, False
+        if budget == "500以下":
+            return 2, False, True
+        return 3, False, True
 
 
 async def ask_color(user_text, event, db, chat_room, line_api: LineBotApi):
     if chat_room.bot_step == 2:
+        color = user_text.strip()
+        if color:
+            if color not in COLOR_OPTIONS:
+                await _send_invalid_answer_handoff(db, chat_room, line_api, event.reply_token)
+                return -1, True, False
+            return 4, False, True
+
         send_quick_reply_message(
             line_api,
             event.reply_token,
             "請問想要什麼顏色的客製化花束？",
-            ["紅", "白", "粉", "其他"],
+            COLOR_OPTIONS,
         )
         message = ChatMessage(
             room_id=chat_room.id,
@@ -477,16 +518,23 @@ async def ask_color(user_text, event, db, chat_room, line_api: LineBotApi):
         await db.commit()
         await _publish_bot_outgoing(db, chat_room, message, chat_room.store_id)
 
-        return 4, False, False
+        return 2, False, False
 
 
 async def ask_type(user_text, event, db, chat_room, line_api: LineBotApi):
     if chat_room.bot_step == 3:
+        flower_type = user_text.strip()
+        if flower_type:
+            if flower_type not in FLOWER_TYPE_OPTIONS:
+                await _send_invalid_answer_handoff(db, chat_room, line_api, event.reply_token)
+                return -1, True, False
+            return 4, False, True
+
         send_quick_reply_message(
             line_api,
             event.reply_token,
             "請問想要什麼類型的花材？",
-            ["玫瑰花", "滿天星", "向日葵", "其他"],
+            FLOWER_TYPE_OPTIONS,
         )
         message = ChatMessage(
             room_id=chat_room.id,
@@ -502,19 +550,19 @@ async def ask_type(user_text, event, db, chat_room, line_api: LineBotApi):
         await db.commit()
         await _publish_bot_outgoing(db, chat_room, message, chat_room.store_id)
 
-        return 4, False, False
+        return 3, False, False
 
 
 async def last(user_text, event, db, chat_room, line_api: LineBotApi):
     _ = user_text.strip()
     line_api.reply_message(
         event.reply_token,
-        TextSendMessage("👌了解！已記錄到後臺～接下來會交由老闆與您聯繫確認細節。"),
+        TextSendMessage("👌了解！接下來會交由老闆與您聯繫確認細節。"),
     )
     message = ChatMessage(
         room_id=chat_room.id,
         direction=ChatMessageDirection.OUTGOING_BY_BOT,
-        text="[自動回覆已傳送] 👌了解！已記錄到後臺～接下來會交由老闆與您聯繫確認細節。",
+        text="[自動回覆已傳送] 👌了解！接下來會交由老闆與您聯繫確認細節。",
         image_url="",
         status=ChatMessageStatus.PENDING,
         processed=False,
