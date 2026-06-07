@@ -16,12 +16,24 @@ branch_labels = None
 depends_on = None
 
 
+def _has_column(insp: sa.Inspector, table: str, column: str) -> bool:
+    if table not in insp.get_table_names(schema="public"):
+        return False
+    return column in {c["name"] for c in insp.get_columns(table, schema="public")}
+
+
 def upgrade() -> None:
-    op.add_column(
-        'store',
-        sa.Column('onboarding_done', sa.Boolean(), nullable=False, server_default='false'),
-    )
+    # Idempotent: the column may already exist if the schema was patched
+    # manually (Supabase SQL editor) before alembic was stamped.
+    insp = sa.inspect(op.get_bind())
+    if not _has_column(insp, "store", "onboarding_done"):
+        op.add_column(
+            'store',
+            sa.Column('onboarding_done', sa.Boolean(), nullable=False, server_default='false'),
+        )
 
 
 def downgrade() -> None:
-    op.drop_column('store', 'onboarding_done')
+    insp = sa.inspect(op.get_bind())
+    if _has_column(insp, "store", "onboarding_done"):
+        op.drop_column('store', 'onboarding_done')
