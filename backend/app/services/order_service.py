@@ -160,8 +160,8 @@ def build_order_list_filters(
         store_id=store_id,
         status=status or None,
         pickup_date=pickup_date,
-        pickup_from=pickup_from,
-        pickup_to=pickup_to,
+        pickup_from=to_taipei_naive(pickup_from) if pickup_from is not None else None,
+        pickup_to=to_taipei_naive(pickup_to) if pickup_to is not None else None,
         q=q,
         include_cancelled=include_cancelled,
     )
