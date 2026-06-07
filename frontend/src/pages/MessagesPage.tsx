@@ -15,6 +15,7 @@ import {
 import { useChatRealtime } from '@/hooks/useChatRealtime'
 import { useVisibleRoomDeltaSync } from '@/hooks/useVisibleRoomDeltaSync'
 import { useOrganizeData } from '@/hooks/useOrderDraft'
+import { useRoomOrders } from '@/hooks/useRoomOrders'
 import { clearRoomUnread } from '@/utils/chatRoomCache'
 import type { ChatRoom as ChatRoomType } from '@/types/domain'
 import type { ChatRoomStage } from '@/types/enums'
@@ -42,6 +43,7 @@ export default function MessagesPage() {
   const [detailSubView, setDetailSubView] = useState<DetailPanelSubView>('main')
   const [draftAiChangedFields, setDraftAiChangedFields] = useState<string[]>([])
   const [showLeaveDialog, setShowLeaveDialog] = useState(false)
+  const [showOrganizeConfirm, setShowOrganizeConfirm] = useState(false)
   const [mobileView, setMobileView] = useState<MobileView>('list')
   const pendingRoomRef = useRef<ChatRoomType | null>(null)
   const isDirtyRef = useRef(false)
@@ -92,6 +94,8 @@ export default function MessagesPage() {
   }, [mobileView]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const organizeMutation = useOrganizeData(selectedRoomId)
+  const roomOrdersQuery = useRoomOrders(selectedRoomId, selectedRoomId != null)
+  const hasExistingOrders = (roomOrdersQuery.data?.filter(o => o.status !== 'CANCELLED').length ?? 0) > 0
   const { sseAvailable } = useChatRealtime(currentStoreId, selectedRoomId)
   useVisibleRoomDeltaSync(currentStoreId, selectedRoomId, !sseAvailable)
   /** Organize draft is hidden while editing a formal order (use in-panel AI instead). */
@@ -151,7 +155,7 @@ export default function MessagesPage() {
     isDirtyRef.current = false
   }
 
-  async function handleOrganizeOrder() {
+  async function doOrganizeOrder() {
     if (selectedRoomId == null) return
     try {
       const result = await organizeMutation.mutateAsync()
@@ -161,7 +165,16 @@ export default function MessagesPage() {
       setMobileView('detail')
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err)
-      alert(`整理資料失敗：${message}`)
+      alert(`整理草稿失敗：${message}`)
+    }
+  }
+
+  function handleOrganizeOrder() {
+    if (selectedRoomId == null) return
+    if (hasExistingOrders) {
+      setShowOrganizeConfirm(true)
+    } else {
+      void doOrganizeOrder()
     }
   }
 
@@ -259,6 +272,40 @@ export default function MessagesPage() {
             draftAiChangedFields={draftAiChangedFields}
             onDraftAiHighlightClear={() => setDraftAiChangedFields([])}
           />
+        </div>
+      )}
+
+      {showOrganizeConfirm && (
+        <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/30">
+          <div className="w-[300px] rounded-2xl bg-white px-6 py-5 shadow-xl font-['Noto_Sans_TC',sans-serif]">
+            <p className="mb-1 text-base font-bold text-black">確認整理草稿？</p>
+            <p className="mb-5 text-sm text-black/50">此聊天室已有訂單，整理草稿不會修改現有訂單，只會更新草稿內容。確定要繼續嗎？</p>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowOrganizeConfirm(false)
+                  handleOpenDetail()
+                }}
+                className="flex h-14 flex-1 items-center justify-center rounded-xl border border-[#e0e3ed] text-sm font-bold text-black/60 transition hover:bg-[#F5F5F5]"
+              >
+                <span className="flex flex-col items-center leading-tight">
+                  <span>取消</span>
+                  <span className="text-xs font-normal">前往指定訂單</span>
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowOrganizeConfirm(false)
+                  void doOrganizeOrder()
+                }}
+                className="flex h-10 flex-1 items-center justify-center rounded-xl bg-[#6168FC] text-sm font-bold text-white transition hover:bg-[#4E55E0]"
+              >
+                確認整理
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
