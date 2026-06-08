@@ -100,7 +100,6 @@ async def get_chat_room_for_store(
 
 async def get_order_for_store(db: AsyncSession, order_id: int, store: Store) -> Order:
     from app.repositories.order_repository import get_order_by_id
-    from app.services.message_service import get_chat_room_by_room_id
 
     order = await get_order_by_id(db, order_id)
     if not order:
@@ -108,6 +107,16 @@ async def get_order_for_store(db: AsyncSession, order_id: int, store: Store) -> 
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Order not found",
         )
+    if order.room_id is None:
+        if order.store_id != store.id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Order does not belong to your store",
+            )
+        return order
+
+    from app.services.message_service import get_chat_room_by_room_id
+
     room = await get_chat_room_by_room_id(db, order.room_id)
     if not room or room.store_id != store.id:
         raise HTTPException(
