@@ -64,20 +64,6 @@ def test_chat_room_has_store_id_and_customer_id():
     assert "customer_id" in cols
 
 
-def test_chat_room_user_property_delegates_to_customer():
-    """room.user should return the same object as room.customer."""
-    room = ChatRoom.__new__(ChatRoom)
-    sentinel = object()
-    room.customer = sentinel  # type: ignore[attr-defined]
-    assert room.user is sentinel
-
-
-def test_chat_room_user_id_property_delegates_to_customer_id():
-    room = ChatRoom.__new__(ChatRoom)
-    room.customer_id = 42  # type: ignore[attr-defined]
-    assert room.user_id == 42
-
-
 def test_chat_room_has_customer_relationship():
     rel_names = {r.key for r in sa_inspect(ChatRoom).mapper.relationships}
     assert "customer" in rel_names

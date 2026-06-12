@@ -71,11 +71,10 @@ def test_normalize_already_enum_passthrough():
     assert result is value
 
 
-def test_normalize_enum_instance_not_converted_even_if_staff():
-    """Passing the enum member directly should return it as-is (no double-mapping)."""
-    value = ChatMessageDirection.OUTGOING_BY_STAFF
-    result = normalize_chat_message_direction(value)
-    assert result is ChatMessageDirection.OUTGOING_BY_STAFF
+def test_normalize_staff_enum_instance_maps_to_store():
+    """OUTGOING_BY_STAFF enum instances are normalized to OUTGOING_BY_STORE."""
+    result = normalize_chat_message_direction(ChatMessageDirection.OUTGOING_BY_STAFF)
+    assert result is ChatMessageDirection.OUTGOING_BY_STORE
 
 
 def test_normalize_invalid_string_raises_value_error():

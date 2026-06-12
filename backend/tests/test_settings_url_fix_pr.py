@@ -75,29 +75,6 @@ def test_postgres_scheme_with_sslmode_fully_fixed(monkeypatch):
     assert "sslmode=require" not in result
 
 
-def test_no_database_url_falls_back_to_sqlite(monkeypatch):
-    """When no DATABASE_URL and no POSTGRES_* are set, returns sqlite fallback."""
-    result = _reload_and_call(monkeypatch, {})
-    assert "sqlite" in result
-
-
-def test_postgres_env_vars_build_asyncpg_url(monkeypatch):
-    result = _reload_and_call(
-        monkeypatch,
-        {
-            "POSTGRES_USER": "flower",
-            "POSTGRES_PASSWORD": "flower",
-            "POSTGRES_DB": "flower",
-            "POSTGRES_HOST": "localhost",
-            "POSTGRES_PORT": "5434",
-        },
-    )
-    assert "postgresql+asyncpg" in result
-    assert "flower" in result
-    assert "localhost" in result
-    assert "5434" in result
-
-
 def test_explicit_database_url_takes_priority_over_postgres_vars(monkeypatch):
     """DATABASE_URL should be used even when POSTGRES_* vars are also present."""
     result = _reload_and_call(

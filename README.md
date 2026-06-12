@@ -6,15 +6,17 @@ Flourish 是以 LINE Bot 為接收端的花店商家後台系統。顧客透過 
 
 ## 文件索引
 
-| 文件 | 說明 |
-|------|------|
-| [完整安裝指南](docs/SETUP.md) | 環境變數、資料庫 Migration、新增店家、LINE Webhook 設定 |
-| [API 文件](docs/CONTRACT.md) | OpenAPI 契約|
-| User Stories Mapping | _連結待補_ |
-| Wireframes / Figma | _連結待補_ |
-| ER Diagram | _連結待補_ |
-| Project Management | _連結待補_ |
-| 測試報告 | _連結待補_ |
+
+| 文件                         | 說明                                            |
+| -------------------------- | --------------------------------------------- |
+| [完整安裝指南](docs/SETUP.md)    | 環境變數、資料庫 Migration、新增店家、LINE Webhook 設定       |
+| [API 文件](docs/CONTRACT.md) | OpenAPI 契約                                    |
+| User Stories Mapping       | *連結待補*                                        |
+| Wireframes / Figma         | *連結待補*                                        |
+| ER Diagram                 | *連結待補*                                        |
+| Project Management         | *連結待補*                                        |
+| [測試報告](docs/TESTING.md)    | Unit / Integration / Contract / Smoke Test 說明 |
+
 
 ---
 
@@ -76,16 +78,18 @@ Flourish 是以 LINE Bot 為接收端的花店商家後台系統。顧客透過 
 
 ## Tech Stack
 
-| 層級 | 技術 |
-|------|------|
-| 前端 | React 19、TypeScript、Vite、TanStack Query、React Router v6、Tailwind CSS |
-| 後端 | Python 3.12、FastAPI、SQLAlchemy 2.x async、Alembic、Pydantic v2 |
-| 資料庫 | PostgreSQL（Supabase 托管）、Redis |
-| AI | OpenAI GPT（訂單草稿整理） |
-| 通訊 | LINE Messaging API SDK（Webhook、Push Message、Flex Message） |
-| 認證 | Supabase Auth（Google OAuth）、JWT |
-| 部署 | Docker Compose |
-| 文件匯出 | DOCX（python-docxtpl）、CSV（前端產生） |
+
+| 層級   | 技術                                                                   |
+| ---- | -------------------------------------------------------------------- |
+| 前端   | React 19、TypeScript、Vite、TanStack Query、React Router v6、Tailwind CSS |
+| 後端   | Python 3.12、FastAPI、SQLAlchemy 2.x async、Alembic、Pydantic v2         |
+| 資料庫  | PostgreSQL（Supabase 托管）、Redis                                        |
+| AI   | OpenAI GPT（訂單草稿整理）                                                   |
+| 通訊   | LINE Messaging API SDK（Webhook、Push Message、Flex Message）            |
+| 認證   | Supabase Auth（Google OAuth）、JWT                                      |
+| 部署   | Docker Compose                                                       |
+| 文件匯出 | DOCX（python-docxtpl）、CSV（前端產生）                                       |
+
 
 ---
 
@@ -115,7 +119,7 @@ organize_order_draft usecase
 前端收到 changed_fields → 藍色高亮顯示 AI 填入的欄位值
 ```
 
-### 多租戶資料隔離
+### 多使用者資料隔離
 
 所有 repository 方法強制帶入 `store_id`，Repository 層統一過濾，防止跨店資料洩漏。
 
@@ -130,22 +134,26 @@ organize_order_draft usecase
 ## 功能說明
 
 ### 聊天室
+
 - 三欄 RWD 介面（聊天室列表 / 對話 / 訂單詳情）
 - SSE 即時推播新訊息（透過 Redis 跨 worker 廣播）
 - AI 整理草稿：從 LINE 對話自動提取訂單欄位，藍色高亮顯示 AI 填入的值
 - 建立訂單後自動 push LINE Flex Message 訂單確認卡片給顧客
 
 ### 訂單管理
+
 - 列表、篩選（狀態 / 日期 / 關鍵字）、分頁
 - 直接新增訂單 / 從草稿建立訂單
 - 匯出 DOCX 工單（Word 模板）、CSV
 
 ### 欄位設定
+
 - 每家店獨立設定，拖曳調整顯示順序
 - 切換欄位顯示 / 隱藏（必要欄位鎖定）
 - 欄位設定影響草稿表單、訂單列表、Flex Message 卡片內容
 
 ### 認證
+
 - Google OAuth 登入（Supabase Auth）
 - 店主與 store 1:1 綁定，僅能存取自己店的資料
 - Onboarding 流程（首次登入引導設定店名與欄位）
@@ -171,14 +179,29 @@ docker compose up --build
 
 ---
 
-## 測試
+## Testing
+
+本專案涵蓋 **Unit Test**、**Integration Test**、**Contract Test** 與 **Smoke Test**，完整說明見 [docs/TESTING.md](docs/TESTING.md)。
+
+
+| 範圍       | 框架     | 測試檔 | 案例數 | 最近結果（2026-06-12） |
+| -------- | ------ | --- | --- | ---------------- |
+| Backend  | pytest | 39  | 206 | 206 passed       |
+| Frontend | Vitest | 5   | 18  | 18 passed        |
+
+
+> 自行執行測試前，請先依 [docs/SETUP.md](docs/SETUP.md) 完成環境變數、資料庫與認證設定。
 
 ```bash
-# 後端
-cd backend && source venv/bin/activate && pytest
+# Backend
+cd backend
+pip install -r requirements.txt
+python -m pytest tests/ -v
 
-# 前端
-cd frontend && npm run test
+# Frontend
+cd frontend
+npm install
+npx vitest run
 ```
 
 ---

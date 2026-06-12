@@ -34,10 +34,11 @@ async def test_enter_welcome_stage_forces_welcome_and_sends_greeting(monkeypatch
 
     called = {}
 
-    async def fake_run_welcome_flow(chat_room, user_text, ev, _store, _db):
+    async def fake_run_welcome_flow(chat_room, user_text, ev, _store, _db, include_preface=False):
         called["chat_room"] = chat_room
         called["user_text"] = user_text
         called["event"] = ev
+        called["include_preface"] = include_preface
 
     monkeypatch.setattr(linebot_flow, "run_welcome_flow", fake_run_welcome_flow)
 
