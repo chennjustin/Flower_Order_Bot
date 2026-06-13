@@ -7,15 +7,15 @@ Flourish 是以 LINE Bot 為接收端的花店商家後台系統。顧客透過 
 ## 文件索引
 
 
-| 文件                         | 說明                                            |
-| -------------------------- | --------------------------------------------- |
-| [完整安裝指南](docs/SETUP.md)    | 環境變數、資料庫 Migration、新增店家、LINE Webhook 設定       |
-| [API 文件](docs/CONTRACT.md) | OpenAPI 契約                                    |
-| User Stories Mapping       | *連結待補*                                        |
-| Wireframes / Figma         | *連結待補*                                        |
-| ER Diagram                 | *連結待補*                                        |
-| Project Management         | *連結待補*                                        |
-| [測試報告](docs/TESTING.md)    | Unit / Integration / Contract / Smoke Test 說明 |
+| 文件                         | 說明                                                                                                                      |
+| -------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| [完整安裝指南](docs/SETUP.md)    | 環境變數、資料庫 Migration、新增店家、LINE Webhook 設定                                                                                 |
+| [API 文件](docs/CONTRACT.md) | OpenAPI 契約                                                                                                              |
+| User Stories Mapping       | *[檔案連結](https://drive.google.com/file/d/1FsLlntOHGPchPZe_HJmthVwnFEr8ttH9/view?usp=sharing)*                            |
+| Wireframes / Figma         | *[檔案連結](https://www.figma.com/design/ezUDW9FQcekL43jUONMyty/Flower_shop_platform?node-id=0-1&p=f&t=mnNPDy6pWtU5o5Hn-0)* |
+| ER Diagram                 | *連結待補*                                                                                                                  |
+| Project Management         | *連結待補*                                                                                                                  |
+| [測試報告](docs/TESTING.md)    | Unit / Integration / Contract / Smoke Test 說明                                                                           |
 
 
 ---
