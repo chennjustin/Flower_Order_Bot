@@ -4,7 +4,7 @@
 
 ## 文件清單
 
-- `API_Spec.md`：API 規格與端點摘要
+- `API_Reference.md`：API 規格與端點參考（英文，FastAPI）
 - `ARCHITECTURE.md`：後端分層架構與開發規範
 - `工單模板.docx`：DOCX 匯出模板（`/orders/{order_id}.docx` 預設使用；占位符為 catalog key，如 `{{ customer_name }}`）
 - `order_template.docx`：舊版模板（保留參考；可設環境變數 `DOCX_TEMPLATE_FILE=order_template.docx` 切回）
