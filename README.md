@@ -14,7 +14,7 @@ Flourish 是以 LINE Bot 為接收端的花店商家後台系統。顧客透過 
 | [User Stories Mapping（Google Drive PDF）](https://drive.google.com/file/d/1FsLlntOHGPchPZe_HJmthVwnFEr8ttH9/view?usp=sharing)                  | 包含 Persona, User journey map 以及 User story map
 | [Wireframes（Figma）](https://www.figma.com/design/ezUDW9FQcekL43jUONMyty/Flower_shop_platform?node-id=0-1&p=f&t=mnNPDy6pWtU5o5Hn-0) | 介面線框與 UI 原型                                             |
 | [Database Schema](schema.png)                                                                                                         | 資料表結構與關聯（PostgreSQL / Supabase）                        |
-| [Project Management（Notion）](https://ccloudd.notion.site/Flourish-362c3894a03a82b1bbcf01c455ee5d1b)                                 | 開發時程、任務分工、Milestones 報告 與 交付紀錄                                      |
+| [Project Management（Notion）](https://ccloudd.notion.site/Flourish-362c3894a03a82b1bbcf01c455ee5d1b)                                 | 開發時程、任務分工、Milestones 報告 與 交付紀錄 （開發內容與分工可見「[開發](https://l.instagram.com/?u=https%3A%2F%2Fccloudd.notion.site%2Fd31c3894a03a833dac97810ac99911b1%3Fpvs%3D74&e=AUCXavADwMlevOkDE0UjAA1NagafAl1okEIHO5O-cM2ZBpkejbaZ36h5ksYWYyoIL6QfbKl4B93ONxuoAbuz1UNpDohQlubxOk21q5c4evcsF7A70nxaauUkuO8t)」                                      |
 | [測試報告](docs/TESTING.md)                                                                                                               | Unit / Integration / Contract / Smoke Test 說明           |
 
 
