@@ -7,15 +7,15 @@ Flourish 是以 LINE Bot 為接收端的花店商家後台系統。顧客透過 
 ## 文件索引
 
 
-| 文件                         | 說明                                                                                                                      |
-| -------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| [完整安裝指南](docs/SETUP.md)    | 環境變數、資料庫 Migration、新增店家、LINE Webhook 設定                                                                                 |
-| [API 文件](docs/CONTRACT.md) | OpenAPI 契約                                                                                                              |
-| User Stories Mapping       | *[檔案連結](https://drive.google.com/file/d/1FsLlntOHGPchPZe_HJmthVwnFEr8ttH9/view?usp=sharing)*                            |
-| Wireframes / Figma         | *[檔案連結](https://www.figma.com/design/ezUDW9FQcekL43jUONMyty/Flower_shop_platform?node-id=0-1&p=f&t=mnNPDy6pWtU5o5Hn-0)* |
-| ER Diagram                 | *連結待補*                                                                                                                  |
-| Project Management | *[Notion — 專案管理與開發紀錄](https://ccloudd.notion.site/Flourish-362c3894a03a82b1bbcf01c455ee5d1b)* |                                                                                                                  |
-| [測試報告](docs/TESTING.md)    | Unit / Integration / Contract / Smoke Test 說明                                                                           |
+| 文件                                                                                                                                    | 說明                                                      |
+| ------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------- |
+| [完整安裝指南](docs/SETUP.md)                                                                                                               | 環境變數、資料庫 Migration、新增店家、LINE Webhook 設定                   |
+| [API 文件](docs/CONTRACT.md)                                                                                                            | OpenAPI 契約                                              |
+| [User Stories Mapping（Google Drive PDF）](https://drive.google.com/file/d/1FsLlntOHGPchPZe_HJmthVwnFEr8ttH9/view?usp=sharing)                  | 包含 Persona, User journey map 以及 User story map
+| [Wireframes（Figma）](https://www.figma.com/design/ezUDW9FQcekL43jUONMyty/Flower_shop_platform?node-id=0-1&p=f&t=mnNPDy6pWtU5o5Hn-0) | 介面線框與 UI 原型                                             |
+| [Database Schema](schema.png)                                                                                                         | 資料表結構與關聯（PostgreSQL / Supabase）                        |
+| [Project Management（Notion）](https://ccloudd.notion.site/Flourish-362c3894a03a82b1bbcf01c455ee5d1b)                                 | 開發時程、任務分工、Milestones 報告 與 交付紀錄                                      |
+| [測試報告](docs/TESTING.md)                                                                                                               | Unit / Integration / Contract / Smoke Test 說明           |
 
 
 ---
